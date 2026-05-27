@@ -138,7 +138,7 @@ export default function ContactContent() {
   ]
 
   return (
-    <main style={{ background: 'var(--warm-white)' }}>
+    <main id="main-content" style={{ background: 'var(--warm-white)' }}>
       <section style={{ background: 'var(--surface-container)', padding: 'clamp(4rem, 9vw, 6.5rem) clamp(1.5rem, 5vw, 3rem)', textAlign: 'center' }}>
         <div style={{ maxWidth: '40rem', margin: '0 auto' }}>
           <span style={{ display: 'inline-block', fontFamily: 'var(--font-hanken)', fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase' as const, color: 'var(--warm-terracotta)', background: 'var(--rose-blush)', padding: '0.375rem 1rem', borderRadius: '999px', marginBottom: '1.5rem' }}>

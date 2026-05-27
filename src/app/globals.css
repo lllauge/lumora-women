@@ -18,7 +18,7 @@
   /* Typography colors */
   --text-primary:      #1A2818;   /* deep ink — all headlines + body on light */
   --text-secondary:    #3A4A38;   /* secondary — descriptions, card copy */
-  --text-muted:        #6A7A68;   /* muted — captions, dates, labels */
+  --text-muted:        #5A6B58;   /* muted — captions, dates, labels — darkened to meet 4.5:1 AA on white */
   --botanical-green:   #4A7A40;   /* tags, eyebrow labels, small accents */
   --botanical-light:   #C8DCC0;   /* text on dark backgrounds */
 
@@ -130,6 +130,66 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.6;
+}
+
+/* ─── Global focus indicator (WCAG 2.1 AA — gold on-brand outline) ──────────── */
+:focus-visible {
+  outline: 2px solid #C8980A;
+  outline-offset: 2px;
+}
+/* Never suppress focus for keyboard users */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ─── Skip navigation link ──────────────────────────────────────────────────── */
+.skip-nav {
+  position: absolute;
+  left: -9999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  z-index: 9999;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  background: #162814;
+  color: #C8980A;
+  text-decoration: none;
+  border-radius: 0 0 0.5rem 0.5rem;
+}
+.skip-nav:focus {
+  position: fixed;
+  left: 0.5rem;
+  top: 0;
+  width: auto;
+  height: auto;
+  outline: 2px solid #C8980A;
+  outline-offset: 2px;
+}
+
+/* ─── Screen-reader-only utility ─────────────────────────────────────────────── */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* ─── Minimum touch target (WCAG 2.5.5 — 44×44px) ───────────────────────────── */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 ::selection {
@@ -389,13 +449,13 @@ blockquote, .pull-quote {
   font-family: var(--font-sans);
   font-size: 0.875rem;
   line-height: 1.7;
-  color: rgba(200, 220, 192, 0.65);
+  color: rgba(200, 220, 192, 0.75);
 }
 
 .footer-email {
   font-family: var(--font-sans);
   font-size: 0.75rem;
-  color: rgba(200, 220, 192, 0.45);
+  color: rgba(200, 220, 192, 0.80);
   margin-top: 1.25rem;
 }
 
@@ -428,7 +488,7 @@ blockquote, .pull-quote {
   font-size: 0.7rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(200, 220, 192, 0.4);
+  color: rgba(200, 220, 192, 0.65);
 }
 
 /* ─── Scrollbar ─────────────────────────────────────────────────────────────── */
@@ -554,7 +614,7 @@ blockquote, .pull-quote {
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: rgba(200, 220, 192, 0.45);
+  color: rgba(200, 220, 192, 0.65);
   padding: 16px 24px 6px;
 }
 
@@ -711,9 +771,9 @@ blockquote, .pull-quote {
 .admin-shell input:focus,
 .admin-shell select:focus,
 .admin-shell textarea:focus {
-  outline: none;
+  outline: 2px solid #C8980A;
+  outline-offset: 1px;
   border-color: var(--botanical-green);
-  box-shadow: 0 0 0 2px rgba(74, 122, 64, 0.2);
 }
 .admin-shell label {
   font-family: var(--font-sans);

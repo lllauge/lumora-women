@@ -120,7 +120,7 @@ export default function BlogContent() {
   }
 
   return (
-    <div style={{ background: 'var(--page-bg)', minHeight: '100vh' }}>
+    <main id="main-content" style={{ background: 'var(--page-bg)', minHeight: '100vh' }}>
 
       {/* ── Hero ── */}
       <section style={{
@@ -167,10 +167,18 @@ export default function BlogContent() {
 
       {/* ── Category Tabs ── */}
       <section style={{ background: '#fff', borderBottom: '1px solid rgba(200,220,192,0.35)', position: 'sticky', top: '64px', zIndex: 40 }}>
-        <div style={{ maxWidth: '72rem', margin: '0 auto', padding: '0 1.5rem', display: 'flex', gap: '0', overflowX: 'auto' }}>
+        <div
+          role="tablist"
+          aria-label="Filter posts by category"
+          style={{ maxWidth: '72rem', margin: '0 auto', padding: '0 1.5rem', display: 'flex', gap: '0', overflowX: 'auto' }}
+        >
           {CATEGORIES.map((cat) => (
             <button
               key={cat}
+              role="tab"
+              aria-selected={category === cat}
+              aria-controls="blog-post-grid"
+              id={`blog-tab-${cat.replace(/\s+/g, '-').toLowerCase()}`}
               onClick={() => setCategory(cat)}
               style={{
                 fontFamily: 'var(--font-sans)',
@@ -184,6 +192,7 @@ export default function BlogContent() {
                 cursor: 'pointer',
                 whiteSpace: 'nowrap',
                 transition: 'color 0.15s',
+                minHeight: '44px',
               }}
             >
               {cat}
@@ -197,7 +206,11 @@ export default function BlogContent() {
         <div className="blog-main-grid">
 
           {/* ── Left: featured + grid ── */}
-          <div>
+          <div
+            role="tabpanel"
+            id="blog-post-grid"
+            aria-labelledby={`blog-tab-${category.replace(/\s+/g, '-').toLowerCase()}`}
+          >
             {/* Featured Post */}
             {loading ? (
               <div style={{ height: '400px', background: 'var(--section-tint)', borderRadius: '1rem', marginBottom: '3rem' }} />
@@ -217,10 +230,10 @@ export default function BlogContent() {
                   {/* Image */}
                   <div style={{ height: '320px', background: 'var(--pale-botanical)', position: 'relative', overflow: 'hidden' }}>
                     {featured.featured_image_url ? (
-                      <img src={featured.featured_image_url} alt={featured.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <img src={featured.featured_image_url} alt={`Featured image for: ${featured.title}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
-                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <span style={{ fontFamily: 'var(--font-display)', fontSize: '3rem', color: 'var(--botanical-green)', opacity: 0.4 }}>L</span>
+                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} aria-hidden="true">
+                        <span style={{ fontFamily: 'var(--font-display)', fontSize: '3rem', color: 'var(--botanical-green)', opacity: 0.4 }} aria-hidden="true">L</span>
                       </div>
                     )}
                     <span style={{
@@ -304,10 +317,10 @@ export default function BlogContent() {
                       {/* Image */}
                       <div style={{ height: '200px', background: 'var(--pale-botanical)', overflow: 'hidden' }}>
                         {post.featured_image_url ? (
-                          <img src={post.featured_image_url} alt={post.title} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s' }} />
+                          <img src={post.featured_image_url} alt={`Featured image for: ${post.title}`} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s' }} />
                         ) : (
-                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <span style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', color: 'var(--botanical-green)', opacity: 0.4 }}>L</span>
+                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} aria-hidden="true">
+                            <span style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', color: 'var(--botanical-green)', opacity: 0.4 }} aria-hidden="true">L</span>
                           </div>
                         )}
                       </div>
@@ -363,6 +376,7 @@ export default function BlogContent() {
                     cursor: loadingMore ? 'wait' : 'pointer',
                     transition: 'all 0.2s',
                     opacity: loadingMore ? 0.6 : 1,
+                    minHeight: '44px',
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.background = 'var(--dark-card-bg)'
@@ -390,12 +404,12 @@ export default function BlogContent() {
             }}>
               <div style={{ height: '3px', background: 'linear-gradient(to right, #F0D060 0%, #C8980A 25%, #E8C040 50%, #A87808 75%, #D4AC30 100%)' }} />
               <div style={{ padding: '1.75rem' }}>
-                <h4 style={{
+                <h2 style={{
                   fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 700,
                   color: '#FFFFFF', marginBottom: '0.5rem',
                 }}>
                   The Weekly Glow
-                </h4>
+                </h2>
                 <p style={{
                   fontFamily: 'var(--font-sans)', fontSize: '0.875rem',
                   color: 'rgba(200,220,192,0.75)', lineHeight: 1.6, marginBottom: '1.25rem',
@@ -404,29 +418,32 @@ export default function BlogContent() {
                 </p>
 
                 {subStatus === 'ok' ? (
-                  <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 600, color: 'var(--botanical-light)', textAlign: 'center' }}>
+                  <p role="status" aria-live="polite" style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 600, color: 'var(--botanical-light)', textAlign: 'center' }}>
                     ✓ You&apos;re on the list!
                   </p>
                 ) : (
                   <form onSubmit={handleSubscribe} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <label htmlFor="blog-newsletter-email" className="sr-only">Email address</label>
                     <input
+                      id="blog-newsletter-email"
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="Your email address"
                       required
+                      aria-required="true"
                       style={{
-                        fontFamily: 'var(--font-sans)', fontSize: '0.9rem',
+                        fontFamily: 'var(--font-sans)', fontSize: '1rem',
                         padding: '0.75rem 1rem', borderRadius: '0.5rem',
                         border: 'none', background: 'rgba(255,255,255,0.1)',
-                        color: '#fff', outline: 'none',
+                        color: '#fff', minHeight: '44px',
                       }}
                     />
-                    <button type="submit" className="btn-primary" style={{ borderRadius: '0.5rem', padding: '0.75rem' }}>
+                    <button type="submit" className="btn-primary" style={{ borderRadius: '0.5rem', padding: '0.75rem', minHeight: '44px' }}>
                       Subscribe
                     </button>
                     {subStatus === 'err' && (
-                      <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', color: 'var(--botanical-light)' }}>
+                      <p role="alert" style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', color: 'var(--botanical-light)' }}>
                         Something went wrong. Try again.
                       </p>
                     )}
@@ -439,14 +456,14 @@ export default function BlogContent() {
             <div style={{ background: '#fff', borderRadius: '1rem', overflow: 'hidden', boxShadow: '0 4px 12px rgba(22,40,20,0.05)' }}>
               <div style={{ height: '3px', background: 'linear-gradient(to right, #F0D060 0%, #C8980A 25%, #E8C040 50%, #A87808 75%, #D4AC30 100%)' }} />
               <div style={{ padding: '1.75rem' }}>
-                <h4 style={{
+                <h2 style={{
                   fontFamily: 'var(--font-sans)', fontSize: '0.6875rem', fontWeight: 700,
                   letterSpacing: '0.15em', textTransform: 'uppercase',
                   color: 'var(--text-muted)', marginBottom: '1.25rem',
                   paddingBottom: '0.75rem', borderBottom: '1px solid rgba(200,220,192,0.35)',
                 }}>
                   Popular Now
-                </h4>
+                </h2>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                   {popular.length === 0 ? (
                     <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>No posts yet.</p>
@@ -488,12 +505,12 @@ export default function BlogContent() {
             }}>
               <div style={{ height: '3px', background: 'linear-gradient(to right, #F0D060 0%, #C8980A 25%, #E8C040 50%, #A87808 75%, #D4AC30 100%)' }} />
               <div style={{ padding: '1.75rem' }}>
-                <h4 style={{
+                <h2 style={{
                   fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 700,
                   color: '#fff', marginBottom: '0.5rem',
                 }}>
                   Start Your Wellness Journey
-                </h4>
+                </h2>
                 <p style={{
                   fontFamily: 'var(--font-sans)', fontSize: '0.875rem',
                   color: 'rgba(200,220,192,0.8)', lineHeight: 1.6, marginBottom: '1.25rem',
@@ -537,6 +554,6 @@ export default function BlogContent() {
           }
         }
       `}</style>
-    </div>
+    </main>
   )
 }

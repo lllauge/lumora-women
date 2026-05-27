@@ -6,8 +6,9 @@ interface Props extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 const AuthInput = forwardRef<HTMLInputElement, Props>(
-  ({ label, error, id, ...props }, ref) => {
+  ({ label, error, id, required, ...props }, ref) => {
     const inputId = id ?? label.toLowerCase().replace(/\s+/g, '-')
+    const errorId = `${inputId}-error`
     return (
       <div className="w-full">
         <label
@@ -23,10 +24,17 @@ const AuthInput = forwardRef<HTMLInputElement, Props>(
           }}
         >
           {label}
+          {required && (
+            <span aria-hidden="true" style={{ color: '#DC2626', marginLeft: '0.25rem' }}>*</span>
+          )}
         </label>
         <input
           ref={ref}
           id={inputId}
+          required={required}
+          aria-required={required ? 'true' : undefined}
+          aria-invalid={error ? 'true' : undefined}
+          aria-describedby={error ? errorId : undefined}
           style={{
             width: '100%',
             padding: '0.75rem 1rem',
@@ -34,10 +42,10 @@ const AuthInput = forwardRef<HTMLInputElement, Props>(
             border: error ? '1.5px solid #DC2626' : '1.5px solid var(--outline-variant)',
             background: '#FFFFFF',
             fontFamily: 'var(--font-sans)',
-            fontSize: '0.9375rem',
+            fontSize: '1rem',
             color: 'var(--deep-earth)',
-            outline: 'none',
             transition: 'border-color 0.15s',
+            minHeight: '44px',
           }}
           onFocus={(e) => {
             e.currentTarget.style.borderColor = 'var(--sage-green-deep)'
@@ -50,7 +58,11 @@ const AuthInput = forwardRef<HTMLInputElement, Props>(
           {...props}
         />
         {error && (
-          <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8rem', color: '#DC2626', marginTop: '0.375rem' }}>
+          <p
+            id={errorId}
+            role="alert"
+            style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8rem', color: '#DC2626', marginTop: '0.375rem' }}
+          >
             {error}
           </p>
         )}

@@ -49,7 +49,7 @@ export default async function AdminAppLayout({
     <div className="admin-shell">
       <AdminSidebar />
       <AdminTopbar adminName={adminName} adminEmail={adminEmail} />
-      <main className="admin-main">{children}</main>
+      <main id="main-content" className="admin-main">{children}</main>
     </div>
   )
 }

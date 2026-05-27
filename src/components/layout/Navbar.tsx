@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Menu, X } from 'lucide-react'
@@ -20,6 +20,7 @@ export default function Navbar({ showShop = false }: { showShop?: boolean }) {
   const [scrolled, setScrolled] = useState(false)
   const [user, setUser] = useState<{ id: string } | null>(null)
   const pathname = usePathname()
+  const menuButtonRef = useRef<HTMLButtonElement>(null)
 
   const isConfigured =
     process.env.NEXT_PUBLIC_SUPABASE_URL?.startsWith('http') &&
@@ -46,6 +47,21 @@ export default function Navbar({ showShop = false }: { showShop?: boolean }) {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
+  const closeMobileMenu = useCallback(() => {
+    setMobileOpen(false)
+    menuButtonRef.current?.focus()
+  }, [])
+
+  // Close mobile menu on Escape key
+  useEffect(() => {
+    if (!mobileOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeMobileMenu()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [mobileOpen, closeMobileMenu])
+
   const isActive = (href: string) =>
     href === '/' ? pathname === '/' : pathname?.startsWith(href)
 
@@ -63,7 +79,7 @@ export default function Navbar({ showShop = false }: { showShop?: boolean }) {
           style={{ paddingTop: scrolled ? '0.5rem' : '1rem', paddingBottom: scrolled ? '0.5rem' : '1rem' }}
         >
           {/* Logo */}
-          <Link href="/" className="shrink-0">
+          <Link href="/" className="shrink-0" aria-label="Lumora Women — home">
             <span
               className="text-2xl tracking-tight gold-text"
               style={{
@@ -71,19 +87,21 @@ export default function Navbar({ showShop = false }: { showShop?: boolean }) {
                 fontWeight: 700,
                 letterSpacing: '-0.01em',
               }}
+              aria-hidden="true"
             >
               Lumora
             </span>
           </Link>
 
           {/* Desktop nav links — center */}
-          <nav className="hidden md:flex items-center gap-8">
+          <nav aria-label="Main navigation" className="hidden md:flex items-center gap-8">
             {navLinks.map((link) => {
               const active = isActive(link.href)
               return (
                 <Link
                   key={link.href}
                   href={link.href}
+                  aria-current={active ? 'page' : undefined}
                   className="text-sm transition-all duration-150"
                   style={{
                     fontFamily: 'var(--font-sans)',
@@ -131,67 +149,71 @@ export default function Navbar({ showShop = false }: { showShop?: boolean }) {
 
           {/* Mobile menu button */}
           <button
-            className="md:hidden p-2 rounded-md"
+            ref={menuButtonRef}
+            className="md:hidden touch-target rounded-md"
             style={{ color: 'var(--botanical-light)' }}
             onClick={() => setMobileOpen(!mobileOpen)}
-            aria-label="Toggle menu"
+            aria-label={mobileOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            aria-expanded={mobileOpen}
+            aria-controls="mobile-nav"
           >
-            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            {mobileOpen ? <X className="w-5 h-5" aria-hidden="true" /> : <Menu className="w-5 h-5" aria-hidden="true" />}
           </button>
         </div>
       </div>
 
       {/* Gold gradient border line under nav */}
-      <div className="gold-line-nav" />
+      <div className="gold-line-nav" aria-hidden="true" />
 
       {/* Mobile menu */}
-      {mobileOpen && (
-        <div
-          className="md:hidden border-t"
-          style={{
-            borderColor: 'rgba(200,220,192,0.08)',
-            background: 'rgba(22, 40, 20, 0.99)',
-          }}
-        >
-          <nav className="flex flex-col px-5 py-4 gap-1">
-            {navLinks.map((link) => {
-              const active = isActive(link.href)
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="px-4 py-2.5 rounded-md text-sm"
-                  style={{
-                    fontFamily: 'var(--font-sans)',
-                    fontWeight: active ? 600 : 500,
-                    color: active ? 'var(--botanical-light)' : 'rgba(200, 220, 192, 0.75)',
-                  }}
-                >
-                  {link.label}
-                </Link>
-              )
-            })}
-            <div className="pt-3 mt-1 border-t flex flex-col gap-2" style={{ borderColor: 'rgba(200,220,192,0.08)' }}>
-              {user ? (
-                <Link href="/dashboard" className="px-4 py-2.5 text-sm" style={{ color: 'var(--botanical-light)', fontFamily: 'var(--font-sans)', fontWeight: 500 }}>
-                  Dashboard
-                </Link>
-              ) : (
-                <Link href="/login" className="px-4 py-2.5 text-sm" style={{ color: 'var(--botanical-light)', fontFamily: 'var(--font-sans)', fontWeight: 500 }}>
-                  Sign In
-                </Link>
-              )}
+      <div
+        id="mobile-nav"
+        className="md:hidden border-t"
+        hidden={!mobileOpen}
+        style={{
+          borderColor: 'rgba(200,220,192,0.08)',
+          background: 'rgba(22, 40, 20, 0.99)',
+        }}
+      >
+        <nav aria-label="Mobile navigation" className="flex flex-col px-5 py-4 gap-1">
+          {navLinks.map((link) => {
+            const active = isActive(link.href)
+            return (
               <Link
-                href="/courses"
-                className="text-center btn-primary"
-                style={{ borderRadius: '9999px', padding: '0.625rem 1.5rem', fontSize: '0.875rem' }}
+                key={link.href}
+                href={link.href}
+                aria-current={active ? 'page' : undefined}
+                className="px-4 rounded-md text-sm touch-target"
+                style={{
+                  fontFamily: 'var(--font-sans)',
+                  fontWeight: active ? 600 : 500,
+                  color: active ? 'var(--botanical-light)' : 'rgba(200, 220, 192, 0.75)',
+                }}
               >
-                Enroll Now
+                {link.label}
               </Link>
-            </div>
-          </nav>
-        </div>
-      )}
+            )
+          })}
+          <div className="pt-3 mt-1 border-t flex flex-col gap-2" style={{ borderColor: 'rgba(200,220,192,0.08)' }}>
+            {user ? (
+              <Link href="/dashboard" className="px-4 touch-target text-sm" style={{ color: 'var(--botanical-light)', fontFamily: 'var(--font-sans)', fontWeight: 500 }}>
+                Dashboard
+              </Link>
+            ) : (
+              <Link href="/login" className="px-4 touch-target text-sm" style={{ color: 'var(--botanical-light)', fontFamily: 'var(--font-sans)', fontWeight: 500 }}>
+                Sign In
+              </Link>
+            )}
+            <Link
+              href="/courses"
+              className="text-center btn-primary touch-target"
+              style={{ borderRadius: '9999px', padding: '0.625rem 1.5rem', fontSize: '0.875rem' }}
+            >
+              Enroll Now
+            </Link>
+          </div>
+        </nav>
+      </div>
     </header>
   )
 }

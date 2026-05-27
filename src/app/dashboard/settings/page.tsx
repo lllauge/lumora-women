@@ -1,7 +1,12 @@
+import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { LayoutDashboard, BookOpen, Settings, LogOut } from 'lucide-react'
+
+export const metadata: Metadata = {
+  title: 'Account Settings | Lumora Women',
+}
 
 export default async function SettingsPage() {
   const supabase = await createClient()
@@ -52,7 +57,7 @@ export default async function SettingsPage() {
                 color: 'rgba(255,255,255,0.6)',
               }}
             >
-              <LogOut className="w-4 h-4" />
+              <LogOut className="w-4 h-4" aria-hidden="true" />
               Sign Out
             </button>
           </form>
@@ -68,7 +73,7 @@ export default async function SettingsPage() {
       </aside>
 
       {/* Main */}
-      <main style={{ flex: 1, padding: '3rem 2.5rem', maxWidth: '640px' }}>
+      <main id="main-content" style={{ flex: 1, padding: "3rem 2.5rem", maxWidth: "640px" }}>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', color: 'var(--deep-earth)', marginBottom: '0.375rem' }}>
           Account Settings
         </h1>
@@ -133,10 +138,11 @@ function NavItem({ href, icon, label, active }: { href: string; icon: React.Reac
   return (
     <Link
       href={href}
+      aria-current={active ? 'page' : undefined}
       style={{
         display: 'flex', alignItems: 'center', gap: '0.75rem',
         padding: '0.625rem 0.875rem', borderRadius: '0.5rem',
-        textDecoration: 'none',
+        textDecoration: 'none', minHeight: '44px',
         background: active ? 'rgba(255,255,255,0.12)' : 'none',
         color: active ? '#FFFFFF' : 'rgba(255,255,255,0.65)',
         fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: active ? 600 : 400,
@@ -151,9 +157,9 @@ function NavItem({ href, icon, label, active }: { href: string; icon: React.Reac
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <label style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--deep-earth)', display: 'block', marginBottom: '0.375rem' }}>
+      <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--deep-earth)', display: 'block', marginBottom: '0.375rem' }}>
         {label}
-      </label>
+      </p>
       <div
         style={{
           padding: '0.75rem 1rem', borderRadius: '0.5rem',

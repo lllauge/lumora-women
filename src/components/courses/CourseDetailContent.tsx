@@ -121,7 +121,7 @@ export default function CourseDetailContent({ courseId }: { courseId: string }) 
   )
 
   return (
-    <main style={{ background: 'var(--page-bg)', minHeight: '100vh' }}>
+    <main id="main-content" style={{ background: 'var(--page-bg)', minHeight: '100vh' }}>
 
       {/* Hero banner */}
       <div style={{ background: '#162814', padding: '3.5rem 1.5rem' }}>

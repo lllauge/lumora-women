@@ -28,6 +28,7 @@ export default function FreeCourseCapturePage({
   const captchaRef = useRef<HCaptcha>(null)
   const [course, setCourse] = useState<Course | null>(null)
   const [form, setForm] = useState({ firstName: '', email: '' })
+  const [ageConfirmed, setAgeConfirmed] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
@@ -46,7 +47,12 @@ export default function FreeCourseCapturePage({
     e.preventDefault()
 
     if (!form.firstName.trim() || !form.email.includes('@')) {
-      setError('Please enter your first name and a valid email.')
+      setError('Please enter your first name and a valid email address.')
+      return
+    }
+
+    if (!ageConfirmed) {
+      setError('You must confirm you are 18 years of age or older to access this course.')
       return
     }
 
@@ -126,7 +132,7 @@ export default function FreeCourseCapturePage({
         </Link>
       </header>
 
-      <main className="flex-1 flex items-center justify-center px-4 py-12">
+      <main id="main-content" className="flex-1 flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-4xl grid lg:grid-cols-2 gap-12 items-center">
           {/* Left — course info */}
           <div>
@@ -175,34 +181,60 @@ export default function FreeCourseCapturePage({
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--deep-earth)', display: 'block', marginBottom: '0.375rem' }}>
-                  First Name
+                <label htmlFor="fc-first-name" style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--deep-earth)', display: 'block', marginBottom: '0.375rem' }}>
+                  First Name <span aria-hidden="true" style={{ color: '#DC2626' }}>*</span>
                 </label>
                 <input
+                  id="fc-first-name"
                   type="text"
                   value={form.firstName}
                   onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))}
                   placeholder="Jane"
                   required
-                  style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '0.5rem', border: '1.5px solid var(--outline-variant)', fontFamily: 'var(--font-sans)', fontSize: '0.9375rem', color: 'var(--deep-earth)', outline: 'none', background: '#FFF', boxSizing: 'border-box' as const }}
+                  aria-required="true"
+                  style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '0.5rem', border: '1.5px solid var(--outline-variant)', fontFamily: 'var(--font-sans)', fontSize: '1rem', color: 'var(--deep-earth)', background: '#FFF', boxSizing: 'border-box' as const, minHeight: '44px' }}
                   onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--sage-green-deep)')}
                   onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--outline-variant)')}
                 />
               </div>
               <div>
-                <label style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--deep-earth)', display: 'block', marginBottom: '0.375rem' }}>
-                  Email Address
+                <label htmlFor="fc-email" style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--deep-earth)', display: 'block', marginBottom: '0.375rem' }}>
+                  Email Address <span aria-hidden="true" style={{ color: '#DC2626' }}>*</span>
                 </label>
                 <input
+                  id="fc-email"
                   type="email"
                   value={form.email}
                   onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
                   placeholder="jane@example.com"
                   required
-                  style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '0.5rem', border: '1.5px solid var(--outline-variant)', fontFamily: 'var(--font-sans)', fontSize: '0.9375rem', color: 'var(--deep-earth)', outline: 'none', background: '#FFF', boxSizing: 'border-box' as const }}
+                  aria-required="true"
+                  style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '0.5rem', border: '1.5px solid var(--outline-variant)', fontFamily: 'var(--font-sans)', fontSize: '1rem', color: 'var(--deep-earth)', background: '#FFF', boxSizing: 'border-box' as const, minHeight: '44px' }}
                   onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--sage-green-deep)')}
                   onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--outline-variant)')}
                 />
+              </div>
+
+              {/* Age confirmation */}
+              <div>
+                <label
+                  htmlFor="fc-age-confirm"
+                  style={{
+                    display: 'flex', alignItems: 'flex-start', gap: '0.625rem',
+                    cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: '0.875rem',
+                    color: 'var(--deep-earth)', lineHeight: 1.5,
+                  }}
+                >
+                  <input
+                    id="fc-age-confirm"
+                    type="checkbox"
+                    checked={ageConfirmed}
+                    onChange={(e) => setAgeConfirmed(e.target.checked)}
+                    aria-required="true"
+                    style={{ marginTop: '0.2rem', width: '1rem', height: '1rem', flexShrink: 0, accentColor: 'var(--botanical-green)', cursor: 'pointer' }}
+                  />
+                  I confirm I am <strong style={{ margin: '0 0.25rem' }}>18 years of age or older</strong>.
+                </label>
               </div>
 
               {/* hCaptcha */}
@@ -216,14 +248,14 @@ export default function FreeCourseCapturePage({
               )}
 
               {error && (
-                <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.85rem', color: '#B91C1C' }}>{error}</p>
+                <p role="alert" style={{ fontFamily: 'var(--font-sans)', fontSize: '0.85rem', color: '#B91C1C' }}>{error}</p>
               )}
 
               <button
                 type="submit"
                 disabled={loading}
                 className="btn-primary w-full"
-                style={{ borderRadius: '0.5rem', padding: '0.9rem', marginTop: '0.5rem' }}
+                style={{ borderRadius: '0.5rem', padding: '0.9rem', marginTop: '0.5rem', minHeight: '44px' }}
               >
                 {loading ? 'Getting your access…' : 'Get Instant Access →'}
               </button>

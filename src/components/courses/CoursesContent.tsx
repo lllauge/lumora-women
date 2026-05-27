@@ -39,19 +39,22 @@ export default function CoursesContent() {
     return true
   })
 
-  const tabs: { key: Filter; label: string }[] = [
-    { key: 'all', label: 'All Courses' },
-    { key: 'free', label: 'Free' },
-    { key: 'paid', label: 'Paid' },
+  const tabs: { key: Filter; label: string; panelId: string; tabId: string }[] = [
+    { key: 'all',  label: 'All Courses', panelId: 'courses-panel-all',  tabId: 'courses-tab-all' },
+    { key: 'free', label: 'Free',        panelId: 'courses-panel-free', tabId: 'courses-tab-free' },
+    { key: 'paid', label: 'Paid',        panelId: 'courses-panel-paid', tabId: 'courses-tab-paid' },
   ]
 
+  const activeTab = tabs.find((t) => t.key === filter)!
+
   return (
-    <main style={{ background: 'var(--page-bg)', minHeight: '100vh' }}>
+    <main id="main-content" style={{ background: 'var(--page-bg)', minHeight: '100vh' }}>
 
       {/* Hero */}
       <section style={{ background: '#162814', padding: '5rem 1.5rem 4rem' }}>
         <div style={{ maxWidth: '48rem', margin: '0 auto', textAlign: 'center' }}>
           <span
+            aria-hidden="true"
             style={{
               fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 600,
               letterSpacing: '0.12em', textTransform: 'uppercase' as const,
@@ -82,11 +85,19 @@ export default function CoursesContent() {
       </section>
 
       {/* Filter tabs */}
-      <div style={{ background: '#FFFFFF', borderBottom: '1px solid rgba(200,220,192,0.35)', position: 'sticky', top: 0, zIndex: 10 }}>
+      <div
+        role="tablist"
+        aria-label="Filter courses"
+        style={{ background: '#FFFFFF', borderBottom: '1px solid rgba(200,220,192,0.35)', position: 'sticky', top: 0, zIndex: 10 }}
+      >
         <div style={{ maxWidth: '72rem', margin: '0 auto', padding: '0 1.5rem', display: 'flex', gap: '0.25rem' }}>
-          {tabs.map(({ key, label }) => (
+          {tabs.map(({ key, label, tabId, panelId }) => (
             <button
               key={key}
+              id={tabId}
+              role="tab"
+              aria-selected={filter === key}
+              aria-controls={panelId}
               onClick={() => setFilter(key)}
               style={{
                 padding: '1rem 1.5rem',
@@ -101,6 +112,7 @@ export default function CoursesContent() {
                 cursor: 'pointer',
                 background: 'none',
                 transition: 'color 0.15s',
+                minHeight: '44px',
               }}
             >
               {label}
@@ -110,11 +122,17 @@ export default function CoursesContent() {
       </div>
 
       {/* Grid */}
-      <section style={{ maxWidth: '72rem', margin: '0 auto', padding: '3.5rem 1.5rem' }}>
+      <section
+        id={activeTab.panelId}
+        role="tabpanel"
+        aria-labelledby={activeTab.tabId}
+        style={{ maxWidth: '72rem', margin: '0 auto', padding: '3.5rem 1.5rem' }}
+      >
+        <h2 className="sr-only">{activeTab.label}</h2>
         {loading ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '2rem' }}>
             {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} style={{ borderRadius: '1rem', overflow: 'hidden', background: '#FFFFFF', border: '1px solid rgba(200,220,192,0.3)' }}>
+              <div key={i} aria-hidden="true" style={{ borderRadius: '1rem', overflow: 'hidden', background: '#FFFFFF', border: '1px solid rgba(200,220,192,0.3)' }}>
                 <div style={{ height: '3px', background: 'linear-gradient(to right, #F0D060 0%, #C8980A 25%, #E8C040 50%, #A87808 75%, #D4AC30 100%)' }} />
                 <div style={{ aspectRatio: '16/9', background: 'var(--section-tint)' }} />
                 <div style={{ padding: '1.5rem' }}>
@@ -134,11 +152,13 @@ export default function CoursesContent() {
             </p>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '2rem' }}>
+          <ul style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '2rem', listStyle: 'none', padding: 0, margin: 0 }}>
             {filtered.map((course) => (
-              <CourseCard key={course.id} course={course} />
+              <li key={course.id}>
+                <CourseCard course={course} />
+              </li>
             ))}
-          </div>
+          </ul>
         )}
       </section>
 
@@ -146,6 +166,7 @@ export default function CoursesContent() {
       <section style={{ background: 'var(--section-sand)', padding: '5rem 1.5rem', textAlign: 'center' }}>
         <div style={{ maxWidth: '36rem', margin: '0 auto' }}>
           <span
+            aria-hidden="true"
             style={{
               fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 600,
               letterSpacing: '0.12em', textTransform: 'uppercase' as const,
@@ -166,19 +187,24 @@ export default function CoursesContent() {
             Be the first to know when new courses drop — plus get early access and member-only discounts.
           </p>
           <form
+            aria-label="Course notification sign-up"
             style={{ display: 'flex', gap: '0.75rem', maxWidth: '28rem', margin: '0 auto', flexWrap: 'wrap' as const }}
             onSubmit={(e) => e.preventDefault()}
           >
+            <label htmlFor="courses-notify-email" className="sr-only">Email address</label>
             <input
+              id="courses-notify-email"
               type="email"
               placeholder="your@email.com"
+              aria-required="true"
               style={{
                 flex: 1, minWidth: 0, padding: '0.75rem 1rem', borderRadius: '0.5rem',
                 border: '1.5px solid rgba(200,220,192,0.45)', fontFamily: 'var(--font-sans)',
-                fontSize: '0.9375rem', color: 'var(--text-primary)', background: '#FFFFFF', outline: 'none',
+                fontSize: '1rem', color: 'var(--text-primary)', background: '#FFFFFF',
+                minHeight: '44px',
               }}
             />
-            <button type="submit" className="btn-primary" style={{ borderRadius: '0.5rem', padding: '0.75rem 1.5rem', whiteSpace: 'nowrap' as const }}>
+            <button type="submit" className="btn-primary" style={{ borderRadius: '0.5rem', padding: '0.75rem 1.5rem', whiteSpace: 'nowrap' as const, minHeight: '44px' }}>
               Notify Me
             </button>
           </form>
@@ -190,10 +216,12 @@ export default function CoursesContent() {
 
 function CourseCard({ course }: { course: Course }) {
   const href = course.is_free ? `/free-course/${course.id}` : `/courses/${course.id}`
+  const priceLabel = course.is_free ? 'Free' : `$${(course.price / 100).toFixed(0)}`
 
   return (
     <Link href={href} style={{ display: 'block', textDecoration: 'none' }}>
       <article
+        aria-label={`${course.title} — ${priceLabel}`}
         style={{
           borderRadius: '1rem', overflow: 'hidden', background: '#FFFFFF',
           border: '1px solid rgba(200,220,192,0.3)',
@@ -211,19 +239,24 @@ function CourseCard({ course }: { course: Course }) {
         }}
       >
         {/* Gold top line */}
-        <div style={{ height: '3px', background: 'linear-gradient(to right, #F0D060 0%, #C8980A 25%, #E8C040 50%, #A87808 75%, #D4AC30 100%)' }} />
+        <div aria-hidden="true" style={{ height: '3px', background: 'linear-gradient(to right, #F0D060 0%, #C8980A 25%, #E8C040 50%, #A87808 75%, #D4AC30 100%)' }} />
 
         {/* Thumbnail */}
         <div style={{ aspectRatio: '16/9', background: 'var(--pale-botanical)', position: 'relative', overflow: 'hidden' }}>
           {course.thumbnail_url ? (
-            <img src={course.thumbnail_url} alt={course.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img
+              src={course.thumbnail_url}
+              alt={`${course.title} course thumbnail`}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
           ) : (
-            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div aria-hidden="true" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <span style={{ fontFamily: 'var(--font-display)', fontSize: '3rem', color: 'var(--botanical-green)', opacity: 0.3 }}>L</span>
             </div>
           )}
           {course.is_free && (
             <span
+              aria-hidden="true"
               style={{
                 position: 'absolute', top: '0.75rem', left: '0.75rem',
                 background: 'var(--botanical-green)', color: '#FFFFFF',
@@ -256,8 +289,9 @@ function CourseCard({ course }: { course: Course }) {
                 WebkitTextFillColor: 'transparent',
                 backgroundClip: 'text',
               }}
+              aria-hidden="true"
             >
-              {course.is_free ? 'Free' : `$${(course.price / 100).toFixed(0)}`}
+              {priceLabel}
             </span>
             <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--botanical-green)', fontWeight: 600 }}>
               Enroll →

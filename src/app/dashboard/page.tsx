@@ -1,7 +1,12 @@
+import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { BookOpen, LayoutDashboard, Settings, LogOut, ChevronRight, Play } from 'lucide-react'
+
+export const metadata: Metadata = {
+  title: 'My Dashboard | Lumora Women',
+}
 
 type EnrolledCourse = {
   course_id: string
@@ -97,6 +102,7 @@ export default async function DashboardPage() {
 
       {/* Sidebar */}
       <aside
+        aria-label="Dashboard navigation"
         style={{
           width: '240px', flexShrink: 0,
           background: '#1E3220',
@@ -108,6 +114,7 @@ export default async function DashboardPage() {
         {/* Logo */}
         <Link
           href="/"
+          aria-label="Lumora Women — home"
           style={{
             display: 'block', padding: '0 1.5rem', marginBottom: '2.5rem',
             textDecoration: 'none',
@@ -115,6 +122,7 @@ export default async function DashboardPage() {
         >
           <span
             className="gold-text"
+            aria-hidden="true"
             style={{ fontFamily: 'var(--font-display)', fontSize: '1.125rem', fontWeight: 700 }}
           >
             Lumora Women
@@ -122,10 +130,10 @@ export default async function DashboardPage() {
         </Link>
 
         {/* Nav */}
-        <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.25rem', padding: '0 0.75rem' }}>
-          <NavItem href="/dashboard" icon={<LayoutDashboard className="w-4 h-4" />} label="Dashboard" active />
-          <NavItem href="/courses" icon={<BookOpen className="w-4 h-4" />} label="Browse Courses" />
-          <NavItem href="/dashboard/settings" icon={<Settings className="w-4 h-4" />} label="Settings" />
+        <nav aria-label="Dashboard sections" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.25rem', padding: '0 0.75rem' }}>
+          <NavItem href="/dashboard" icon={<LayoutDashboard className="w-4 h-4" aria-hidden="true" />} label="Dashboard" active />
+          <NavItem href="/courses" icon={<BookOpen className="w-4 h-4" aria-hidden="true" />} label="Browse Courses" />
+          <NavItem href="/dashboard/settings" icon={<Settings className="w-4 h-4" aria-hidden="true" />} label="Settings" />
         </nav>
 
         {/* Sign out */}
@@ -138,11 +146,12 @@ export default async function DashboardPage() {
                 padding: '0.625rem 0.875rem', borderRadius: '0.5rem',
                 background: 'none', border: 'none', cursor: 'pointer',
                 fontFamily: 'var(--font-sans)', fontSize: '0.875rem',
-                color: 'rgba(200,220,192,0.6)',
+                color: 'rgba(200,220,192,0.75)',
                 transition: 'background 0.15s',
+                minHeight: '44px',
               }}
             >
-              <LogOut className="w-4 h-4" />
+              <LogOut className="w-4 h-4" aria-hidden="true" />
               Sign Out
             </button>
           </form>
@@ -152,7 +161,7 @@ export default async function DashboardPage() {
             <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 600, color: '#FFFFFF', marginBottom: '0.125rem' }}>
               {profile?.first_name} {profile?.last_name}
             </p>
-            <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', color: 'rgba(200,220,192,0.5)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+            <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', color: 'rgba(200,220,192,0.75)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
               {profile?.email ?? user.email}
             </p>
           </div>
@@ -160,7 +169,7 @@ export default async function DashboardPage() {
       </aside>
 
       {/* Main content */}
-      <main style={{ flex: 1, padding: '3rem 2.5rem', maxWidth: '900px' }}>
+      <main id="main-content" style={{ flex: 1, padding: '3rem 2.5rem', maxWidth: '900px' }}>
 
         {/* Welcome */}
         <div style={{ marginBottom: '2.5rem' }}>
@@ -173,7 +182,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* Enrolled courses */}
-        <section>
+        <section aria-label="My enrolled courses">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>
               My Courses
@@ -190,11 +199,13 @@ export default async function DashboardPage() {
           {enrolledCourses.length === 0 ? (
             <EmptyEnrollments />
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <ul style={{ display: 'flex', flexDirection: 'column', gap: '1rem', listStyle: 'none', padding: 0, margin: 0 }}>
               {enrolledCourses.map((item) => (
-                <CourseProgressCard key={item.course_id} item={item} />
+                <li key={item.course_id}>
+                  <CourseProgressCard item={item} />
+                </li>
               ))}
-            </div>
+            </ul>
           )}
         </section>
       </main>
@@ -210,15 +221,17 @@ function NavItem({
   return (
     <Link
       href={href}
+      aria-current={active ? 'page' : undefined}
       style={{
         display: 'flex', alignItems: 'center', gap: '0.75rem',
         padding: '0.625rem 0.875rem', borderRadius: '0.5rem',
         textDecoration: 'none',
         background: active ? 'rgba(255,255,255,0.1)' : 'none',
-        color: active ? '#FFFFFF' : 'rgba(200,220,192,0.65)',
+        color: active ? '#FFFFFF' : 'rgba(200,220,192,0.75)',
         borderLeft: active ? '2px solid var(--gold-dark)' : '2px solid transparent',
         fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: active ? 600 : 400,
         transition: 'background 0.15s',
+        minHeight: '44px',
       }}
     >
       {icon}
@@ -241,7 +254,7 @@ function CourseProgressCard({ item }: { item: EnrolledCourse }) {
       }}
     >
       {/* Gold top line */}
-      <div style={{ height: '3px', background: 'linear-gradient(to right, #F0D060 0%, #C8980A 25%, #E8C040 50%, #A87808 75%, #D4AC30 100%)' }} />
+      <div aria-hidden="true" style={{ height: '3px', background: 'linear-gradient(to right, #F0D060 0%, #C8980A 25%, #E8C040 50%, #A87808 75%, #D4AC30 100%)' }} />
       <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center', padding: '1.25rem' }}>
         {/* Thumbnail */}
         <div
@@ -251,9 +264,9 @@ function CourseProgressCard({ item }: { item: EnrolledCourse }) {
           }}
         >
           {course.thumbnail_url ? (
-            <img src={course.thumbnail_url} alt={course.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img src={course.thumbnail_url} alt={`${course.title} thumbnail`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           ) : (
-            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div aria-hidden="true" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <span style={{ fontFamily: 'var(--font-display)', fontSize: '1.75rem', color: 'var(--botanical-green)', opacity: 0.5 }}>L</span>
             </div>
           )}
@@ -268,9 +281,17 @@ function CourseProgressCard({ item }: { item: EnrolledCourse }) {
             {item.completedCount} / {item.totalLessons} lessons complete
           </p>
 
-          {/* Progress bar — gold gradient */}
-          <div style={{ height: '6px', borderRadius: '999px', background: 'var(--section-tint)', overflow: 'hidden' }}>
+          {/* Progress bar */}
+          <div
+            role="progressbar"
+            aria-valuenow={pct}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label={`${course.title} progress: ${pct}%`}
+            style={{ height: '6px', borderRadius: '999px', background: 'var(--section-tint)', overflow: 'hidden' }}
+          >
             <div
+              aria-hidden="true"
               style={{
                 height: '100%', borderRadius: '999px',
                 background: pct === 100
@@ -285,19 +306,21 @@ function CourseProgressCard({ item }: { item: EnrolledCourse }) {
         {/* Continue button */}
         <Link
           href={href}
+          aria-label={pct === 100 ? `Review ${course.title}` : pct === 0 ? `Start ${course.title}` : `Continue ${course.title}`}
           className="gold-text"
           style={{
             flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.375rem',
             fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 600,
             textDecoration: 'none',
+            minHeight: '44px',
           }}
         >
           {pct === 100 ? (
-            <>Review <ChevronRight className="w-4 h-4" style={{ color: 'var(--gold-dark)' }} /></>
+            <>Review <ChevronRight className="w-4 h-4" style={{ color: 'var(--gold-dark)' }} aria-hidden="true" /></>
           ) : pct === 0 ? (
-            <><Play className="w-4 h-4" style={{ color: 'var(--gold-dark)' }} /> Start</>
+            <><Play className="w-4 h-4" style={{ color: 'var(--gold-dark)' }} aria-hidden="true" /> Start</>
           ) : (
-            <>Continue <ChevronRight className="w-4 h-4" style={{ color: 'var(--gold-dark)' }} /></>
+            <>Continue <ChevronRight className="w-4 h-4" style={{ color: 'var(--gold-dark)' }} aria-hidden="true" /></>
           )}
         </Link>
       </div>
@@ -316,6 +339,7 @@ function EmptyEnrollments() {
       }}
     >
       <div
+        aria-hidden="true"
         style={{
           width: '4rem', height: '4rem', borderRadius: '50%',
           background: 'var(--section-tint)',

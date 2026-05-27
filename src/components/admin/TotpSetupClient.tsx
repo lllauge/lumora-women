@@ -77,7 +77,7 @@ export default function TotpSetupClient({
   return (
     <div className="min-h-screen flex items-center justify-center px-6 py-12"
          style={{ background: 'var(--admin-primary-container)' }}>
-      <main className="w-full max-w-lg">
+      <main id="main-content" className="w-full max-w-lg">
         <h1 style={{ fontFamily: 'var(--font-eb-garamond)', fontSize: '1.75rem', color: 'var(--admin-celadon-pale)', marginBottom: '0.5rem', textAlign: 'center' }}>
           Set Up Two-Factor Authentication
         </h1>
@@ -147,7 +147,6 @@ export default function TotpSetupClient({
                   letterSpacing: '0.3em',
                   color: 'var(--admin-on-primary)',
                   textAlign: 'center',
-                  outline: 'none',
                   boxSizing: 'border-box',
                 }}
               />

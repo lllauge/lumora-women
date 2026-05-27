@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import AxeProvider from '@/components/dev/AxeProvider'
 
 export const metadata: Metadata = {
   title: {
@@ -17,7 +18,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body suppressHydrationWarning>
+        <a href="#main-content" className="skip-nav">Skip to main content</a>
         {children}
+        <AxeProvider />
       </body>
     </html>
   )

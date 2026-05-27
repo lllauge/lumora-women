@@ -33,8 +33,8 @@ const sections = [
     body: `You have the right to access, update, or delete your personal information at any time. To make a request, contact us at the email below. For users in the European Economic Area or California, additional rights may apply under GDPR and CCPA respectively.`,
   },
   {
-    title: 'Children\'s Privacy',
-    body: `Lumora Women is intended for adults aged 18 and over. We do not knowingly collect personal information from children under 13. If you believe a child has provided us with personal information, please contact us immediately.`,
+    title: 'Age Requirement',
+    body: `Lumora Women is intended for users 18 years of age and older. Our platform sells courses and services which constitute legal contracts, and minors cannot enter into contracts. We do not knowingly collect personal information from anyone under 18. If we discover or are notified that an account belongs to someone under 18, we will delete that account and all associated personal information immediately. If you believe a person under 18 has created an account, please contact us at hello@lumorawomen.com.`,
   },
   {
     title: 'Changes to This Policy',
@@ -51,7 +51,7 @@ export default function PrivacyPolicyPage() {
     <div style={{ background: 'var(--warm-white)' }}>
       <NavbarWrapper />
 
-      <main>
+      <main id="main-content">
         {/* Hero */}
         <section style={{
           background: 'var(--surface-container)',

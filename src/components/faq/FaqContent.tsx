@@ -104,65 +104,75 @@ function AccordionItem({
   a,
   open,
   onToggle,
+  triggerId,
+  panelId,
 }: {
   q: string
   a: string
   open: boolean
   onToggle: () => void
+  triggerId: string
+  panelId: string
 }) {
   return (
-    <div
-      style={{
-        borderBottom: '1px solid var(--outline-variant)',
-      }}
-    >
-      <button
-        onClick={onToggle}
+    <div style={{ borderBottom: '1px solid var(--outline-variant)' }}>
+      <h3 style={{ margin: 0 }}>
+        <button
+          id={triggerId}
+          onClick={onToggle}
+          aria-expanded={open}
+          aria-controls={panelId}
+          style={{
+            width: '100%',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '1rem',
+            padding: '1.25rem 0',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            textAlign: 'left',
+            minHeight: '44px',
+          }}
+        >
+          <span style={{
+            fontFamily: 'var(--font-sans)',
+            fontSize: '1rem',
+            fontWeight: 600,
+            color: 'var(--deep-earth)',
+            lineHeight: 1.45,
+          }}>
+            {q}
+          </span>
+          <ChevronDown
+            size={20}
+            strokeWidth={2}
+            aria-hidden="true"
+            style={{
+              color: 'var(--sage-green-dark)',
+              flexShrink: 0,
+              transition: 'transform 0.25s',
+              transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+            }}
+          />
+        </button>
+      </h3>
+
+      <div
+        id={panelId}
+        role="region"
+        aria-labelledby={triggerId}
+        hidden={!open}
         style={{
-          width: '100%',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: '1rem',
-          padding: '1.25rem 0',
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          textAlign: 'left',
+          paddingBottom: open ? '1.25rem' : '0',
         }}
       >
-        <span style={{
-          fontFamily: 'var(--font-hanken)',
-          fontSize: '1rem',
-          fontWeight: 600,
-          color: 'var(--deep-earth)',
-          lineHeight: 1.45,
-        }}>
-          {q}
-        </span>
-        <ChevronDown
-          size={20}
-          strokeWidth={2}
-          style={{
-            color: 'var(--sage-green-dark)',
-            flexShrink: 0,
-            transition: 'transform 0.25s',
-            transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
-          }}
-        />
-      </button>
-
-      <div style={{
-        maxHeight: open ? '600px' : '0',
-        overflow: 'hidden',
-        transition: 'max-height 0.3s ease',
-      }}>
         <p style={{
-          fontFamily: 'var(--font-hanken)',
+          fontFamily: 'var(--font-sans)',
           fontSize: '0.9375rem',
           color: 'var(--on-surface-variant)',
           lineHeight: 1.75,
-          paddingBottom: '1.25rem',
         }}>
           {a}
         </p>
@@ -189,27 +199,34 @@ function FaqSection({
       padding: '0 2rem',
       marginBottom: '1.5rem',
     }}>
-      <h3 style={{
-        fontFamily: 'var(--font-eb-garamond)',
+      <h2 style={{
+        fontFamily: 'var(--font-display)',
         fontSize: '1.25rem',
-        fontWeight: 500,
+        fontWeight: 700,
         color: 'var(--sage-green-dark)',
         padding: '1.5rem 0 0.5rem',
         borderBottom: '2px solid var(--sage-green-light)',
         marginBottom: '0.25rem',
+        marginTop: 0,
       }}>
         {section.label}
-      </h3>
+      </h2>
 
-      {section.items.map((item, i) => (
-        <AccordionItem
-          key={i}
-          q={item.q}
-          a={item.a}
-          open={openIndex === i}
-          onToggle={() => setOpenIndex(openIndex === i ? null : i)}
-        />
-      ))}
+      {section.items.map((item, i) => {
+        const triggerId = `faq-${section.id}-trigger-${i}`
+        const panelId = `faq-${section.id}-panel-${i}`
+        return (
+          <AccordionItem
+            key={i}
+            q={item.q}
+            a={item.a}
+            open={openIndex === i}
+            onToggle={() => setOpenIndex(openIndex === i ? null : i)}
+            triggerId={triggerId}
+            panelId={panelId}
+          />
+        )
+      })}
     </div>
   )
 }
@@ -218,7 +235,7 @@ function FaqSection({
 
 export default function FaqContent() {
   return (
-    <main style={{ background: 'var(--warm-white)' }}>
+    <main id="main-content" style={{ background: 'var(--warm-white)' }}>
 
       {/* ── Hero ── */}
       <section style={{
@@ -227,25 +244,27 @@ export default function FaqContent() {
         textAlign: 'center',
       }}>
         <div style={{ maxWidth: '44rem', margin: '0 auto' }}>
-          <span style={{
-            display: 'inline-block',
-            fontFamily: 'var(--font-hanken)',
-            fontSize: '0.6875rem',
-            fontWeight: 700,
-            letterSpacing: '0.2em',
-            textTransform: 'uppercase' as const,
-            color: 'var(--warm-terracotta)',
-            background: 'var(--rose-blush)',
-            padding: '0.375rem 1rem',
-            borderRadius: '999px',
-            marginBottom: '1.5rem',
-          }}>
-            Questions & Answers
+          <span
+            aria-hidden="true"
+            style={{
+              display: 'inline-block',
+              fontFamily: 'var(--font-sans)',
+              fontSize: '0.6875rem',
+              fontWeight: 700,
+              letterSpacing: '0.2em',
+              textTransform: 'uppercase' as const,
+              color: 'var(--warm-terracotta)',
+              background: 'var(--rose-blush)',
+              padding: '0.375rem 1rem',
+              borderRadius: '999px',
+              marginBottom: '1.5rem',
+            }}>
+            Questions &amp; Answers
           </span>
           <h1 style={{
-            fontFamily: 'var(--font-eb-garamond)',
+            fontFamily: 'var(--font-display)',
             fontSize: 'clamp(2.25rem, 5vw, 3.5rem)',
-            fontWeight: 500,
+            fontWeight: 700,
             color: 'var(--sage-green-dark)',
             lineHeight: 1.2,
             marginBottom: '1.25rem',
@@ -253,7 +272,7 @@ export default function FaqContent() {
             We&apos;ve Got Answers
           </h1>
           <p style={{
-            fontFamily: 'var(--font-hanken)',
+            fontFamily: 'var(--font-sans)',
             fontSize: '1.0625rem',
             color: 'var(--on-surface-variant)',
             lineHeight: 1.75,
@@ -283,16 +302,16 @@ export default function FaqContent() {
       }}>
         <div style={{ maxWidth: '36rem', margin: '0 auto' }}>
           <h2 style={{
-            fontFamily: 'var(--font-eb-garamond)',
+            fontFamily: 'var(--font-display)',
             fontSize: 'clamp(1.75rem, 3.5vw, 2.25rem)',
-            fontWeight: 500,
+            fontWeight: 700,
             color: 'var(--sage-green-light)',
             marginBottom: '0.75rem',
           }}>
             Still Have Questions?
           </h2>
           <p style={{
-            fontFamily: 'var(--font-hanken)',
+            fontFamily: 'var(--font-sans)',
             fontSize: '1rem',
             color: 'rgba(209, 230, 201, 0.85)',
             lineHeight: 1.7,
@@ -304,7 +323,7 @@ export default function FaqContent() {
             href="/contact"
             style={{
               display: 'inline-block',
-              fontFamily: 'var(--font-hanken)',
+              fontFamily: 'var(--font-sans)',
               fontSize: '1rem',
               fontWeight: 700,
               padding: '1rem 2.5rem',
@@ -313,6 +332,8 @@ export default function FaqContent() {
               color: 'var(--sage-green-dark)',
               textDecoration: 'none',
               letterSpacing: '0.03em',
+              minHeight: '44px',
+              minWidth: '44px',
             }}
           >
             Contact Us

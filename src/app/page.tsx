@@ -1,5 +1,11 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import NavbarWrapper from '@/components/layout/NavbarWrapper'
+
+export const metadata: Metadata = {
+  title: "Reconnect With Your Body After Baby | Lumora Women",
+  description: "Practical wellness education for women navigating postpartum recovery, hormone health, and every season of womanhood.",
+}
 import FooterWrapper from '@/components/layout/FooterWrapper'
 import EmailCaptureForm from '@/components/home/EmailCaptureForm'
 import { createClient } from '@/lib/supabase/server'
@@ -325,11 +331,11 @@ function EditorialCourseCard({
         {course.thumbnail_url ? (
           <img
             src={course.thumbnail_url}
-            alt={course.title}
+            alt={`${course.title} course thumbnail`}
             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center opacity-50">
+          <div aria-hidden="true" className="w-full h-full flex items-center justify-center opacity-50">
             <span style={{ fontFamily: 'var(--font-display)', fontSize: '3rem', color: palette.fg }}>L</span>
           </div>
         )}
@@ -514,11 +520,11 @@ function FromTheBlog({
                   {post.featured_image_url ? (
                     <img
                       src={post.featured_image_url}
-                      alt={post.title}
+                      alt={`Featured image for: ${post.title}`}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center">
+                    <div aria-hidden="true" className="w-full h-full flex items-center justify-center">
                       <span style={{ fontFamily: 'var(--font-display)', fontSize: '2.5rem', color: 'var(--botanical-green)', opacity: 0.6 }}>L</span>
                     </div>
                   )}
@@ -538,7 +544,7 @@ function FromTheBlog({
                   {post.category}
                 </span>
               )}
-              <h4
+              <h3
                 className="mb-3"
                 style={{
                   fontFamily: 'var(--font-display)',
@@ -550,7 +556,7 @@ function FromTheBlog({
                 }}
               >
                 {post.title}
-              </h4>
+              </h3>
             </Link>
           ))}
         </div>
@@ -632,7 +638,7 @@ export default async function HomePage() {
   return (
     <>
       <NavbarWrapper />
-      <main>
+      <main id="main-content">
         <Hero />
         <StatsBar />
         <FeaturedCourses courses={courses} />

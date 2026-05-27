@@ -129,7 +129,7 @@ export default function WorkWithMePage() {
         </Link>
       </header>
 
-      <main>
+      <main id="main-content">
 
         {/* ── Hero ── */}
         <section style={{

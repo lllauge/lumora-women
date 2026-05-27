@@ -46,6 +46,7 @@ export default function AboutPage() {
     <div style={{ background: 'var(--page-bg)' }}>
       <NavbarWrapper />
 
+      <main id="main-content">
       {/* ── Hero ── */}
       <section className="about-hero">
         {/* Text side */}
@@ -310,7 +311,7 @@ export default function AboutPage() {
                     <span style={{ color: 'var(--botanical-green)', fontSize: '0.75rem', fontWeight: 700 }}>✓</span>
                   </div>
                   <div>
-                    <h4 style={{
+                    <h3 style={{
                       fontFamily: 'var(--font-sans)',
                       fontSize: '1rem',
                       fontWeight: 700,
@@ -318,7 +319,7 @@ export default function AboutPage() {
                       marginBottom: '0.25rem',
                     }}>
                       {item.title}
-                    </h4>
+                    </h3>
                     <p style={{
                       fontFamily: 'var(--font-sans)',
                       fontSize: '0.9rem',
@@ -375,6 +376,8 @@ export default function AboutPage() {
           </Link>
         </div>
       </section>
+
+      </main>
 
       <FooterWrapper />
 

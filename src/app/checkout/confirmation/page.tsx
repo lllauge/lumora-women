@@ -1,9 +1,15 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { CheckCircle } from 'lucide-react'
 
+export const metadata: Metadata = {
+  title: 'Purchase Confirmed | Lumora Women',
+}
+
 export default function CheckoutConfirmationPage() {
   return (
-    <div
+    <main
+      id="main-content"
       className="min-h-screen flex flex-col items-center justify-center px-4"
       style={{ background: 'var(--warm-white)' }}
     >
@@ -27,7 +33,7 @@ export default function CheckoutConfirmationPage() {
           className="inline-flex items-center justify-center w-20 h-20 rounded-full mb-6"
           style={{ background: 'var(--sage-green-light)' }}
         >
-          <CheckCircle className="w-10 h-10" style={{ color: 'var(--sage-green-dark)' }} />
+          <CheckCircle className="w-10 h-10" style={{ color: 'var(--sage-green-dark)' }} aria-hidden="true" />
         </div>
 
         <h1
@@ -84,6 +90,6 @@ export default function CheckoutConfirmationPage() {
           Browse more courses
         </Link>
       </div>
-    </div>
+    </main>
   )
 }

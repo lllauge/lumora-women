@@ -120,7 +120,6 @@ export default function ExportEmailListButton() {
                 fontFamily: 'var(--font-hanken)',
                 fontSize: '0.9375rem',
                 color: 'var(--admin-on-surface)',
-                outline: 'none',
                 boxSizing: 'border-box',
                 marginBottom: '0.5rem',
               }}

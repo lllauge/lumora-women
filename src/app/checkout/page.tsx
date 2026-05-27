@@ -23,6 +23,7 @@ function CheckoutContent() {
   const [loading, setLoading] = useState(true)
   const [paying, setPaying] = useState(false)
   const [error, setError] = useState('')
+  const [ageConfirmed, setAgeConfirmed] = useState(false)
 
   useEffect(() => {
     if (!courseId) return
@@ -40,6 +41,10 @@ function CheckoutContent() {
 
   async function handleCheckout() {
     if (!course) return
+    if (!ageConfirmed) {
+      setError('You must confirm you are 18 years of age or older to complete this purchase.')
+      return
+    }
     setPaying(true)
     setError('')
 
@@ -219,8 +224,31 @@ function CheckoutContent() {
             </span>
           </div>
 
+          {/* Age confirmation */}
+          <div style={{ marginBottom: '1rem' }}>
+            <label
+              htmlFor="checkout-age-confirm"
+              style={{
+                display: 'flex', alignItems: 'flex-start', gap: '0.625rem',
+                cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: '0.875rem',
+                color: 'var(--text-secondary)', lineHeight: 1.5,
+              }}
+            >
+              <input
+                id="checkout-age-confirm"
+                type="checkbox"
+                checked={ageConfirmed}
+                onChange={(e) => setAgeConfirmed(e.target.checked)}
+                aria-required="true"
+                style={{ marginTop: '0.2rem', width: '1rem', height: '1rem', flexShrink: 0, accentColor: 'var(--botanical-green)', cursor: 'pointer' }}
+              />
+              I confirm I am <strong style={{ margin: '0 0.25rem' }}>18 years of age or older</strong>.
+            </label>
+          </div>
+
           {error && (
             <div
+              role="alert"
               style={{
                 padding: '0.75rem 1rem', borderRadius: '0.5rem', marginBottom: '1rem',
                 background: '#FEF2F2', color: '#B91C1C',
@@ -235,7 +263,7 @@ function CheckoutContent() {
             onClick={handleCheckout}
             disabled={paying || loading}
             className="btn-primary w-full"
-            style={{ borderRadius: '0.5rem', padding: '0.9rem', marginBottom: '0.75rem' }}
+            style={{ borderRadius: '0.5rem', padding: '0.9rem', marginBottom: '0.75rem', minHeight: '44px' }}
           >
             {paying ? 'Redirecting to payment…' : `Pay ${price}`}
           </button>
@@ -284,13 +312,15 @@ export default function CheckoutPage() {
         </div>
       </header>
 
-      <Suspense fallback={
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '50vh' }}>
-          <span style={{ fontFamily: 'var(--font-sans)', color: 'var(--text-secondary)' }}>Loading…</span>
-        </div>
-      }>
-        <CheckoutContent />
-      </Suspense>
+      <main id="main-content">
+        <Suspense fallback={
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '50vh' }}>
+            <span style={{ fontFamily: 'var(--font-sans)', color: 'var(--text-secondary)' }}>Loading…</span>
+          </div>
+        }>
+          <CheckoutContent />
+        </Suspense>
+      </main>
     </div>
   )
 }

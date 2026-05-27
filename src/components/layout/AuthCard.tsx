@@ -8,7 +8,8 @@ interface Props {
 
 export default function AuthCard({ children, title, subtitle }: Props) {
   return (
-    <div
+    <main
+      id="main-content"
       className="min-h-screen flex flex-col items-center justify-center px-4 py-16"
       style={{ background: 'var(--page-bg)' }}
     >
@@ -66,6 +67,6 @@ export default function AuthCard({ children, title, subtitle }: Props) {
           {children}
         </div>
       </div>
-    </div>
+    </main>
   )
 }

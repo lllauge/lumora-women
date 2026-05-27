@@ -140,6 +140,7 @@ function LoginForm() {
             onChange={set('password')}
             placeholder="Your password"
             required
+            aria-required="true"
             disabled={isLocked}
             style={{
               width: '100%',
@@ -148,9 +149,9 @@ function LoginForm() {
               border: '1.5px solid var(--outline-variant)',
               background: '#FFFFFF',
               fontFamily: 'var(--font-sans)',
-              fontSize: '0.9375rem',
+              fontSize: '1rem',
               color: 'var(--deep-earth)',
-              outline: 'none',
+              minHeight: '44px',
             }}
             onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--sage-green-deep)')}
             onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--outline-variant)')}

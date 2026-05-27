@@ -628,7 +628,7 @@ export default async function StartHerePage() {
   return (
     <div style={{ background: 'var(--warm-white)' }}>
       <NavbarWrapper />
-      <main>
+      <main id="main-content">
         <Hero />
         <Steps showShop={showShop} />
         <FeaturedPathways courses={courses} />

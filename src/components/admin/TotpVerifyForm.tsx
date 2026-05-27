@@ -61,7 +61,6 @@ export default function TotpVerifyForm() {
             letterSpacing: '0.3em',
             color: 'var(--admin-on-primary)',
             textAlign: 'center',
-            outline: 'none',
           }}
         />
       </div>

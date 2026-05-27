@@ -22,6 +22,7 @@ export default function SignUpPage() {
   const router = useRouter()
   const captchaRef = useRef<HCaptcha>(null)
   const [form, setForm] = useState({ firstName: '', lastName: '', email: '', password: '', confirm: '' })
+  const [ageConfirmed, setAgeConfirmed] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
   const [serverError, setServerError] = useState('')
@@ -32,15 +33,20 @@ export default function SignUpPage() {
 
   function validate() {
     const e: Record<string, string> = {}
-    if (!form.firstName.trim()) e.firstName = 'First name is required.'
-    if (!form.lastName.trim())  e.lastName  = 'Last name is required.'
-    if (!form.email.includes('@')) e.email = 'Enter a valid email address.'
+    if (!form.firstName.trim()) e.firstName = 'First name is required. Please enter your first name.'
+    if (!form.lastName.trim())  e.lastName  = 'Last name is required. Please enter your last name.'
+    if (!form.email.includes('@')) e.email = 'Enter a valid email address, for example jane@example.com.'
 
     const pwErrs = passwordErrors(form.password)
     if (pwErrs.length > 0) {
       e.password = `Password must contain: ${pwErrs.join(', ')}.`
     }
     if (form.password !== form.confirm) e.confirm = 'Passwords do not match.'
+
+    // Age confirmation
+    if (!ageConfirmed) {
+      e.age = 'You must confirm you are 18 years of age or older to create an account.'
+    }
 
     // hCaptcha (only required when site key is configured)
     if (HCAPTCHA_SITE_KEY && !captchaToken) {
@@ -108,6 +114,36 @@ export default function SignUpPage() {
         </div>
         <AuthInput label="Confirm Password" type="password" value={form.confirm} onChange={set('confirm')} error={errors.confirm} placeholder="Repeat your password" />
 
+        {/* Age confirmation — required for legal contract compliance in California */}
+        <div>
+          <label
+            htmlFor="age-confirm"
+            style={{
+              display: 'flex', alignItems: 'flex-start', gap: '0.625rem',
+              cursor: 'pointer',
+              fontFamily: 'var(--font-sans)', fontSize: '0.875rem',
+              color: 'var(--deep-earth)', lineHeight: 1.5,
+            }}
+          >
+            <input
+              id="age-confirm"
+              type="checkbox"
+              checked={ageConfirmed}
+              onChange={(e) => setAgeConfirmed(e.target.checked)}
+              aria-required="true"
+              aria-describedby={errors.age ? 'age-confirm-error' : undefined}
+              aria-invalid={errors.age ? 'true' : undefined}
+              style={{ marginTop: '0.2rem', width: '1rem', height: '1rem', flexShrink: 0, accentColor: 'var(--botanical-green)', cursor: 'pointer' }}
+            />
+            I confirm I am <strong style={{ marginLeft: '0.25rem', marginRight: '0.25rem' }}>18 years of age or older</strong>.
+          </label>
+          {errors.age && (
+            <p id="age-confirm-error" role="alert" style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8rem', color: '#DC2626', marginTop: '0.375rem' }}>
+              {errors.age}
+            </p>
+          )}
+        </div>
+
         {/* hCaptcha — only rendered when site key is configured */}
         {HCAPTCHA_SITE_KEY && (
           <div>
@@ -127,6 +163,8 @@ export default function SignUpPage() {
 
         {serverError && (
           <div
+            role="alert"
+            aria-live="polite"
             className="px-4 py-3 rounded-lg text-sm"
             style={{ background: '#FEF2F2', color: '#B91C1C', fontFamily: 'var(--font-sans)', border: '1px solid #FECACA' }}
           >

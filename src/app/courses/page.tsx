@@ -4,7 +4,7 @@ import FooterWrapper from '@/components/layout/FooterWrapper'
 import CoursesContent from '@/components/courses/CoursesContent'
 
 export const metadata: Metadata = {
-  title: 'Courses | Lumora Women',
+  title: 'All Courses | Lumora Women',
   description: 'Expert-led wellness courses for postpartum recovery, hormone health, and conscious living.',
 }
 

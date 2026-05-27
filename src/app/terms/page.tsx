@@ -9,6 +9,10 @@ export const metadata: Metadata = {
 
 const sections = [
   {
+    title: 'Eligibility',
+    body: `You must be at least 18 years of age to use the Lumora Women platform. Our platform sells courses and services which constitute legal contracts. By creating an account or making a purchase, you confirm that you are 18 years of age or older. If we discover that an account belongs to someone under 18, we will terminate that account immediately. Users under 18 are not permitted to use our Services.`,
+  },
+  {
     title: 'Acceptance of Terms',
     body: `By accessing or using the Lumora Women website, courses, or community (collectively, "Services"), you agree to be bound by these Terms of Service. If you do not agree, please do not use our Services.`,
   },
@@ -55,7 +59,7 @@ export default function TermsPage() {
     <div style={{ background: 'var(--warm-white)' }}>
       <NavbarWrapper />
 
-      <main>
+      <main id="main-content">
         <section style={{
           background: 'var(--surface-container)',
           padding: 'clamp(3.5rem, 7vw, 5.5rem) clamp(1.5rem, 5vw, 3rem)',

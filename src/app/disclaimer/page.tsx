@@ -43,7 +43,7 @@ export default function DisclaimerPage() {
     <div style={{ background: 'var(--warm-white)' }}>
       <NavbarWrapper />
 
-      <main>
+      <main id="main-content">
         <section style={{
           background: 'var(--surface-container)',
           padding: 'clamp(3.5rem, 7vw, 5.5rem) clamp(1.5rem, 5vw, 3rem)',

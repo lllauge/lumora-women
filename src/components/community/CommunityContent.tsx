@@ -161,7 +161,7 @@ export default function CommunityContent() {
   ]
 
   return (
-    <main style={{ background: 'var(--page-bg)' }}>
+    <main id="main-content" style={{ background: 'var(--page-bg)' }}>
 
       {/* ── Hero ── */}
       <section style={{

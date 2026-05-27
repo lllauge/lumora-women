@@ -143,7 +143,6 @@ function FilterSelect({
       style={{
         background: 'transparent',
         border: 'none',
-        outline: 'none',
         fontFamily: 'var(--font-hanken)',
         fontSize: '0.8125rem',
         fontWeight: 600,

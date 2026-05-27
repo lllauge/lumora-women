@@ -202,7 +202,6 @@ export default function BlogPostEditor({
                 boxShadow: 'none',
                 padding: 0,
                 width: '100%',
-                outline: 'none',
                 fontFamily: 'var(--font-eb-garamond)',
                 fontSize: '2rem',
                 fontWeight: 500,

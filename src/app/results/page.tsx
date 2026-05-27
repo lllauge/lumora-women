@@ -82,7 +82,7 @@ export default function ResultsPage() {
     <div style={{ background: 'var(--page-bg)' }}>
       <NavbarWrapper />
 
-      <main>
+      <main id="main-content">
         {/* ── Hero ── */}
         <section style={{
           background: 'var(--section-tint)',

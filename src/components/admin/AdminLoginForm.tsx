@@ -24,7 +24,6 @@ const inputStyle: React.CSSProperties = {
   padding: '0.875rem 0.875rem 0.875rem 2.5rem',
   background: 'transparent',
   border: 'none',
-  outline: 'none',
   fontFamily: 'var(--font-hanken)',
   fontSize: '0.9375rem',
   color: 'var(--admin-on-primary)',

@@ -1,0 +1,160 @@
+'use client'
+
+import { useState, Suspense } from 'react'
+import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import AuthCard from '@/components/layout/AuthCard'
+import AuthInput from '@/components/ui/AuthInput'
+
+function LoginForm() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirectTo = searchParams.get('redirectTo') ?? '/dashboard'
+
+  const [form, setForm] = useState({ email: '', password: '' })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm((f) => ({ ...f, [field]: e.target.value }))
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+
+    const supabase = createClient()
+    const { data, error: authError } = await supabase.auth.signInWithPassword({
+      email: form.email,
+      password: form.password,
+    })
+
+    if (authError) {
+      setError('Invalid email or password. Please try again.')
+      setLoading(false)
+      return
+    }
+
+    // Route admin to admin dashboard, students to student dashboard
+    const { data: userData } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', data.user.id)
+      .single()
+
+    if (userData?.role === 'admin') {
+      router.push('/admin')
+    } else {
+      router.push(redirectTo)
+    }
+    router.refresh()
+  }
+
+  return (
+    <AuthCard
+      title="Welcome Back"
+      subtitle="Log in to access your courses and continue your journey."
+    >
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <AuthInput
+          label="Email Address"
+          type="email"
+          value={form.email}
+          onChange={set('email')}
+          placeholder="jane@example.com"
+          required
+        />
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <label
+              htmlFor="password"
+              style={{
+                fontFamily: 'var(--font-sans)',
+                fontSize: '0.8125rem',
+                fontWeight: 600,
+                color: 'var(--deep-earth)',
+                letterSpacing: '0.02em',
+              }}
+            >
+              Password
+            </label>
+            <Link
+              href="/forgot-password"
+              style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8rem', color: 'var(--warm-terracotta)' }}
+            >
+              Forgot password?
+            </Link>
+          </div>
+          <input
+            id="password"
+            type="password"
+            value={form.password}
+            onChange={set('password')}
+            placeholder="Your password"
+            required
+            style={{
+              width: '100%',
+              padding: '0.75rem 1rem',
+              borderRadius: '0.5rem',
+              border: '1.5px solid var(--outline-variant)',
+              background: '#FFFFFF',
+              fontFamily: 'var(--font-sans)',
+              fontSize: '0.9375rem',
+              color: 'var(--deep-earth)',
+              outline: 'none',
+            }}
+            onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--sage-green-deep)')}
+            onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--outline-variant)')}
+          />
+        </div>
+
+        {error && (
+          <div
+            className="px-4 py-3 rounded-lg text-sm"
+            style={{ background: '#FEF2F2', color: '#B91C1C', fontFamily: 'var(--font-sans)', border: '1px solid #FECACA' }}
+          >
+            {error}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="btn-primary w-full"
+          style={{ borderRadius: '0.5rem', padding: '0.875rem' }}
+        >
+          {loading ? 'Logging in…' : 'Log In'}
+        </button>
+      </form>
+
+      <div className="flex items-center gap-3 my-6">
+        <div className="flex-1 h-px" style={{ background: 'var(--outline-variant)' }} />
+        <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8rem', color: 'var(--on-surface-variant)' }}>or</span>
+        <div className="flex-1 h-px" style={{ background: 'var(--outline-variant)' }} />
+      </div>
+
+      <p
+        className="text-center"
+        style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9rem', color: 'var(--on-surface-variant)' }}
+      >
+        Don&apos;t have an account?{' '}
+        <Link href="/signup" style={{ color: 'var(--warm-terracotta)', fontWeight: 600 }}>
+          Sign up free
+        </Link>
+      </p>
+    </AuthCard>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <AuthCard title="Welcome Back" subtitle="Log in to access your courses.">
+        <div style={{ height: '200px' }} />
+      </AuthCard>
+    }>
+      <LoginForm />
+    </Suspense>
+  )
+}

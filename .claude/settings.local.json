@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx --no-install next build)",
+      "Bash(mkdir -p /Users/laura/Desktop/lumora-women/src/components/admin/course-editor \"/Users/laura/Desktop/lumora-women/src/app/admin/\\(dashboard\\)/courses/new\" \"/Users/laura/Desktop/lumora-women/src/app/admin/\\(dashboard\\)/courses/edit/[courseId]\" /Users/laura/Desktop/lumora-women/src/lib)",
+      "Bash(npm install *)",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(curl -s http://localhost:3000/admin/courses/new)",
+      "Bash(npx tsc *)",
+      "Bash(sed -i '' \\\\ *)",
+      "Bash(lsof -i :3000 -sTCP:LISTEN)",
+      "Bash(ps -p 25992 -o command=)",
+      "Bash(curl -sI http://localhost:3000/free-course)",
+      "Bash(curl -sI http://localhost:3000/courses)",
+      "Bash(curl -s http://localhost:3000/start-here)"
+    ]
+  }
+}

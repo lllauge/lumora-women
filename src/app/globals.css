@@ -1,0 +1,770 @@
+@import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap');
+@import "tailwindcss";
+
+/* ─── Brand Tokens ──────────────────────────────────────────────────────────── */
+:root {
+  /* Page backgrounds */
+  --page-bg:           #F8F6F0;   /* ivory — default page background */
+  --card-bg:           #FFFFFF;   /* white — all card backgrounds */
+  --section-tint:      #EAF2E4;   /* soft botanical green — alternating sections */
+  --section-sand:      #F0E8D8;   /* warm sand — testimonial / values sections */
+  --pale-botanical:    #EAF4E2;   /* pale botanical — card image area bg */
+  --dark-card-bg:      #1E3220;   /* dark feature card / dashboard sidebar */
+
+  /* Navigation & footer */
+  --nav-bg:            #162814;   /* deep forest green — nav + footer */
+  --admin-sidebar-bg:  #1E3220;   /* admin sidebar */
+
+  /* Typography colors */
+  --text-primary:      #1A2818;   /* deep ink — all headlines + body on light */
+  --text-secondary:    #3A4A38;   /* secondary — descriptions, card copy */
+  --text-muted:        #6A7A68;   /* muted — captions, dates, labels */
+  --botanical-green:   #4A7A40;   /* tags, eyebrow labels, small accents */
+  --botanical-light:   #C8DCC0;   /* text on dark backgrounds */
+
+  /* Gold system */
+  --gold-gradient:     linear-gradient(to right, #F0D060 0%, #C8980A 25%, #E8C040 50%, #A87808 75%, #D4AC30 100%);
+  --gold-start:        #F0D060;
+  --gold-dark:         #C8980A;
+  --gold-mid:          #E8C040;
+  --gold-deep:         #A87808;
+  --gold-end:          #D4AC30;
+
+  /* ─── Legacy aliases — map old tokens to new values so unchanged files still work ─── */
+  --warm-white:            var(--page-bg);
+  --soft-cream:            var(--section-sand);
+  --deep-earth:            var(--text-primary);
+  --on-surface-variant:    var(--text-secondary);
+  --sage-green-dark:       var(--nav-bg);
+  --sage-green-deep:       var(--dark-card-bg);
+  --sage-green-tint:       var(--botanical-light);
+  --sage-green-light:      var(--pale-botanical);
+  --sage-green:            var(--botanical-green);
+  --burnished-gold:        var(--gold-dark);
+  --burnished-gold-deep:   var(--gold-deep);
+  --burnished-gold-tint:   var(--gold-start);
+  --rose-blush:            var(--pale-botanical);
+  --warm-terracotta:       var(--botanical-green);
+  --warm-terracotta-deep:  var(--dark-card-bg);
+  --warm-terracotta-soft:  var(--botanical-green);
+  --surface-container:     var(--section-tint);
+  --surface-container-low: var(--page-bg);
+  --surface-container-high: var(--section-sand);
+  --outline-variant:       rgba(200, 220, 192, 0.45);
+
+  /* ─── Typography stacks ─── */
+  --font-display:    'Libre Baskerville', Georgia, serif;
+  --font-sans:       'DM Sans', system-ui, sans-serif;
+  --font-headline:   var(--font-display);
+  --font-body:       var(--font-sans);
+  /* Legacy font vars mapped to new system */
+  --font-eb-garamond: var(--font-display);
+  --font-hanken:      var(--font-sans);
+
+  /* White / gray */
+  --white:     #FFFFFF;
+  --gray-600:  var(--text-secondary);
+  --gray-400:  var(--text-muted);
+  --gray-200:  rgba(200, 220, 192, 0.3);
+
+  /* Admin layout */
+  --admin-sidebar-w:      240px;
+  --admin-topbar-h:       64px;
+  --admin-container-pad:  32px;
+  --admin-gutter:         24px;
+}
+
+@theme inline {
+  --color-page-bg:          var(--page-bg);
+  --color-card-bg:          var(--card-bg);
+  --color-section-tint:     var(--section-tint);
+  --color-section-sand:     var(--section-sand);
+  --color-pale-botanical:   var(--pale-botanical);
+  --color-dark-card-bg:     var(--dark-card-bg);
+  --color-nav-bg:           var(--nav-bg);
+  --color-text-primary:     var(--text-primary);
+  --color-text-secondary:   var(--text-secondary);
+  --color-text-muted:       var(--text-muted);
+  --color-botanical-green:  var(--botanical-green);
+  --color-botanical-light:  var(--botanical-light);
+  --color-gold-dark:        var(--gold-dark);
+  --color-gold-start:       var(--gold-start);
+
+  /* Legacy aliases for Tailwind */
+  --color-warm-white:          var(--page-bg);
+  --color-soft-cream:          var(--section-sand);
+  --color-deep-earth:          var(--text-primary);
+  --color-sage-green-dark:     var(--nav-bg);
+  --color-sage-green-deep:     var(--dark-card-bg);
+  --color-sage-green-tint:     var(--botanical-light);
+  --color-sage-green-light:    var(--pale-botanical);
+  --color-sage-green:          var(--botanical-green);
+  --color-burnished-gold:      var(--gold-dark);
+  --color-rose-blush:          var(--pale-botanical);
+  --color-warm-terracotta:     var(--botanical-green);
+  --color-outline-variant:     var(--outline-variant);
+  --color-surface-container:   var(--section-tint);
+
+  --font-display:  var(--font-display);
+  --font-sans:     var(--font-sans);
+  --font-headline: var(--font-headline);
+  --font-body:     var(--font-body);
+}
+
+/* ─── Gold shimmer keyframe ─────────────────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { left: -100%; }
+  50%  { left: 150%; }
+  100% { left: 150%; }
+}
+
+/* ─── Base ──────────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--page-bg);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.6;
+}
+
+::selection {
+  background: var(--pale-botanical);
+  color: var(--dark-card-bg);
+}
+
+/* Headlines default to Libre Baskerville */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+blockquote, .pull-quote {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 400;
+}
+
+/* ─── Utility classes ───────────────────────────────────────────────────────── */
+.font-display       { font-family: var(--font-display); }
+.font-sans          { font-family: var(--font-sans); }
+.font-headline      { font-family: var(--font-display); }
+.font-body          { font-family: var(--font-sans); }
+.font-eb-garamond   { font-family: var(--font-display); }
+.font-hanken        { font-family: var(--font-sans); }
+
+/* Gold text gradient technique */
+.gold-text {
+  background: var(--gold-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Gold border line (nav underline, card top line) */
+.gold-line {
+  height: 3px;
+  background: var(--gold-gradient);
+}
+.gold-line-nav {
+  height: 1.5px;
+  background: linear-gradient(to right, rgba(240,208,96,0.4) 0%, rgba(200,152,10,0.4) 25%, rgba(232,192,64,0.4) 50%, rgba(168,120,8,0.4) 75%, rgba(212,172,48,0.4) 100%);
+}
+
+/* Editorial elevation */
+.editorial-shadow {
+  box-shadow: 0 10px 30px -10px rgba(26, 40, 24, 0.08);
+  transition: box-shadow 0.3s ease;
+}
+.editorial-shadow:hover {
+  box-shadow: 0 20px 40px -10px rgba(26, 40, 24, 0.15);
+}
+
+/* Glass nav blur */
+.glass-nav {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* ─── Buttons ───────────────────────────────────────────────────────────────── */
+
+/* Primary — shimmery gold gradient, deep green text */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: var(--gold-gradient);
+  color: #1A2818;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 0.875rem;
+  letter-spacing: 0.03em;
+  padding: 0.875rem 1.75rem;
+  border-radius: 9999px;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.2s ease, opacity 0.2s;
+  text-decoration: none;
+  position: relative;
+  overflow: hidden;
+}
+.btn-primary::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(to right, transparent, rgba(255,255,255,0.35), transparent);
+  transform: skewX(-20deg);
+  animation: shimmer 3s infinite;
+}
+.btn-primary:hover  { transform: scale(1.02); opacity: 0.95; }
+.btn-primary:active { transform: scale(0.96); }
+.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+/* Secondary — botanical outline */
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: transparent;
+  color: var(--dark-card-bg);
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 0.875rem;
+  letter-spacing: 0.03em;
+  padding: 0.875rem 1.75rem;
+  border-radius: 9999px;
+  border: 1px solid var(--dark-card-bg);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, transform 0.15s;
+  text-decoration: none;
+}
+.btn-secondary:hover  { background: rgba(30, 50, 32, 0.06); }
+.btn-secondary:active { transform: scale(0.96); }
+
+/* Sage filled — enroll now inside cards */
+.btn-sage {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: var(--gold-gradient);
+  color: #1A2818;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 0.875rem;
+  letter-spacing: 0.03em;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s;
+  text-decoration: none;
+  position: relative;
+  overflow: hidden;
+}
+.btn-sage::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(to right, transparent, rgba(255,255,255,0.35), transparent);
+  transform: skewX(-20deg);
+  animation: shimmer 3s infinite;
+}
+.btn-sage:hover  { opacity: 0.9; }
+.btn-sage:active { transform: scale(0.96); }
+
+/* Gold filled — same as primary, for explicit gold usage */
+.btn-gold {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: var(--gold-gradient);
+  color: #1A2818;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 0.875rem;
+  letter-spacing: 0.03em;
+  padding: 0.875rem 2rem;
+  border-radius: 9999px;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.2s, opacity 0.2s;
+  text-decoration: none;
+  position: relative;
+  overflow: hidden;
+}
+.btn-gold::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(to right, transparent, rgba(255,255,255,0.35), transparent);
+  transform: skewX(-20deg);
+  animation: shimmer 3s infinite;
+}
+.btn-gold:hover  { transform: scale(1.02); opacity: 0.95; }
+.btn-gold:active { transform: scale(0.96); }
+
+/* Outlined on dark backgrounds */
+.btn-white-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: transparent;
+  color: var(--botanical-light);
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 0.875rem;
+  letter-spacing: 0.03em;
+  padding: 0.875rem 1.75rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(200, 220, 192, 0.6);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  text-decoration: none;
+}
+.btn-white-outline:hover {
+  background: rgba(200, 220, 192, 0.1);
+  border-color: var(--botanical-light);
+}
+
+/* Outlined soft — on light card backgrounds */
+.btn-outline-soft {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 0.875rem;
+  letter-spacing: 0.03em;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(200, 220, 192, 0.45);
+  cursor: pointer;
+  transition: background 0.2s;
+  text-decoration: none;
+}
+.btn-outline-soft:hover { background: var(--section-tint); }
+
+/* ─── Footer ────────────────────────────────────────────────────────────────── */
+.lumora-footer { background: var(--nav-bg); color: var(--botanical-light); }
+
+.footer-logo {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  display: block;
+  margin-bottom: 1rem;
+  background: var(--gold-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.footer-description {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1.7;
+  color: rgba(200, 220, 192, 0.65);
+}
+
+.footer-email {
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  color: rgba(200, 220, 192, 0.45);
+  margin-top: 1.25rem;
+}
+
+.footer-col-heading {
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 1.25rem;
+  background: var(--gold-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.footer-link {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  color: rgba(200, 220, 192, 0.65);
+  transition: color 0.15s;
+  text-decoration: none;
+}
+.footer-link:hover { color: var(--botanical-light); }
+
+.footer-bottom-bar { border-top: 1px solid rgba(255, 255, 255, 0.06); }
+
+.footer-copy {
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(200, 220, 192, 0.4);
+}
+
+/* ─── Scrollbar ─────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar       { width: 6px; }
+::-webkit-scrollbar-track { background: var(--page-bg); }
+::-webkit-scrollbar-thumb { background: var(--botanical-light); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--botanical-green); }
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/*  ADMIN — Botanical & Gold design system                                     */
+/*  Namespaced under .admin-shell. Public site is untouched.                   */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  /* Surfaces */
+  --admin-bg:                   #faf9f4;
+  --admin-surface:              #ffffff;
+  --admin-surface-low:          #f5f4ef;
+  --admin-surface-container:    #efeee9;
+  --admin-surface-high:         #e9e8e3;
+  --admin-surface-highest:      #e3e3de;
+
+  /* Forest greens (sidebar / primary actions) */
+  --admin-primary:              #0f1e0e;
+  --admin-primary-container:    #1E3220;  /* sidebar bg */
+  --admin-on-primary:           #ffffff;
+  --admin-on-primary-container: #C8DCC0;
+
+  /* Botanical (active accents on dark) */
+  --admin-celadon:              #C8DCC0;
+  --admin-celadon-pale:         #EAF4E2;
+  --admin-celadon-tint-bg:      rgba(74, 122, 64, 0.12);
+
+  /* Sage (success / secondary) */
+  --admin-sage:                 #4A7A40;
+  --admin-sage-container:       #EAF2E4;
+  --admin-on-sage-container:    #1A2818;
+  --admin-sage-fixed:           #EAF4E2;
+
+  /* Warm sand (warning / draft) */
+  --admin-sand-fixed:           #ffe5b4;
+  --admin-on-sand-fixed:        #3d2b00;
+
+  /* Error (out of stock, etc.) */
+  --admin-rose-fixed:           #ffdad9;
+  --admin-on-rose-fixed:        #301314;
+  --admin-rose-container:       #eebaba;
+
+  /* Text & lines */
+  --admin-on-surface:           #1A2818;
+  --admin-on-surface-variant:   #3A4A38;
+  --admin-outline:              #6A7A68;
+  --admin-outline-variant:      rgba(200, 220, 192, 0.45);
+  --admin-error:                #ba1a1a;
+}
+
+@theme inline {
+  --color-admin-bg:                 var(--admin-bg);
+  --color-admin-surface:            var(--admin-surface);
+  --color-admin-surface-low:        var(--admin-surface-low);
+  --color-admin-primary:            var(--admin-primary);
+  --color-admin-primary-container:  var(--admin-primary-container);
+  --color-admin-celadon:            var(--admin-celadon);
+  --color-admin-sage:               var(--admin-sage);
+  --color-admin-on-surface:         var(--admin-on-surface);
+  --color-admin-on-surface-variant: var(--admin-on-surface-variant);
+  --color-admin-outline-variant:    var(--admin-outline-variant);
+}
+
+/* ── Admin shell base ─────────────────────────────────────────────────────── */
+.admin-shell {
+  background: var(--admin-bg);
+  color: var(--admin-on-surface);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+}
+.admin-shell h1, .admin-shell h2, .admin-shell h3,
+.admin-shell h4, .admin-shell h5, .admin-shell h6 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--admin-on-surface);
+  line-height: 1.25;
+}
+
+/* ── Sidebar ──────────────────────────────────────────────────────────────── */
+.admin-sidebar {
+  position: fixed;
+  top: 0; left: 0;
+  width: var(--admin-sidebar-w);
+  height: 100vh;
+  background: var(--admin-primary-container);
+  display: flex;
+  flex-direction: column;
+  z-index: 50;
+}
+.admin-sidebar-brand {
+  padding: 24px 24px 8px;
+  color: var(--admin-bg);
+}
+.admin-sidebar-brand h1 {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  background: var(--gold-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.admin-sidebar-brand p {
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--admin-on-primary-container);
+  margin-top: 4px;
+}
+
+.admin-sidebar-section {
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(200, 220, 192, 0.45);
+  padding: 16px 24px 6px;
+}
+
+.admin-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 24px;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: rgba(200, 220, 192, 0.7);
+  border-left: 3px solid transparent;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  text-decoration: none;
+}
+.admin-nav-link:hover {
+  color: var(--admin-bg);
+  background: rgba(255, 255, 255, 0.04);
+}
+.admin-nav-link.is-active {
+  color: var(--admin-bg);
+  background: var(--admin-celadon-tint-bg);
+  border-left-color: var(--gold-dark);
+  font-weight: 600;
+}
+.admin-nav-link.is-active span {
+  background: var(--gold-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.admin-nav-link .lucide { width: 18px; height: 18px; flex-shrink: 0; }
+
+/* ── Topbar ───────────────────────────────────────────────────────────────── */
+.admin-topbar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: var(--admin-sidebar-w);
+  height: var(--admin-topbar-h);
+  background: var(--admin-bg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--admin-container-pad);
+  z-index: 40;
+  border-bottom: 1px solid var(--admin-outline-variant);
+}
+.admin-topbar h2 {
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: var(--admin-on-surface);
+}
+
+/* ── Main canvas ──────────────────────────────────────────────────────────── */
+.admin-main {
+  margin-left: var(--admin-sidebar-w);
+  margin-top: var(--admin-topbar-h);
+  padding: var(--admin-container-pad);
+  min-height: calc(100vh - var(--admin-topbar-h));
+}
+
+/* ── Cards & shadow ──────────────────────────────────────────────────────── */
+.admin-card {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-outline-variant);
+  border-radius: 0.5rem;
+  box-shadow: 0 12px 24px -10px rgba(22, 40, 20, 0.05);
+}
+.admin-shadow { box-shadow: 0 12px 24px -10px rgba(22, 40, 20, 0.05); }
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+.admin-btn-primary {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+  background: var(--admin-primary-container);
+  color: var(--admin-bg);
+  font-family: var(--font-sans); font-weight: 600; font-size: 0.875rem; letter-spacing: 0.04em;
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--admin-primary-container);
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  text-decoration: none;
+}
+.admin-btn-primary:hover  { background: var(--admin-primary); }
+.admin-btn-primary:active { transform: scale(0.98); }
+
+.admin-btn-secondary {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+  background: transparent;
+  color: var(--admin-primary-container);
+  font-family: var(--font-sans); font-weight: 600; font-size: 0.875rem; letter-spacing: 0.04em;
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--admin-primary-container);
+  cursor: pointer;
+  transition: background 0.15s;
+  text-decoration: none;
+}
+.admin-btn-secondary:hover { background: var(--admin-surface-low); }
+
+.admin-btn-ghost {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  background: transparent;
+  color: var(--admin-sage);
+  font-family: var(--font-sans); font-weight: 600; font-size: 0.875rem; letter-spacing: 0.04em;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+.admin-btn-ghost:hover { background: var(--admin-surface-low); }
+
+.admin-btn-danger {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+  background: var(--admin-error);
+  color: #ffffff;
+  font-family: var(--font-sans); font-weight: 600; font-size: 0.875rem; letter-spacing: 0.04em;
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--admin-error);
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+  text-decoration: none;
+}
+.admin-btn-danger:hover  { opacity: 0.9; }
+.admin-btn-danger:active { transform: scale(0.98); }
+
+/* ── Inputs ───────────────────────────────────────────────────────────────── */
+.admin-input,
+.admin-shell input[type="text"],
+.admin-shell input[type="email"],
+.admin-shell input[type="password"],
+.admin-shell input[type="number"],
+.admin-shell input[type="date"],
+.admin-shell input[type="search"],
+.admin-shell select,
+.admin-shell textarea {
+  width: 100%;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-outline-variant);
+  border-radius: 0.5rem;
+  padding: 0.625rem 0.875rem;
+  font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  color: var(--admin-on-surface);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.admin-input:focus,
+.admin-shell input:focus,
+.admin-shell select:focus,
+.admin-shell textarea:focus {
+  outline: none;
+  border-color: var(--botanical-green);
+  box-shadow: 0 0 0 2px rgba(74, 122, 64, 0.2);
+}
+.admin-shell label {
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--admin-on-surface-variant);
+  display: block;
+  margin-bottom: 0.375rem;
+}
+
+/* ── Status pills ────────────────────────────────────────────────────────── */
+.admin-pill {
+  display: inline-flex; align-items: center; gap: 0.25rem;
+  padding: 0.2rem 0.625rem;
+  border-radius: 9999px;
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+.admin-pill-success { background: var(--admin-sage-container); color: var(--admin-on-sage-container); }
+.admin-pill-warning { background: var(--admin-sand-fixed);     color: var(--admin-on-sand-fixed); }
+.admin-pill-error   { background: var(--admin-rose-fixed);     color: var(--admin-on-rose-fixed); }
+.admin-pill-neutral { background: var(--admin-surface-high);   color: var(--admin-on-surface-variant); }
+
+/* ── Tables ──────────────────────────────────────────────────────────────── */
+.admin-table             { width: 100%; border-collapse: collapse; font-family: var(--font-sans); }
+.admin-table thead       { background: var(--admin-surface-low); }
+.admin-table th          {
+  text-align: left;
+  padding: 1rem 1.25rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--admin-on-surface-variant);
+  border-bottom: 1px solid var(--admin-outline-variant);
+}
+.admin-table td          { padding: 1rem 1.25rem; font-size: 0.875rem; border-bottom: 1px solid rgba(200, 220, 192, 0.2); }
+.admin-table tbody tr:nth-child(even) { background: var(--admin-bg); }
+.admin-table tbody tr:hover           { background: var(--admin-surface-low); }
+
+/* ── Helper text ─────────────────────────────────────────────────────────── */
+.admin-eyebrow {
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--admin-on-surface-variant);
+}

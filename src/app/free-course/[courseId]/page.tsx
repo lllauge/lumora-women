@@ -31,7 +31,11 @@ export default function FreeCourseCapturePage({
   const [ageConfirmed, setAgeConfirmed] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [alreadyRegistered, setAlreadyRegistered] = useState(false)
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const [loggedInUserId, setLoggedInUserId] = useState<string | null>(null)
+  const [loggedInEmail, setLoggedInEmail] = useState<string | null>(null)
+  const [enrolling, setEnrolling] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
@@ -41,7 +45,25 @@ export default function FreeCourseCapturePage({
       .eq('id', courseId)
       .single()
       .then(({ data }) => setCourse(data))
+
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) {
+        setLoggedInUserId(data.user.id)
+        setLoggedInEmail(data.user.email ?? null)
+      }
+    })
   }, [courseId])
+
+  async function handleEnrollLoggedIn() {
+    if (!loggedInUserId) return
+    setEnrolling(true)
+    await fetch('/api/enrollments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ courseId }),
+    })
+    router.push('/dashboard')
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -63,6 +85,7 @@ export default function FreeCourseCapturePage({
 
     setLoading(true)
     setError('')
+    setAlreadyRegistered(false)
 
     // Subscribe to newsletter via server action (handles rate limiting + hCaptcha)
     const formData = new FormData()
@@ -94,8 +117,12 @@ export default function FreeCourseCapturePage({
         password: tempPassword,
         options: { data: { first_name: form.firstName } },
       })
-      if (signUpError && !signUpError.message.includes('already registered')) {
-        setError(signUpError.message)
+      if (signUpError) {
+        if (signUpError.message.toLowerCase().includes('already registered')) {
+          setAlreadyRegistered(true)
+        } else {
+          setError(signUpError.message)
+        }
         captchaRef.current?.resetCaptcha()
         setCaptchaToken(null)
         setLoading(false)
@@ -172,99 +199,142 @@ export default function FreeCourseCapturePage({
 
           {/* Right — form */}
           <div className="rounded-2xl p-8" style={{ background: '#FFFFFF', border: '1px solid var(--outline-variant)', boxShadow: '0 4px 24px -4px rgba(61,43,36,0.10)' }}>
-            <h2 className="mb-2" style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--deep-earth)' }}>
-              Get Free Access
-            </h2>
-            <p className="mb-6" style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9rem', color: 'var(--on-surface-variant)' }}>
-              Enter your name and email to get instant access.
-            </p>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label htmlFor="fc-first-name" style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--deep-earth)', display: 'block', marginBottom: '0.375rem' }}>
-                  First Name <span aria-hidden="true" style={{ color: '#DC2626' }}>*</span>
-                </label>
-                <input
-                  id="fc-first-name"
-                  type="text"
-                  value={form.firstName}
-                  onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))}
-                  placeholder="Jane"
-                  required
-                  aria-required="true"
-                  style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '0.5rem', border: '1.5px solid var(--outline-variant)', fontFamily: 'var(--font-sans)', fontSize: '1rem', color: 'var(--deep-earth)', background: '#FFF', boxSizing: 'border-box' as const, minHeight: '44px' }}
-                  onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--sage-green-deep)')}
-                  onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--outline-variant)')}
-                />
-              </div>
-              <div>
-                <label htmlFor="fc-email" style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--deep-earth)', display: 'block', marginBottom: '0.375rem' }}>
-                  Email Address <span aria-hidden="true" style={{ color: '#DC2626' }}>*</span>
-                </label>
-                <input
-                  id="fc-email"
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                  placeholder="jane@example.com"
-                  required
-                  aria-required="true"
-                  style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '0.5rem', border: '1.5px solid var(--outline-variant)', fontFamily: 'var(--font-sans)', fontSize: '1rem', color: 'var(--deep-earth)', background: '#FFF', boxSizing: 'border-box' as const, minHeight: '44px' }}
-                  onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--sage-green-deep)')}
-                  onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--outline-variant)')}
-                />
-              </div>
-
-              {/* Age confirmation */}
-              <div>
-                <label
-                  htmlFor="fc-age-confirm"
-                  style={{
-                    display: 'flex', alignItems: 'flex-start', gap: '0.625rem',
-                    cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: '0.875rem',
-                    color: 'var(--deep-earth)', lineHeight: 1.5,
-                  }}
+            {loggedInUserId ? (
+              /* Already logged in — just enroll */
+              <>
+                <h2 className="mb-2" style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--deep-earth)' }}>
+                  You&apos;re already signed in
+                </h2>
+                <p className="mb-1" style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9rem', color: 'var(--on-surface-variant)' }}>
+                  Logged in as
+                </p>
+                <p className="mb-6" style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9375rem', fontWeight: 600, color: 'var(--deep-earth)' }}>
+                  {loggedInEmail}
+                </p>
+                <button
+                  onClick={handleEnrollLoggedIn}
+                  disabled={enrolling}
+                  className="btn-primary w-full"
+                  style={{ borderRadius: '0.5rem', padding: '0.9rem', minHeight: '44px' }}
                 >
-                  <input
-                    id="fc-age-confirm"
-                    type="checkbox"
-                    checked={ageConfirmed}
-                    onChange={(e) => setAgeConfirmed(e.target.checked)}
-                    aria-required="true"
-                    style={{ marginTop: '0.2rem', width: '1rem', height: '1rem', flexShrink: 0, accentColor: 'var(--botanical-green)', cursor: 'pointer' }}
-                  />
-                  I confirm I am <strong style={{ margin: '0 0.25rem' }}>18 years of age or older</strong>.
-                </label>
-              </div>
+                  {enrolling ? 'Enrolling…' : 'Get Instant Access →'}
+                </button>
+              </>
+            ) : (
+              /* Not logged in — show sign-up form */
+              <>
+                <h2 className="mb-2" style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--deep-earth)' }}>
+                  Get Free Access
+                </h2>
+                <p className="mb-6" style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9rem', color: 'var(--on-surface-variant)' }}>
+                  Enter your name and email to get instant access.
+                </p>
 
-              {/* hCaptcha */}
-              {HCAPTCHA_SITE_KEY && (
-                <HCaptcha
-                  ref={captchaRef}
-                  sitekey={HCAPTCHA_SITE_KEY}
-                  onVerify={(token) => setCaptchaToken(token)}
-                  onExpire={() => setCaptchaToken(null)}
-                />
-              )}
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div>
+                    <label htmlFor="fc-first-name" style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--deep-earth)', display: 'block', marginBottom: '0.375rem' }}>
+                      First Name <span aria-hidden="true" style={{ color: '#DC2626' }}>*</span>
+                    </label>
+                    <input
+                      id="fc-first-name"
+                      type="text"
+                      value={form.firstName}
+                      onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))}
+                      placeholder="Jane"
+                      required
+                      aria-required="true"
+                      style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '0.5rem', border: '1.5px solid var(--outline-variant)', fontFamily: 'var(--font-sans)', fontSize: '1rem', color: 'var(--deep-earth)', background: '#FFF', boxSizing: 'border-box' as const, minHeight: '44px' }}
+                      onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--sage-green-deep)')}
+                      onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--outline-variant)')}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="fc-email" style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--deep-earth)', display: 'block', marginBottom: '0.375rem' }}>
+                      Email Address <span aria-hidden="true" style={{ color: '#DC2626' }}>*</span>
+                    </label>
+                    <input
+                      id="fc-email"
+                      type="email"
+                      value={form.email}
+                      onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                      placeholder="jane@example.com"
+                      required
+                      aria-required="true"
+                      style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '0.5rem', border: '1.5px solid var(--outline-variant)', fontFamily: 'var(--font-sans)', fontSize: '1rem', color: 'var(--deep-earth)', background: '#FFF', boxSizing: 'border-box' as const, minHeight: '44px' }}
+                      onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--sage-green-deep)')}
+                      onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--outline-variant)')}
+                    />
+                  </div>
 
-              {error && (
-                <p role="alert" style={{ fontFamily: 'var(--font-sans)', fontSize: '0.85rem', color: '#B91C1C' }}>{error}</p>
-              )}
+                  {/* Age confirmation */}
+                  <div>
+                    <label
+                      htmlFor="fc-age-confirm"
+                      style={{
+                        display: 'flex', alignItems: 'flex-start', gap: '0.625rem',
+                        cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: '0.875rem',
+                        color: 'var(--deep-earth)', lineHeight: 1.5,
+                      }}
+                    >
+                      <input
+                        id="fc-age-confirm"
+                        type="checkbox"
+                        checked={ageConfirmed}
+                        onChange={(e) => setAgeConfirmed(e.target.checked)}
+                        aria-required="true"
+                        style={{ marginTop: '0.2rem', width: '1rem', height: '1rem', flexShrink: 0, accentColor: 'var(--botanical-green)', cursor: 'pointer' }}
+                      />
+                      I confirm I am <strong style={{ margin: '0 0.25rem' }}>18 years of age or older</strong>.
+                    </label>
+                  </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="btn-primary w-full"
-                style={{ borderRadius: '0.5rem', padding: '0.9rem', marginTop: '0.5rem', minHeight: '44px' }}
-              >
-                {loading ? 'Getting your access…' : 'Get Instant Access →'}
-              </button>
-            </form>
+                  {/* hCaptcha */}
+                  {HCAPTCHA_SITE_KEY && (
+                    <HCaptcha
+                      ref={captchaRef}
+                      sitekey={HCAPTCHA_SITE_KEY}
+                      onVerify={(token) => setCaptchaToken(token)}
+                      onExpire={() => setCaptchaToken(null)}
+                    />
+                  )}
 
-            <p className="text-center mt-4" style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', color: 'var(--on-surface-variant)', lineHeight: 1.5 }}>
-              Your information is safe. No spam, ever.{' '}
-              <Link href="/privacy-policy" style={{ textDecoration: 'underline' }}>Privacy Policy</Link>.
-            </p>
+                  {alreadyRegistered && (
+                    <div role="alert" style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', color: '#92400E', background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: '0.5rem', padding: '0.75rem 1rem', lineHeight: 1.5 }}>
+                      It looks like you already have an account.{' '}
+                      <Link href={`/login?redirectTo=/free-course/${courseId}`} style={{ fontWeight: 600, textDecoration: 'underline', color: '#92400E' }}>
+                        Log in here
+                      </Link>{' '}
+                      to get access to this course.
+                    </div>
+                  )}
+
+                  {error && (
+                    <p role="alert" style={{ fontFamily: 'var(--font-sans)', fontSize: '0.85rem', color: '#B91C1C' }}>{error}</p>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="btn-primary w-full"
+                    style={{ borderRadius: '0.5rem', padding: '0.9rem', marginTop: '0.5rem', minHeight: '44px' }}
+                  >
+                    {loading ? 'Getting your access…' : 'Get Instant Access →'}
+                  </button>
+                </form>
+
+                <p className="text-center mt-4" style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--on-surface-variant)', lineHeight: 1.5 }}>
+                  Already have an account?{' '}
+                  <Link href={`/login?redirectTo=/free-course/${courseId}`} style={{ color: 'var(--warm-terracotta)', fontWeight: 600, textDecoration: 'none' }}>
+                    Log in
+                  </Link>
+                </p>
+
+                <p className="text-center mt-3" style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', color: 'var(--on-surface-variant)', lineHeight: 1.5 }}>
+                  Your information is safe. No spam, ever.{' '}
+                  <Link href="/privacy-policy" style={{ textDecoration: 'underline' }}>Privacy Policy</Link>.
+                </p>
+              </>
+            )}
           </div>
         </div>
       </main>

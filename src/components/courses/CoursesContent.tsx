@@ -13,11 +13,8 @@ type Course = {
   thumbnail_url: string | null
 }
 
-type Filter = 'all' | 'free' | 'paid'
-
 export default function CoursesContent() {
   const [courses, setCourses] = useState<Course[]>([])
-  const [filter, setFilter] = useState<Filter>('all')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -32,20 +29,6 @@ export default function CoursesContent() {
         setLoading(false)
       })
   }, [])
-
-  const filtered = courses.filter((c) => {
-    if (filter === 'free') return c.is_free
-    if (filter === 'paid') return !c.is_free
-    return true
-  })
-
-  const tabs: { key: Filter; label: string; panelId: string; tabId: string }[] = [
-    { key: 'all',  label: 'All Courses', panelId: 'courses-panel-all',  tabId: 'courses-tab-all' },
-    { key: 'free', label: 'Free',        panelId: 'courses-panel-free', tabId: 'courses-tab-free' },
-    { key: 'paid', label: 'Paid',        panelId: 'courses-panel-paid', tabId: 'courses-tab-paid' },
-  ]
-
-  const activeTab = tabs.find((t) => t.key === filter)!
 
   return (
     <main id="main-content" style={{ background: 'var(--page-bg)', minHeight: '100vh' }}>
@@ -84,51 +67,11 @@ export default function CoursesContent() {
         </div>
       </section>
 
-      {/* Filter tabs */}
-      <div
-        role="tablist"
-        aria-label="Filter courses"
-        style={{ background: '#FFFFFF', borderBottom: '1px solid rgba(200,220,192,0.35)', position: 'sticky', top: 0, zIndex: 10 }}
-      >
-        <div style={{ maxWidth: '72rem', margin: '0 auto', padding: '0 1.5rem', display: 'flex', gap: '0.25rem' }}>
-          {tabs.map(({ key, label, tabId, panelId }) => (
-            <button
-              key={key}
-              id={tabId}
-              role="tab"
-              aria-selected={filter === key}
-              aria-controls={panelId}
-              onClick={() => setFilter(key)}
-              style={{
-                padding: '1rem 1.5rem',
-                fontFamily: 'var(--font-sans)',
-                fontSize: '0.875rem',
-                fontWeight: 600,
-                color: filter === key ? 'var(--botanical-green)' : 'var(--text-secondary)',
-                borderTop: 'none',
-                borderLeft: 'none',
-                borderRight: 'none',
-                borderBottom: filter === key ? '2px solid var(--botanical-green)' : '2px solid transparent',
-                cursor: 'pointer',
-                background: 'none',
-                transition: 'color 0.15s',
-                minHeight: '44px',
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* Grid */}
       <section
-        id={activeTab.panelId}
-        role="tabpanel"
-        aria-labelledby={activeTab.tabId}
+        aria-label="All courses"
         style={{ maxWidth: '72rem', margin: '0 auto', padding: '3.5rem 1.5rem' }}
       >
-        <h2 className="sr-only">{activeTab.label}</h2>
         {loading ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '2rem' }}>
             {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -142,7 +85,7 @@ export default function CoursesContent() {
               </div>
             ))}
           </div>
-        ) : filtered.length === 0 ? (
+        ) : courses.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '5rem 0' }}>
             <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>
               No courses here yet
@@ -153,7 +96,7 @@ export default function CoursesContent() {
           </div>
         ) : (
           <ul style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '2rem', listStyle: 'none', padding: 0, margin: 0 }}>
-            {filtered.map((course) => (
+            {courses.map((course) => (
               <li key={course.id}>
                 <CourseCard course={course} />
               </li>

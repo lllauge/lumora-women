@@ -1,10 +1,14 @@
 'use client'
 
-import { useState, useEffect, use } from 'react'
+import { useState, useEffect, useRef, use } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import HCaptcha from '@hcaptcha/react-hcaptcha'
 import { createClient } from '@/lib/supabase/client'
+import { subscribeToNewsletter } from '@/app/actions/subscribe'
 import { CheckCircle } from 'lucide-react'
+
+const HCAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY ?? ''
 
 type Course = {
   id: string
@@ -21,10 +25,12 @@ export default function FreeCourseCapturePage({
 }) {
   const { courseId } = use(params)
   const router = useRouter()
+  const captchaRef = useRef<HCaptcha>(null)
   const [course, setCourse] = useState<Course | null>(null)
   const [form, setForm] = useState({ firstName: '', email: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
 
   useEffect(() => {
     const supabase = createClient()
@@ -38,30 +44,45 @@ export default function FreeCourseCapturePage({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+
     if (!form.firstName.trim() || !form.email.includes('@')) {
       setError('Please enter your first name and a valid email.')
       return
     }
+
+    if (HCAPTCHA_SITE_KEY && !captchaToken) {
+      setError('Please complete the CAPTCHA.')
+      return
+    }
+
     setLoading(true)
     setError('')
 
+    // Subscribe to newsletter via server action (handles rate limiting + hCaptcha)
+    const formData = new FormData()
+    formData.set('email', form.email.toLowerCase())
+    formData.set('first_name', form.firstName)
+    formData.set('source', 'free-course')
+    if (captchaToken) formData.set('hcaptchaToken', captchaToken)
+
+    const subResult = await subscribeToNewsletter(formData)
+    if (subResult.error) {
+      setError(subResult.error)
+      captchaRef.current?.resetCaptcha()
+      setCaptchaToken(null)
+      setLoading(false)
+      return
+    }
+
+    // Sign up or sign in the user, then enroll via the API route
     const supabase = createClient()
-
-    // Save to email_subscribers
-    await supabase.from('email_subscribers').upsert(
-      { email: form.email.toLowerCase(), first_name: form.firstName },
-      { onConflict: 'email' }
-    )
-
-    // Check if user already exists; if not, create one
+    const { data: existingSession } = await supabase.auth.getUser()
     let userId: string | undefined
 
-    const { data: existingUser } = await supabase.auth.getUser()
-    if (existingUser.user) {
-      userId = existingUser.user.id
+    if (existingSession.user) {
+      userId = existingSession.user.id
     } else {
-      // Sign up with a generated password — they can reset it later
-      const tempPassword = Math.random().toString(36).slice(-10) + 'Aa1!'
+      const tempPassword = Math.random().toString(36).slice(-8) + 'Aa1!'
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: form.email.toLowerCase(),
         password: tempPassword,
@@ -69,17 +90,21 @@ export default function FreeCourseCapturePage({
       })
       if (signUpError && !signUpError.message.includes('already registered')) {
         setError(signUpError.message)
+        captchaRef.current?.resetCaptcha()
+        setCaptchaToken(null)
         setLoading(false)
         return
       }
       userId = signUpData?.user?.id
     }
 
+    // Enroll via the API route (which uses service role for the DB insert)
     if (userId) {
-      await supabase.from('enrollments').upsert(
-        { user_id: userId, course_id: courseId },
-        { onConflict: 'user_id,course_id' }
-      )
+      await fetch('/api/enrollments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ courseId }),
+      })
     }
 
     router.push('/free-course/confirmation')
@@ -92,11 +117,7 @@ export default function FreeCourseCapturePage({
   ]
 
   return (
-    <div
-      className="min-h-screen flex flex-col"
-      style={{ background: 'var(--warm-white)' }}
-    >
-      {/* Minimal header — logo only */}
+    <div className="min-h-screen flex flex-col" style={{ background: 'var(--warm-white)' }}>
       <header className="px-6 py-5">
         <Link href="/">
           <span style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--sage-green-dark)' }}>
@@ -107,14 +128,9 @@ export default function FreeCourseCapturePage({
 
       <main className="flex-1 flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-4xl grid lg:grid-cols-2 gap-12 items-center">
-
           {/* Left — course info */}
           <div>
-            {/* Thumbnail */}
-            <div
-              className="rounded-2xl aspect-video mb-6 flex items-center justify-center overflow-hidden"
-              style={{ background: 'var(--sage-green-light)' }}
-            >
+            <div className="rounded-2xl aspect-video mb-6 flex items-center justify-center overflow-hidden" style={{ background: 'var(--sage-green-light)' }}>
               {course?.thumbnail_url ? (
                 <img src={course.thumbnail_url} alt={course.title} className="w-full h-full object-cover" />
               ) : (
@@ -122,29 +138,20 @@ export default function FreeCourseCapturePage({
               )}
             </div>
 
-            <span
-              className="inline-block text-xs font-semibold tracking-widest uppercase px-3 py-1 rounded-full mb-4"
-              style={{ background: 'var(--rose-blush)', color: 'var(--warm-terracotta-deep)', fontFamily: 'var(--font-sans)' }}
-            >
+            <span className="inline-block text-xs font-semibold tracking-widest uppercase px-3 py-1 rounded-full mb-4"
+                  style={{ background: 'var(--rose-blush)', color: 'var(--warm-terracotta-deep)', fontFamily: 'var(--font-sans)' }}>
               Free Course
             </span>
 
-            <h1
-              className="mb-3"
-              style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', color: 'var(--deep-earth)', lineHeight: 1.2 }}
-            >
+            <h1 className="mb-3" style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', color: 'var(--deep-earth)', lineHeight: 1.2 }}>
               {course?.title ?? 'Loading…'}
             </h1>
             {course?.subtitle && (
-              <p
-                className="mb-6"
-                style={{ fontFamily: 'var(--font-sans)', fontSize: '1rem', color: 'var(--on-surface-variant)', lineHeight: 1.6 }}
-              >
+              <p className="mb-6" style={{ fontFamily: 'var(--font-sans)', fontSize: '1rem', color: 'var(--on-surface-variant)', lineHeight: 1.6 }}>
                 {course.subtitle}
               </p>
             )}
 
-            {/* Bullet points */}
             <ul className="space-y-3">
               {includes.map((item) => (
                 <li key={item} className="flex items-center gap-3">
@@ -158,20 +165,11 @@ export default function FreeCourseCapturePage({
           </div>
 
           {/* Right — form */}
-          <div
-            className="rounded-2xl p-8"
-            style={{ background: '#FFFFFF', border: '1px solid var(--outline-variant)', boxShadow: '0 4px 24px -4px rgba(61,43,36,0.10)' }}
-          >
-            <h2
-              className="mb-2"
-              style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--deep-earth)' }}
-            >
+          <div className="rounded-2xl p-8" style={{ background: '#FFFFFF', border: '1px solid var(--outline-variant)', boxShadow: '0 4px 24px -4px rgba(61,43,36,0.10)' }}>
+            <h2 className="mb-2" style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--deep-earth)' }}>
               Get Free Access
             </h2>
-            <p
-              className="mb-6"
-              style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9rem', color: 'var(--on-surface-variant)' }}
-            >
+            <p className="mb-6" style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9rem', color: 'var(--on-surface-variant)' }}>
               Enter your name and email to get instant access.
             </p>
 
@@ -186,7 +184,7 @@ export default function FreeCourseCapturePage({
                   onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))}
                   placeholder="Jane"
                   required
-                  style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '0.5rem', border: '1.5px solid var(--outline-variant)', fontFamily: 'var(--font-sans)', fontSize: '0.9375rem', color: 'var(--deep-earth)', outline: 'none', background: '#FFF' }}
+                  style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '0.5rem', border: '1.5px solid var(--outline-variant)', fontFamily: 'var(--font-sans)', fontSize: '0.9375rem', color: 'var(--deep-earth)', outline: 'none', background: '#FFF', boxSizing: 'border-box' as const }}
                   onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--sage-green-deep)')}
                   onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--outline-variant)')}
                 />
@@ -201,11 +199,21 @@ export default function FreeCourseCapturePage({
                   onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
                   placeholder="jane@example.com"
                   required
-                  style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '0.5rem', border: '1.5px solid var(--outline-variant)', fontFamily: 'var(--font-sans)', fontSize: '0.9375rem', color: 'var(--deep-earth)', outline: 'none', background: '#FFF' }}
+                  style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '0.5rem', border: '1.5px solid var(--outline-variant)', fontFamily: 'var(--font-sans)', fontSize: '0.9375rem', color: 'var(--deep-earth)', outline: 'none', background: '#FFF', boxSizing: 'border-box' as const }}
                   onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--sage-green-deep)')}
                   onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--outline-variant)')}
                 />
               </div>
+
+              {/* hCaptcha */}
+              {HCAPTCHA_SITE_KEY && (
+                <HCaptcha
+                  ref={captchaRef}
+                  sitekey={HCAPTCHA_SITE_KEY}
+                  onVerify={(token) => setCaptchaToken(token)}
+                  onExpire={() => setCaptchaToken(null)}
+                />
+              )}
 
               {error && (
                 <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.85rem', color: '#B91C1C' }}>{error}</p>
@@ -221,10 +229,7 @@ export default function FreeCourseCapturePage({
               </button>
             </form>
 
-            <p
-              className="text-center mt-4"
-              style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', color: 'var(--on-surface-variant)', lineHeight: 1.5 }}
-            >
+            <p className="text-center mt-4" style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', color: 'var(--on-surface-variant)', lineHeight: 1.5 }}>
               Your information is safe. No spam, ever.{' '}
               <Link href="/privacy-policy" style={{ textDecoration: 'underline' }}>Privacy Policy</Link>.
             </p>

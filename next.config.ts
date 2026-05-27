@@ -1,9 +1,54 @@
 import type { NextConfig } from "next";
 
+const securityHeaders = [
+  {
+    key: 'Content-Security-Policy',
+    value: [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.hcaptcha.com https://newassets.hcaptcha.com https://js.stripe.com",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob: https://*.r2.dev https://*.cloudflare.com https://customer-*.cloudflarestream.com",
+      "font-src 'self' data:",
+      "frame-src https://js.hcaptcha.com https://newassets.hcaptcha.com https://js.stripe.com https://*.stripe.com https://customer-*.cloudflarestream.com",
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://upload.imagedelivery.net https://api.hcaptcha.com https://customer-*.cloudflarestream.com",
+      "media-src 'self' https://*.r2.dev https://customer-*.cloudflarestream.com blob:",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "frame-ancestors 'none'",
+    ].join('; '),
+  },
+  {
+    key: 'X-Frame-Options',
+    value: 'DENY',
+  },
+  {
+    key: 'X-Content-Type-Options',
+    value: 'nosniff',
+  },
+  {
+    key: 'Referrer-Policy',
+    value: 'strict-origin-when-cross-origin',
+  },
+  {
+    key: 'Permissions-Policy',
+    value: 'camera=(), microphone=(), geolocation=(), payment=(self)',
+  },
+  {
+    key: 'Strict-Transport-Security',
+    value: 'max-age=31536000; includeSubDomains; preload',
+  },
+  {
+    key: 'X-XSS-Protection',
+    value: '1; mode=block',
+  },
+]
+
 const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
-      bodySizeLimit: '2gb',
+      // Reduced from 2gb — only allow what's needed for video uploads
+      bodySizeLimit: '256mb',
     },
   },
   images: {
@@ -17,6 +62,14 @@ const nextConfig: NextConfig = {
         hostname: "*.cloudflare.com",
       },
     ],
+  },
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: securityHeaders,
+      },
+    ]
   },
 };
 

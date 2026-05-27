@@ -1,25 +1,62 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
+import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
+
+const CheckoutSchema = z.object({
+  courseId: z.string().uuid('courseId must be a valid UUID'),
+})
 
 export async function POST(req: NextRequest) {
+  // ── Rate limiting: 10 checkout attempts per hour per IP ──────────────────
+  const ip = getClientIp(req.headers)
+  const rateLimit = await checkRateLimit(`checkout:${ip}`, 10, 3600)
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: 'Too many checkout attempts. Please try again later.' },
+      { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfterSeconds) } }
+    )
+  }
+
   const stripeKey = process.env.STRIPE_SECRET_KEY
   if (!stripeKey) {
     return NextResponse.json({ error: 'Stripe is not configured.' }, { status: 503 })
   }
 
-  const stripe = new Stripe(stripeKey)
-  const { courseId } = await req.json()
-
-  if (!courseId) {
-    return NextResponse.json({ error: 'courseId required' }, { status: 400 })
+  // ── Parse and validate body ───────────────────────────────────────────────
+  let body: unknown
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 
+  const parsed = CheckoutSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0].message },
+      { status: 400 }
+    )
+  }
+
+  const { courseId } = parsed.data
+
+  // ── Verify session (never trust client-supplied userId) ───────────────────
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+  }
+
+  // ── Email verification gate ───────────────────────────────────────────────
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.user.email_confirmed_at) {
+    return NextResponse.json(
+      { error: 'Please verify your email address before purchasing.' },
+      { status: 403 }
+    )
   }
 
   const { data: course } = await supabase
@@ -36,9 +73,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'This course is free — no checkout needed.' }, { status: 400 })
   }
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
+  const stripe = new Stripe(stripeKey)
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
 
-  const session = await stripe.checkout.sessions.create({
+  const stripeSession = await stripe.checkout.sessions.create({
     payment_method_types: ['card'],
     line_items: [
       {
@@ -60,5 +98,5 @@ export async function POST(req: NextRequest) {
     },
   })
 
-  return NextResponse.json({ url: session.url })
+  return NextResponse.json({ url: stripeSession.url })
 }

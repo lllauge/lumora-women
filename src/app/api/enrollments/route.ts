@@ -1,13 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
+
+const UuidSchema = z.string().uuid()
+
+function getAdminClient() {
+  return createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+}
 
 // GET /api/enrollments?courseId=xxx — check if current user is enrolled
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url)
-  const courseId = searchParams.get('courseId')
+  const courseId = req.nextUrl.searchParams.get('courseId')
 
-  if (!courseId) {
-    return NextResponse.json({ error: 'courseId required' }, { status: 400 })
+  if (!courseId || !UuidSchema.safeParse(courseId).success) {
+    return NextResponse.json({ error: 'courseId must be a valid UUID' }, { status: 400 })
   }
 
   const supabase = await createClient()
@@ -27,14 +38,24 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ enrolled: !!data })
 }
 
-// POST /api/enrollments — enroll current user in a course (free courses only)
+// POST /api/enrollments — enroll current user in a free course
 export async function POST(req: NextRequest) {
-  const { courseId } = await req.json()
-
-  if (!courseId) {
-    return NextResponse.json({ error: 'courseId required' }, { status: 400 })
+  // ── Validate input ────────────────────────────────────────────────────────
+  let body: unknown
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 
+  const parsed = z.object({ courseId: z.string().uuid() }).safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'courseId must be a valid UUID' }, { status: 400 })
+  }
+
+  const { courseId } = parsed.data
+
+  // ── Verify session ────────────────────────────────────────────────────────
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -42,7 +63,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
   }
 
-  // Only allow free courses through this route
+  // ── Email verification gate ───────────────────────────────────────────────
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.user.email_confirmed_at) {
+    return NextResponse.json(
+      { error: 'Please verify your email address before enrolling.' },
+      { status: 403 }
+    )
+  }
+
+  // ── Only allow free courses through this route ────────────────────────────
   const { data: course } = await supabase
     .from('courses')
     .select('is_free')
@@ -53,7 +83,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Paid courses require checkout' }, { status: 403 })
   }
 
-  const { error } = await supabase
+  // Use service role for the insert (enrollment RLS no longer allows client inserts)
+  const adminClient = getAdminClient()
+  const { error } = await adminClient
     .from('enrollments')
     .upsert(
       { user_id: user.id, course_id: courseId },

@@ -1,18 +1,31 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import HCaptcha from '@hcaptcha/react-hcaptcha'
 import { createClient } from '@/lib/supabase/client'
 import AuthCard from '@/components/layout/AuthCard'
 import AuthInput from '@/components/ui/AuthInput'
 
+const HCAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY ?? ''
+
+function passwordErrors(pw: string): string[] {
+  const errs: string[] = []
+  if (pw.length < 8)             errs.push('at least 8 characters')
+  if (!/[A-Z]/.test(pw))        errs.push('one uppercase letter')
+  if (!/[0-9]/.test(pw))        errs.push('one number')
+  return errs
+}
+
 export default function SignUpPage() {
   const router = useRouter()
+  const captchaRef = useRef<HCaptcha>(null)
   const [form, setForm] = useState({ firstName: '', lastName: '', email: '', password: '', confirm: '' })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
   const [serverError, setServerError] = useState('')
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
 
   const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [field]: e.target.value }))
@@ -22,8 +35,18 @@ export default function SignUpPage() {
     if (!form.firstName.trim()) e.firstName = 'First name is required.'
     if (!form.lastName.trim())  e.lastName  = 'Last name is required.'
     if (!form.email.includes('@')) e.email = 'Enter a valid email address.'
-    if (form.password.length < 8)  e.password = 'Password must be at least 8 characters.'
+
+    const pwErrs = passwordErrors(form.password)
+    if (pwErrs.length > 0) {
+      e.password = `Password must contain: ${pwErrs.join(', ')}.`
+    }
     if (form.password !== form.confirm) e.confirm = 'Passwords do not match.'
+
+    // hCaptcha (only required when site key is configured)
+    if (HCAPTCHA_SITE_KEY && !captchaToken) {
+      e.captcha = 'Please complete the CAPTCHA.'
+    }
+
     return e
   }
 
@@ -40,19 +63,29 @@ export default function SignUpPage() {
       email: form.email,
       password: form.password,
       options: {
-        data: { first_name: form.firstName, last_name: form.lastName },
+        data: {
+          first_name: form.firstName,
+          last_name: form.lastName,
+          hcaptcha_token: captchaToken,
+        },
         emailRedirectTo: `${window.location.origin}/dashboard`,
       },
     })
 
     if (error) {
       setServerError(error.message)
+      captchaRef.current?.resetCaptcha()
+      setCaptchaToken(null)
       setLoading(false)
       return
     }
 
-    router.push('/dashboard')
+    // Redirect to a "check your email" page instead of straight to dashboard
+    router.push('/verify-email')
   }
+
+  const pwStrengthIssues = passwordErrors(form.password)
+  const showPwHints = form.password.length > 0 && pwStrengthIssues.length > 0
 
   return (
     <AuthCard
@@ -65,8 +98,32 @@ export default function SignUpPage() {
           <AuthInput label="Last Name"   value={form.lastName}  onChange={set('lastName')}  error={errors.lastName}  placeholder="Doe" />
         </div>
         <AuthInput label="Email Address" type="email"    value={form.email}    onChange={set('email')}    error={errors.email}    placeholder="jane@example.com" />
-        <AuthInput label="Password"      type="password" value={form.password} onChange={set('password')} error={errors.password} placeholder="At least 8 characters" />
+        <div>
+          <AuthInput label="Password" type="password" value={form.password} onChange={set('password')} error={errors.password} placeholder="Min 8 chars, 1 uppercase, 1 number" />
+          {showPwHints && (
+            <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', color: 'var(--on-surface-variant)', marginTop: '0.25rem' }}>
+              Still needs: {pwStrengthIssues.join(', ')}.
+            </p>
+          )}
+        </div>
         <AuthInput label="Confirm Password" type="password" value={form.confirm} onChange={set('confirm')} error={errors.confirm} placeholder="Repeat your password" />
+
+        {/* hCaptcha — only rendered when site key is configured */}
+        {HCAPTCHA_SITE_KEY && (
+          <div>
+            <HCaptcha
+              ref={captchaRef}
+              sitekey={HCAPTCHA_SITE_KEY}
+              onVerify={(token) => setCaptchaToken(token)}
+              onExpire={() => setCaptchaToken(null)}
+            />
+            {errors.captcha && (
+              <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', color: '#B91C1C', marginTop: '0.25rem' }}>
+                {errors.captcha}
+              </p>
+            )}
+          </div>
+        )}
 
         {serverError && (
           <div
@@ -87,27 +144,18 @@ export default function SignUpPage() {
         </button>
       </form>
 
-      {/* Divider */}
       <div className="flex items-center gap-3 my-6">
         <div className="flex-1 h-px" style={{ background: 'var(--outline-variant)' }} />
         <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8rem', color: 'var(--on-surface-variant)' }}>or</span>
         <div className="flex-1 h-px" style={{ background: 'var(--outline-variant)' }} />
       </div>
 
-      <p
-        className="text-center"
-        style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9rem', color: 'var(--on-surface-variant)' }}
-      >
+      <p className="text-center" style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9rem', color: 'var(--on-surface-variant)' }}>
         Already have an account?{' '}
-        <Link href="/login" style={{ color: 'var(--warm-terracotta)', fontWeight: 600 }}>
-          Log in
-        </Link>
+        <Link href="/login" style={{ color: 'var(--warm-terracotta)', fontWeight: 600 }}>Log in</Link>
       </p>
 
-      <p
-        className="text-center mt-4"
-        style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', color: 'var(--on-surface-variant)', lineHeight: 1.6 }}
-      >
+      <p className="text-center mt-4" style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', color: 'var(--on-surface-variant)', lineHeight: 1.6 }}>
         By creating an account you agree to our{' '}
         <Link href="/terms" style={{ textDecoration: 'underline' }}>Terms</Link>
         {' '}and{' '}

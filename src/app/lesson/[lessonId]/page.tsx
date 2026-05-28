@@ -8,7 +8,7 @@ import { CheckCircle, ChevronLeft, ChevronRight, Download, BookOpen, Info, Play 
 
 type Download = {
   id: string
-  title: string
+  file_name: string
   file_url: string
 }
 
@@ -147,7 +147,7 @@ export default function LessonPage({
 
       const { data: downloadsData } = await supabase
         .from('downloads')
-        .select('id, title, file_url')
+        .select('id, file_name, file_url')
         .eq('lesson_id', lessonId)
       setDownloads(downloadsData ?? [])
 
@@ -281,16 +281,16 @@ export default function LessonPage({
       {/* Main */}
       <main id="main-content" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
 
-        {/* Video area */}
-        <div style={{ background: '#000', aspectRatio: '16/9', maxHeight: '60vh', position: 'relative' }}>
-          {loading ? (
-            <div aria-label="Video loading" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#111' }}>
-              <div style={{ width: '3.5rem', height: '3.5rem', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Play className="w-6 h-6" style={{ color: 'rgba(255,255,255,0.4)' }} aria-hidden="true" />
+        {/* Video area — only render when there is a video */}
+        {(loading || lesson?.video_url) && (
+          <div style={{ background: '#000', aspectRatio: '16/9', maxHeight: '60vh', position: 'relative' }}>
+            {loading ? (
+              <div aria-label="Video loading" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#111' }}>
+                <div style={{ width: '3.5rem', height: '3.5rem', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Play className="w-6 h-6" style={{ color: 'rgba(255,255,255,0.4)' }} aria-hidden="true" />
+                </div>
               </div>
-            </div>
-          ) : lesson?.video_url ? (
-            lesson.video_url.startsWith('stream:') ? (
+            ) : lesson?.video_url?.startsWith('stream:') ? (
               <iframe
                 key={lesson.video_url}
                 src={`https://iframe.videodelivery.net/${lesson.video_url.slice(7)}`}
@@ -307,19 +307,13 @@ export default function LessonPage({
                 playsInline
                 aria-label={`Video: ${lesson.title}`}
               >
-                <source src={lesson.video_url} />
-                {/* Captions track — add src when caption files are available */}
+                <source src={lesson.video_url!} />
                 <track kind="captions" label="English captions" srcLang="en" default />
                 Your browser does not support the video element.
               </video>
-            )
-          ) : (
-            <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#111' }}>
-              <Play className="w-10 h-10" style={{ color: 'rgba(255,255,255,0.2)', marginBottom: '0.75rem' }} aria-hidden="true" />
-              <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', color: 'rgba(255,255,255,0.65)' }}>Video coming soon</p>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
 
         {/* Lesson content */}
         <div style={{ padding: '2rem 2.5rem', flex: 1 }}>
@@ -457,7 +451,7 @@ export default function LessonPage({
                     >
                       <Download className="w-4 h-4 shrink-0" style={{ color: 'var(--botanical-green)' }} aria-hidden="true" />
                       <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: 500 }}>
-                        {dl.title}
+                        {dl.file_name}
                       </span>
                     </a>
                   </li>

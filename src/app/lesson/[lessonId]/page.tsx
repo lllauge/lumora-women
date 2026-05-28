@@ -101,16 +101,25 @@ export default function LessonPage({
 
       const courseId = (lessonData.modules as unknown as LessonData['modules']).course_id
 
-      const { data: enrollment } = await supabase
-        .from('enrollments')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('course_id', courseId)
-        .maybeSingle()
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+      const isAdmin = profile?.role === 'admin'
 
-      if (!enrollment && !lessonData.is_preview) {
-        router.push(`/courses/${courseId}`)
-        return
+      if (!isAdmin) {
+        const { data: enrollment } = await supabase
+          .from('enrollments')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('course_id', courseId)
+          .maybeSingle()
+
+        if (!enrollment && !lessonData.is_preview) {
+          router.push(`/courses/${courseId}`)
+          return
+        }
       }
 
       const { data: modulesData } = await supabase

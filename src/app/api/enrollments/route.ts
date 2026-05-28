@@ -63,15 +63,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
   }
 
-  // ── Email verification gate ───────────────────────────────────────────────
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session?.user.email_confirmed_at) {
-    return NextResponse.json(
-      { error: 'Please verify your email address before enrolling.' },
-      { status: 403 }
-    )
-  }
-
   // ── Only allow free courses through this route ────────────────────────────
   const { data: course } = await supabase
     .from('courses')

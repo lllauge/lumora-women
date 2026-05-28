@@ -57,12 +57,18 @@ export default function FreeCourseCapturePage({
   async function handleEnrollLoggedIn() {
     if (!loggedInUserId) return
     setEnrolling(true)
-    await fetch('/api/enrollments', {
+    const res = await fetch('/api/enrollments', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ courseId }),
     })
-    router.push('/dashboard')
+    if (res.ok) {
+      router.push(`/courses/${courseId}`)
+    } else {
+      const data = await res.json().catch(() => ({}))
+      setError(data.error ?? 'Enrollment failed. Please try again.')
+      setEnrolling(false)
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {

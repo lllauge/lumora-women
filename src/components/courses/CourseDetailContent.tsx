@@ -2,7 +2,6 @@
 
 import { useState, useEffect, use } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { CheckCircle, ChevronDown, ChevronUp, Play, Lock } from 'lucide-react'
 
@@ -41,13 +40,11 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 export default function CourseDetailContent({ courseId }: { courseId: string }) {
-  const router = useRouter()
   const [course, setCourse] = useState<Course | null>(null)
   const [modules, setModules] = useState<Module[]>([])
   const [enrolled, setEnrolled] = useState(false)
   const [openModules, setOpenModules] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
-  const [enrolling, setEnrolling] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
@@ -75,13 +72,23 @@ export default function CourseDetailContent({ courseId }: { courseId: string }) 
       if (mods.length > 0) setOpenModules(new Set([mods[0].id]))
 
       if (userRes.data.user) {
-        const { data: enrollment } = await supabase
-          .from('enrollments')
-          .select('id')
-          .eq('user_id', userRes.data.user.id)
-          .eq('course_id', courseId)
-          .maybeSingle()
-        setEnrolled(!!enrollment)
+        const userId = userRes.data.user.id
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', userId)
+          .single()
+        if (profile?.role === 'admin') {
+          setEnrolled(true)
+        } else {
+          const { data: enrollment } = await supabase
+            .from('enrollments')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('course_id', courseId)
+            .maybeSingle()
+          setEnrolled(!!enrollment)
+        }
       }
 
       setLoading(false)
@@ -96,22 +103,6 @@ export default function CourseDetailContent({ courseId }: { courseId: string }) 
     })
   }
 
-  async function handleEnroll() {
-    if (!course) return
-    setEnrolling(true)
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      router.push(`/login?redirectTo=/courses/${courseId}`)
-      return
-    }
-    await supabase.from('enrollments').upsert(
-      { user_id: user.id, course_id: courseId },
-      { onConflict: 'user_id,course_id' }
-    )
-    setEnrolled(true)
-    setEnrolling(false)
-  }
 
   const firstLesson = modules[0]?.lessons[0]
   const totalLessons = modules.reduce((sum, m) => sum + m.lessons.length, 0)
@@ -332,23 +323,13 @@ export default function CourseDetailContent({ courseId }: { courseId: string }) 
                   Get Free Access →
                 </Link>
               ) : (
-                <>
-                  <Link
-                    href={`/checkout?courseId=${courseId}`}
-                    className="btn-primary"
-                    style={{ display: 'block', textAlign: 'center', borderRadius: '0.5rem', padding: '0.9rem', marginBottom: '0.75rem' }}
-                  >
-                    Enroll Now →
-                  </Link>
-                  <button
-                    onClick={handleEnroll}
-                    disabled={enrolling}
-                    className="btn-secondary"
-                    style={{ display: 'block', width: '100%', borderRadius: '0.5rem', padding: '0.75rem', textAlign: 'center' as const }}
-                  >
-                    {enrolling ? 'Adding…' : 'Add to Wishlist'}
-                  </button>
-                </>
+                <Link
+                  href={`/checkout?courseId=${courseId}`}
+                  className="btn-primary"
+                  style={{ display: 'block', textAlign: 'center', borderRadius: '0.5rem', padding: '0.9rem', marginBottom: '0.75rem' }}
+                >
+                  Enroll Now →
+                </Link>
               )}
 
               <ul style={{ marginTop: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>

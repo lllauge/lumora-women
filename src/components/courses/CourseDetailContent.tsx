@@ -8,15 +8,13 @@ import { CheckCircle, ChevronDown, ChevronUp, Play, Lock } from 'lucide-react'
 type Lesson = {
   id: string
   title: string
-  duration_minutes: number | null
-  is_preview: boolean
-  sort_order: number
+  order_number: number
 }
 
 type Module = {
   id: string
   title: string
-  sort_order: number
+  order_number: number
   lessons: Lesson[]
 }
 
@@ -57,16 +55,16 @@ export default function CourseDetailContent({ courseId }: { courseId: string }) 
         .single(),
       supabase
         .from('modules')
-        .select('id, title, sort_order, lessons(id, title, duration_minutes, is_preview, sort_order)')
+        .select('id, title, order_number, lessons(id, title, order_number)')
         .eq('course_id', courseId)
-        .order('sort_order'),
+        .order('order_number'),
       supabase.auth.getUser(),
     ]).then(async ([courseRes, modulesRes, userRes]) => {
       setCourse(courseRes.data)
 
       const mods = (modulesRes.data ?? []).map((m: Module & { lessons: Lesson[] }) => ({
         ...m,
-        lessons: [...(m.lessons ?? [])].sort((a, b) => a.sort_order - b.sort_order),
+        lessons: [...(m.lessons ?? [])].sort((a, b) => a.order_number - b.order_number),
       }))
       setModules(mods)
       if (mods.length > 0) setOpenModules(new Set([mods[0].id]))
@@ -106,10 +104,6 @@ export default function CourseDetailContent({ courseId }: { courseId: string }) 
 
   const firstLesson = modules[0]?.lessons[0]
   const totalLessons = modules.reduce((sum, m) => sum + m.lessons.length, 0)
-  const totalMinutes = modules.reduce(
-    (sum, m) => sum + m.lessons.reduce((s, l) => s + (l.duration_minutes ?? 0), 0),
-    0
-  )
 
   return (
     <main id="main-content" style={{ background: 'var(--page-bg)', minHeight: '100vh' }}>
@@ -155,9 +149,6 @@ export default function CourseDetailContent({ courseId }: { courseId: string }) 
               {!loading && (
                 <div style={{ display: 'flex', gap: '1.5rem', marginTop: '1.5rem', flexWrap: 'wrap' as const }}>
                   <Stat label="Lessons" value={totalLessons.toString()} />
-                  {totalMinutes > 0 && (
-                    <Stat label="Total time" value={`${Math.round(totalMinutes / 60)}h ${totalMinutes % 60}m`} />
-                  )}
                   <Stat label="Self-paced" value="Go at your speed" />
                 </div>
               )}
@@ -239,23 +230,13 @@ export default function CourseDetailContent({ courseId }: { courseId: string }) 
                                 borderBottom: idx < mod.lessons.length - 1 ? '1px solid var(--section-tint)' : 'none',
                               }}
                             >
-                              {lesson.is_preview || enrolled
+                              {enrolled
                                 ? <Play className="w-4 h-4 shrink-0" style={{ color: 'var(--botanical-green)' }} />
                                 : <Lock className="w-4 h-4 shrink-0" style={{ color: 'var(--text-muted)' }} />
                               }
                               <span style={{ flex: 1, fontFamily: 'var(--font-sans)', fontSize: '0.875rem', color: 'var(--text-primary)' }}>
                                 {lesson.title}
                               </span>
-                              {lesson.is_preview && !enrolled && (
-                                <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', color: 'var(--botanical-green)', fontWeight: 600 }}>
-                                  Preview
-                                </span>
-                              )}
-                              {lesson.duration_minutes && (
-                                <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                                  {lesson.duration_minutes}m
-                                </span>
-                              )}
                             </div>
                           ))}
                         </div>

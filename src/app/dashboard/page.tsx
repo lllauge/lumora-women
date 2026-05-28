@@ -38,10 +38,16 @@ async function getEnrolledCourses(userId: string) {
 
   const results = await Promise.all(
     enrollments.map(async (e) => {
-      const { count: totalLessons } = await supabase
-        .from('lessons')
-        .select('id', { count: 'exact', head: true })
+      const { data: modulesWithLessons } = await supabase
+        .from('modules')
+        .select('id, order_number, lessons(id, order_number)')
         .eq('course_id', e.course_id)
+        .order('order_number')
+
+      const sortedModules = (modulesWithLessons ?? []).sort((a, b) => a.order_number - b.order_number)
+      const totalLessons = sortedModules.reduce(
+        (sum, m) => sum + ((m.lessons as { id: string }[])?.length ?? 0), 0
+      )
 
       const { count: completedCount } = await supabase
         .from('lesson_progress')
@@ -49,24 +55,12 @@ async function getEnrolledCourses(userId: string) {
         .eq('user_id', userId)
         .eq('completed', true)
 
-      const { data: firstModule } = await supabase
-        .from('modules')
-        .select('id')
-        .eq('course_id', e.course_id)
-        .order('sort_order')
-        .limit(1)
-        .maybeSingle()
-
+      const firstModule = sortedModules[0]
       let firstLessonId: string | null = null
       if (firstModule) {
-        const { data: firstLesson } = await supabase
-          .from('lessons')
-          .select('id')
-          .eq('module_id', firstModule.id)
-          .order('sort_order')
-          .limit(1)
-          .maybeSingle()
-        firstLessonId = firstLesson?.id ?? null
+        const sortedLessons = [...((firstModule.lessons as { id: string; order_number: number }[]) ?? [])]
+          .sort((a, b) => a.order_number - b.order_number)
+        firstLessonId = sortedLessons[0]?.id ?? null
       }
 
       return {

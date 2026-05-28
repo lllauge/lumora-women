@@ -15,11 +15,9 @@ type Download = {
 type LessonData = {
   id: string
   title: string
-  description: string | null
   video_url: string | null
-  notes: string | null
-  sort_order: number
-  is_preview: boolean
+  content: string | null
+  order_number: number
   module_id: string
   modules: {
     id: string
@@ -35,15 +33,14 @@ type LessonData = {
 type SidebarLesson = {
   id: string
   title: string
-  sort_order: number
-  duration_minutes: number | null
+  order_number: number
   completed: boolean
 }
 
 type SidebarModule = {
   id: string
   title: string
-  sort_order: number
+  order_number: number
   lessons: SidebarLesson[]
 }
 
@@ -86,7 +83,7 @@ export default function LessonPage({
       const { data: lessonData } = await supabase
         .from('lessons')
         .select(`
-          id, title, description, video_url, notes, sort_order, is_preview, module_id,
+          id, title, video_url, content, order_number, module_id,
           modules (id, title, course_id, courses (id, title))
         `)
         .eq('id', lessonId)
@@ -116,7 +113,7 @@ export default function LessonPage({
           .eq('course_id', courseId)
           .maybeSingle()
 
-        if (!enrollment && !lessonData.is_preview) {
+        if (!enrollment) {
           router.push(`/courses/${courseId}`)
           return
         }
@@ -124,9 +121,9 @@ export default function LessonPage({
 
       const { data: modulesData } = await supabase
         .from('modules')
-        .select('id, title, sort_order, lessons(id, title, sort_order, duration_minutes)')
+        .select('id, title, order_number, lessons(id, title, order_number)')
         .eq('course_id', courseId)
-        .order('sort_order')
+        .order('order_number')
 
       const { data: progressData } = await supabase
         .from('lesson_progress')
@@ -138,8 +135,8 @@ export default function LessonPage({
       const mods: SidebarModule[] = (modulesData ?? []).map((m) => ({
         id: m.id,
         title: m.title,
-        sort_order: m.sort_order,
-        lessons: [...((m.lessons as SidebarLesson[]) ?? [])].sort((a, b) => a.sort_order - b.sort_order).map((l) => ({
+        order_number: m.order_number,
+        lessons: [...((m.lessons as SidebarLesson[]) ?? [])].sort((a, b) => a.order_number - b.order_number).map((l) => ({
           ...l,
           completed: progressMap.get(l.id) ?? false,
         })),
@@ -271,11 +268,6 @@ export default function LessonPage({
                           {l.title}
                           {l.completed && <span className="sr-only"> (completed)</span>}
                         </span>
-                        {l.duration_minutes && (
-                          <span aria-hidden="true" style={{ fontFamily: 'var(--font-sans)', fontSize: '0.6875rem', color: 'rgba(200,220,192,0.65)', flexShrink: 0 }}>
-                            {l.duration_minutes}m
-                          </span>
-                        )}
                       </Link>
                     </li>
                   )
@@ -425,9 +417,9 @@ export default function LessonPage({
             hidden={activeTab !== 'notes'}
             style={{ maxWidth: '48rem' }}
           >
-            {lesson?.notes ? (
+            {lesson?.content ? (
               <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9375rem', color: 'var(--text-secondary)', lineHeight: 1.8 }}>
-                {lesson.notes}
+                {lesson.content}
               </p>
             ) : (
               <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9375rem', color: 'var(--text-muted)' }}>
@@ -481,15 +473,9 @@ export default function LessonPage({
             hidden={activeTab !== 'about'}
             style={{ maxWidth: '48rem' }}
           >
-            {lesson?.description ? (
-              <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9375rem', color: 'var(--text-secondary)', lineHeight: 1.8 }}>
-                {lesson.description}
-              </p>
-            ) : (
-              <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9375rem', color: 'var(--text-muted)' }}>
-                No description available.
-              </p>
-            )}
+            <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9375rem', color: 'var(--text-muted)' }}>
+              No description available.
+            </p>
           </div>
 
           {/* Prev / Next navigation */}

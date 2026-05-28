@@ -74,7 +74,7 @@ export default function CourseDetailContent({ courseId }: { courseId: string }) 
       if (userRes.data.user) {
         const userId = userRes.data.user.id
         const { data: profile } = await supabase
-          .from('profiles')
+          .from('users')
           .select('role')
           .eq('id', userId)
           .single()

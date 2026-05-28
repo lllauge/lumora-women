@@ -102,7 +102,7 @@ export default function LessonPage({
       const courseId = (lessonData.modules as unknown as LessonData['modules']).course_id
 
       const { data: profile } = await supabase
-        .from('profiles')
+        .from('users')
         .select('role')
         .eq('id', user.id)
         .single()

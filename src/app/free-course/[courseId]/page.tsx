@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import HCaptcha from '@hcaptcha/react-hcaptcha'
 import { createClient } from '@/lib/supabase/client'
 import { subscribeToNewsletter } from '@/app/actions/subscribe'
-import { CheckCircle } from 'lucide-react'
+import { CheckCircle, Mail } from 'lucide-react'
 
 const HCAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY ?? ''
 
@@ -36,6 +36,7 @@ export default function FreeCourseCapturePage({
   const [loggedInUserId, setLoggedInUserId] = useState<string | null>(null)
   const [loggedInEmail, setLoggedInEmail] = useState<string | null>(null)
   const [enrolling, setEnrolling] = useState(false)
+  const [showEmailModal, setShowEmailModal] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
@@ -66,7 +67,11 @@ export default function FreeCourseCapturePage({
       router.push(`/courses/${courseId}`)
     } else {
       const data = await res.json().catch(() => ({}))
-      setError(data.error ?? 'Enrollment failed. Please try again.')
+      if (res.status === 403 && data.error?.toLowerCase().includes('confirm')) {
+        setShowEmailModal(true)
+      } else {
+        setError(data.error ?? 'Enrollment failed. Please try again.')
+      }
       setEnrolling(false)
     }
   }
@@ -344,6 +349,58 @@ export default function FreeCourseCapturePage({
           </div>
         </div>
       </main>
+
+      {/* Email confirmation required modal */}
+      {showEmailModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="email-modal-title"
+          style={{
+            position: 'fixed', inset: 0, zIndex: 50,
+            background: 'rgba(0,0,0,0.55)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '1rem',
+          }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowEmailModal(false) }}
+        >
+          <div style={{
+            background: '#FFFFFF', borderRadius: '1rem', padding: '2.5rem 2rem',
+            maxWidth: '26rem', width: '100%',
+            boxShadow: '0 20px 60px rgba(61,43,36,0.22)',
+            textAlign: 'center',
+          }}>
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              width: '4rem', height: '4rem', borderRadius: '50%',
+              background: 'var(--rose-blush)', marginBottom: '1.25rem',
+            }}>
+              <Mail className="w-7 h-7" style={{ color: 'var(--warm-terracotta-deep)' }} aria-hidden="true" />
+            </div>
+
+            <h2
+              id="email-modal-title"
+              style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--deep-earth)', marginBottom: '0.75rem' }}
+            >
+              Confirm your email first
+            </h2>
+
+            <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9375rem', color: 'var(--on-surface-variant)', lineHeight: 1.6, marginBottom: '1.75rem' }}>
+              We sent a confirmation link to{' '}
+              <strong style={{ color: 'var(--deep-earth)' }}>{loggedInEmail}</strong>.
+              {' '}Click that link in your inbox, then come back here to get instant access to your course.
+            </p>
+
+            <button
+              onClick={() => setShowEmailModal(false)}
+              className="btn-primary w-full"
+              style={{ borderRadius: '0.5rem', padding: '0.9rem', minHeight: '44px' }}
+            >
+              Got it — I&apos;ll check my email
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

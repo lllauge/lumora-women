@@ -1,9 +1,9 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { CheckCircle } from 'lucide-react'
+import { Mail } from 'lucide-react'
 
 export const metadata: Metadata = {
-  title: 'Access Confirmed | Lumora Women',
+  title: 'Check Your Email | Lumora Women',
 }
 
 export default function FreeCourseConfirmationPage() {
@@ -28,12 +28,12 @@ export default function FreeCourseConfirmationPage() {
           boxShadow: '0 4px 24px -4px rgba(61,43,36,0.10)',
         }}
       >
-        {/* Check icon */}
+        {/* Mail icon */}
         <div
           className="inline-flex items-center justify-center w-20 h-20 rounded-full mb-6"
-          style={{ background: 'var(--sage-green-light)' }}
+          style={{ background: 'var(--rose-blush)' }}
         >
-          <CheckCircle className="w-10 h-10" style={{ color: 'var(--sage-green-dark)' }} aria-hidden="true" />
+          <Mail className="w-10 h-10" style={{ color: 'var(--warm-terracotta-deep)' }} aria-hidden="true" />
         </div>
 
         <h1
@@ -45,11 +45,11 @@ export default function FreeCourseConfirmationPage() {
             fontWeight: 600,
           }}
         >
-          You&apos;re In.
+          One more step!
         </h1>
 
         <p
-          className="mb-8 leading-relaxed"
+          className="mb-3 leading-relaxed"
           style={{
             fontFamily: 'var(--font-sans)',
             fontSize: '1rem',
@@ -57,15 +57,27 @@ export default function FreeCourseConfirmationPage() {
             lineHeight: 1.7,
           }}
         >
-          Check your inbox — we sent a confirmation and your access link. Come back here any time to continue your course from your dashboard.
+          We sent a confirmation link to your email address. You must click that link to verify your account before you can access the course.
+        </p>
+
+        <p
+          className="mb-8"
+          style={{
+            fontFamily: 'var(--font-sans)',
+            fontSize: '0.9375rem',
+            color: 'var(--on-surface-variant)',
+            lineHeight: 1.6,
+          }}
+        >
+          Once confirmed, come back and click <strong style={{ color: 'var(--deep-earth)' }}>"Get Free Access"</strong> to start learning.
         </p>
 
         <Link
-          href="/dashboard"
+          href="/courses"
           className="btn-primary"
           style={{ borderRadius: '0.5rem', padding: '0.9rem 2rem', width: '100%', justifyContent: 'center' }}
         >
-          Go to My Dashboard
+          Back to Courses
         </Link>
       </div>
     </main>

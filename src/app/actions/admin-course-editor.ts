@@ -8,7 +8,6 @@ import { inferExtension, isR2Configured, uploadFileToR2 } from '@/lib/r2'
 import { getStreamDirectUploadUrl, isStreamConfigured, type StreamDirectUploadResult } from '@/lib/cloudflare-stream'
 
 export { isStreamConfigured }
-export type { StreamDirectUploadResult }
 
 /**
  * Returns a one-time Cloudflare Stream TUS upload URL.

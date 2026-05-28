@@ -58,17 +58,27 @@ export async function signInAdmin(formData: FormData): Promise<AdminAuthResult> 
     return { error: 'Invalid email or password.' }
   }
 
-  // Verify admin role
-  const { data: profile, error: roleError } = await supabase
+  // Verify admin role via service client (bypasses RLS — auth.uid() is not
+  // available in the same request that called signInWithPassword)
+  const serviceClient = getAdminServiceClient()
+  const { data: roleRow, error: roleError } = await serviceClient
     .from('users')
-    .select('role, totp_secret')
+    .select('role')
     .eq('id', signInData.user.id)
     .maybeSingle()
 
-  if (roleError || profile?.role !== 'admin') {
+  if (roleError || roleRow?.role !== 'admin') {
     await supabase.auth.signOut()
     return { error: 'This account does not have admin access.' }
   }
+
+  // Fetch totp_secret separately so a missing column doesn't block login
+  const { data: totpRow, error: totpError } = await serviceClient
+    .from('users')
+    .select('totp_secret')
+    .eq('id', signInData.user.id)
+    .maybeSingle()
+  const profile = { ...roleRow, totp_secret: totpError ? null : (totpRow?.totp_secret ?? null) }
 
   // Set admin_login_at cookie for session timeout tracking
   const cookieStore = await cookies()
@@ -135,13 +145,28 @@ export async function verifyAdminTotp(formData: FormData): Promise<AdminAuthResu
 
   // Get TOTP secret via service role (not exposed to client via RLS)
   const adminClient = getAdminServiceClient()
-  const { data: profile } = await adminClient
+  const { data: roleRow, error: totpRoleError } = await adminClient
     .from('users')
-    .select('totp_secret, role')
+    .select('role')
     .eq('id', user.id)
     .maybeSingle()
 
-  if (profile?.role !== 'admin' || !profile?.totp_secret) {
+  if (totpRoleError || roleRow?.role !== 'admin') {
+    return { error: 'TOTP is not configured for this account.' }
+  }
+
+  const { data: totpRow, error: totpSecretError } = await adminClient
+    .from('users')
+    .select('totp_secret')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  const profile = {
+    role: roleRow.role,
+    totp_secret: totpSecretError ? null : (totpRow?.totp_secret ?? null),
+  }
+
+  if (!profile.totp_secret) {
     return { error: 'TOTP is not configured for this account.' }
   }
 

@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useReducer, useState, useTransition } from 'react'
 import {
   ArrowLeft, ChevronDown, ChevronRight, CloudCheck, CloudOff,
-  FolderOpen, GripVertical, Loader2, Plus, Trash2,
+  Eye, FolderOpen, GripVertical, Loader2, Plus, Trash2,
 } from 'lucide-react'
 import {
   saveCourse,
@@ -542,6 +542,27 @@ export default function CourseEditor({
         </div>
 
         <div className="flex items-center gap-3">
+          {state.id && (
+            <a
+              href={`/courses/${state.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-7 py-3 rounded-full transition-all hover:opacity-80"
+              style={{
+                border: '1px solid var(--admin-primary-container)',
+                color: 'var(--admin-primary-container)',
+                background: 'transparent',
+                fontFamily: 'var(--font-hanken)',
+                fontWeight: 600,
+                fontSize: '0.875rem',
+                letterSpacing: '0.05em',
+                textDecoration: 'none',
+              }}
+            >
+              <Eye size={16} />
+              Preview
+            </a>
+          )}
           <button
             type="button"
             disabled={pending}

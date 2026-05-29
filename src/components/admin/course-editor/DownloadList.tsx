@@ -46,6 +46,7 @@ export default function DownloadList({
         ref={fileInput}
         type="file"
         className="hidden"
+        accept=".pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.html,text/html,application/pdf,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation"
         onChange={(e) => {
           const f = e.target.files?.[0]
           if (f) handleFile(f)
@@ -110,7 +111,7 @@ export default function DownloadList({
         {pending
           ? <Loader2 size={14} className="animate-spin" />
           : <UploadCloud size={14} />}
-        <span>{pending ? 'Uploading…' : 'Upload PDF / Slides'}</span>
+        <span>{pending ? 'Uploading…' : 'Upload PDF / Slides / HTML'}</span>
       </button>
 
       {!r2Configured && (

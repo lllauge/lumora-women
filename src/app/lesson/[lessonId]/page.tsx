@@ -10,6 +10,7 @@ type Download = {
   id: string
   file_name: string
   file_url: string
+  file_type: string | null
 }
 
 type LessonData = {
@@ -146,7 +147,7 @@ export default function LessonPage({
 
       const { data: downloadsData } = await supabase
         .from('downloads')
-        .select('id, file_name, file_url')
+        .select('id, file_name, file_url, file_type')
         .eq('lesson_id', lessonId)
       setDownloads(downloadsData ?? [])
 
@@ -376,15 +377,33 @@ export default function LessonPage({
             </section>
           )}
 
+          {/* Inline HTML viewers */}
+          {downloads.filter((d) => d.file_type === 'text/html').map((dl) => (
+            <section key={dl.id} aria-label={dl.file_name} style={{ marginBottom: '2rem' }}>
+              <h2 style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: '0.75rem' }}>
+                {dl.file_name}
+              </h2>
+              <iframe
+                src={dl.file_url}
+                title={dl.file_name}
+                sandbox="allow-scripts allow-forms allow-same-origin"
+                style={{
+                  width: '100%', height: '600px', border: '1px solid rgba(200,220,192,0.35)',
+                  borderRadius: '0.75rem', background: '#FFFFFF',
+                }}
+              />
+            </section>
+          ))}
+
           {/* Downloads */}
-          {downloads.length > 0 && (
+          {downloads.filter((d) => d.file_type !== 'text/html').length > 0 && (
             <section aria-label="Downloads" style={{ maxWidth: '36rem', marginBottom: '2rem' }}>
               <h2 style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
                 <Download className="w-4 h-4" aria-hidden="true" />
                 Downloads
               </h2>
               <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', listStyle: 'none', padding: 0, margin: 0 }}>
-                {downloads.map((dl) => (
+                {downloads.filter((d) => d.file_type !== 'text/html').map((dl) => (
                   <li key={dl.id}>
                     <a
                       href={dl.file_url}

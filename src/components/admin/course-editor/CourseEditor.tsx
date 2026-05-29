@@ -519,23 +519,23 @@ export default function CourseEditor({
         }}
       >
         <div
-          className="flex items-center gap-3"
+          className="flex items-center gap-3 save-bar-status"
           style={{ color: 'var(--admin-on-surface-variant)', fontFamily: 'var(--font-hanken)', fontSize: '0.875rem' }}
         >
           {pending ? (
             <>
               <Loader2 size={18} className="animate-spin" />
-              <span>Saving…</span>
+              <span className="save-bar-status-text">Saving…</span>
             </>
           ) : lastSavedAt ? (
             <>
               <CloudCheck size={18} style={{ color: 'var(--admin-sage)' }} />
-              <span>Last saved at {lastSavedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+              <span className="save-bar-status-text">Last saved at {lastSavedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
             </>
           ) : (
             <>
               <CloudOff size={18} style={{ opacity: 0.5 }} />
-              <span>Unsaved changes</span>
+              <span className="save-bar-status-text">Unsaved changes</span>
             </>
           )}
         </div>
@@ -546,7 +546,7 @@ export default function CourseEditor({
               href={`/courses/${state.id}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 px-7 py-3 rounded-full transition-all hover:opacity-80"
+              className="flex items-center gap-2 px-7 py-3 rounded-full transition-all hover:opacity-80 save-bar-preview"
               style={{
                 border: '1px solid var(--admin-primary-container)',
                 color: 'var(--admin-primary-container)',

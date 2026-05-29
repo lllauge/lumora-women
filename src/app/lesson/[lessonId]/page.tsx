@@ -52,7 +52,7 @@ function HtmlEmbed({ url, title }: { url: string; title: string }) {
   const [error, setError] = useState(false)
 
   useEffect(() => {
-    fetch(url)
+    fetch(`/api/html-proxy?url=${encodeURIComponent(url)}`)
       .then((r) => {
         if (!r.ok) throw new Error('fetch failed')
         return r.text()

@@ -61,15 +61,29 @@ export async function subscribeToNewsletter(formData: FormData) {
 
   // ── Insert via service role (RLS blocks anon client inserts) ──────────────
   const supabase = getServiceClient()
+  const subscriber = { email, first_name: first_name ?? null }
 
   const { error } = await supabase
     .from('email_subscribers')
     .upsert(
-      { email, first_name: first_name ?? null, source: source ?? 'website' },
+      { ...subscriber, source: source ?? 'website' },
       { onConflict: 'email', ignoreDuplicates: false }
     )
 
   if (error) {
+    if (/source/i.test(error.message)) {
+      const { error: retryError } = await supabase
+        .from('email_subscribers')
+        .upsert(
+          subscriber,
+          { onConflict: 'email', ignoreDuplicates: false }
+        )
+
+      if (!retryError) {
+        return { success: true }
+      }
+    }
+
     return { error: 'Something went wrong. Please try again.' }
   }
 

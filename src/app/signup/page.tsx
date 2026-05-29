@@ -69,10 +69,10 @@ export default function SignUpPage() {
       email: form.email,
       password: form.password,
       options: {
+        captchaToken: captchaToken ?? undefined,
         data: {
           first_name: form.firstName,
           last_name: form.lastName,
-          hcaptcha_token: captchaToken,
         },
         emailRedirectTo: `${window.location.origin}/dashboard`,
       },

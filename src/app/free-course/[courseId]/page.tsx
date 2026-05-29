@@ -126,7 +126,10 @@ export default function FreeCourseCapturePage({
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: form.email.toLowerCase(),
         password: tempPassword,
-        options: { data: { first_name: form.firstName } },
+        options: {
+          captchaToken: captchaToken ?? undefined,
+          data: { first_name: form.firstName },
+        },
       })
       if (signUpError) {
         if (signUpError.message.toLowerCase().includes('already registered')) {

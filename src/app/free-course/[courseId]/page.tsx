@@ -171,7 +171,7 @@ export default function FreeCourseCapturePage({
       </header>
 
       <main id="main-content" className="flex-1 flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-4xl grid lg:grid-cols-2 gap-12 items-center">
+        <div className="w-full max-w-4xl grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
           {/* Left — course info */}
           <div>
             <div className="rounded-2xl aspect-video mb-6 flex items-center justify-center overflow-hidden" style={{ background: 'var(--sage-green-light)' }}>

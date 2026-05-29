@@ -85,7 +85,7 @@ function FaqItem({ q, a, open, onToggle }: { q: string; a: string; open: boolean
         />
       </button>
       <div style={{
-        maxHeight: open ? '400px' : '0',
+        maxHeight: open ? '800px' : '0',
         overflow: 'hidden',
         transition: 'max-height 0.3s ease',
       }}>

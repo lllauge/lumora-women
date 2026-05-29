@@ -21,31 +21,23 @@ export default async function SettingsPage() {
     .maybeSingle()
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--warm-white)' }}>
+    <div className="dashboard-layout" style={{ background: 'var(--warm-white)' }}>
 
       {/* Sidebar */}
-      <aside
-        style={{
-          width: '240px', flexShrink: 0,
-          background: 'var(--sage-green-dark)',
-          display: 'flex', flexDirection: 'column',
-          padding: '2rem 0',
-          position: 'sticky', top: 0, height: '100vh',
-        }}
-      >
+      <aside className="dashboard-sidebar">
         <Link href="/" style={{ display: 'block', padding: '0 1.5rem', marginBottom: '2.5rem', textDecoration: 'none' }}>
           <span style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', color: '#FFFFFF' }}>
             Lumora Women
           </span>
         </Link>
 
-        <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.25rem', padding: '0 0.75rem' }}>
+        <nav className="dashboard-sidebar-nav" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.25rem', padding: '0 0.75rem' }}>
           <NavItem href="/dashboard" icon={<LayoutDashboard className="w-4 h-4" />} label="Dashboard" />
           <NavItem href="/courses" icon={<BookOpen className="w-4 h-4" />} label="Browse Courses" />
           <NavItem href="/dashboard/settings" icon={<Settings className="w-4 h-4" />} label="Settings" active />
         </nav>
 
-        <div style={{ padding: '0 0.75rem', marginTop: 'auto' }}>
+        <div className="dashboard-sidebar-footer" style={{ padding: '0 0.75rem', marginTop: 'auto' }}>
           <form action="/api/auth/signout" method="POST">
             <button
               type="submit"
@@ -73,7 +65,7 @@ export default async function SettingsPage() {
       </aside>
 
       {/* Main */}
-      <main id="main-content" style={{ flex: 1, padding: "3rem 2.5rem", maxWidth: "640px" }}>
+      <main id="main-content" className="dashboard-main" style={{ maxWidth: '640px' }}>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', color: 'var(--deep-earth)', marginBottom: '0.375rem' }}>
           Account Settings
         </h1>

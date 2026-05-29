@@ -92,18 +92,12 @@ export default async function DashboardPage() {
   const firstName = profile?.first_name ?? user.email?.split('@')[0] ?? 'there'
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--page-bg)' }}>
+    <div className="dashboard-layout" style={{ background: 'var(--page-bg)' }}>
 
       {/* Sidebar */}
       <aside
+        className="dashboard-sidebar"
         aria-label="Dashboard navigation"
-        style={{
-          width: '240px', flexShrink: 0,
-          background: '#1E3220',
-          display: 'flex', flexDirection: 'column',
-          padding: '2rem 0',
-          position: 'sticky', top: 0, height: '100vh',
-        }}
       >
         {/* Logo */}
         <Link
@@ -124,14 +118,14 @@ export default async function DashboardPage() {
         </Link>
 
         {/* Nav */}
-        <nav aria-label="Dashboard sections" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.25rem', padding: '0 0.75rem' }}>
+        <nav aria-label="Dashboard sections" className="dashboard-sidebar-nav" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.25rem', padding: '0 0.75rem' }}>
           <NavItem href="/dashboard" icon={<LayoutDashboard className="w-4 h-4" aria-hidden="true" />} label="Dashboard" active />
           <NavItem href="/courses" icon={<BookOpen className="w-4 h-4" aria-hidden="true" />} label="Browse Courses" />
           <NavItem href="/dashboard/settings" icon={<Settings className="w-4 h-4" aria-hidden="true" />} label="Settings" />
         </nav>
 
         {/* Sign out */}
-        <div style={{ padding: '0 0.75rem', marginTop: 'auto' }}>
+        <div className="dashboard-sidebar-footer" style={{ padding: '0 0.75rem', marginTop: 'auto' }}>
           <form action="/api/auth/signout" method="POST">
             <button
               type="submit"
@@ -163,7 +157,7 @@ export default async function DashboardPage() {
       </aside>
 
       {/* Main content */}
-      <main id="main-content" style={{ flex: 1, padding: '3rem 2.5rem', maxWidth: '900px' }}>
+      <main id="main-content" className="dashboard-main">
 
         {/* Welcome */}
         <div style={{ marginBottom: '2.5rem' }}>
@@ -203,6 +197,7 @@ export default async function DashboardPage() {
           )}
         </section>
       </main>
+
     </div>
   )
 }

@@ -386,9 +386,8 @@ export default function ProductEditor({
 
       {/* Sticky save bar */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-30 backdrop-blur-md"
+        className="fixed bottom-0 left-0 right-0 z-30 backdrop-blur-md admin-save-bar"
         style={{
-          marginLeft: 'var(--admin-sidebar-w)',
           height: '80px',
           background: 'rgba(250, 249, 244, 0.92)',
           borderTop: '1px solid var(--admin-outline-variant)',

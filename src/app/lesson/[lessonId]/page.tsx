@@ -47,6 +47,44 @@ type SidebarModule = {
 
 const GOLD = 'linear-gradient(to right, #F0D060 0%, #C8980A 25%, #E8C040 50%, #A87808 75%, #D4AC30 100%)'
 
+function HtmlEmbed({ url, title }: { url: string; title: string }) {
+  const [html, setHtml] = useState<string | null>(null)
+  const [error, setError] = useState(false)
+
+  useEffect(() => {
+    fetch(url)
+      .then((r) => {
+        if (!r.ok) throw new Error('fetch failed')
+        return r.text()
+      })
+      .then(setHtml)
+      .catch(() => setError(true))
+  }, [url])
+
+  if (error) return (
+    <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+      Could not load content.
+    </p>
+  )
+  if (!html) return (
+    <div style={{ height: '600px', border: '1px solid rgba(200,220,192,0.35)', borderRadius: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--section-tint)' }}>
+      <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading…</span>
+    </div>
+  )
+
+  return (
+    <iframe
+      srcDoc={html}
+      title={title}
+      sandbox="allow-scripts allow-forms allow-same-origin"
+      style={{
+        width: '100%', height: '600px', border: '1px solid rgba(200,220,192,0.35)',
+        borderRadius: '0.75rem', background: '#FFFFFF',
+      }}
+    />
+  )
+}
+
 export default function LessonPage({
   params,
 }: {
@@ -383,15 +421,7 @@ export default function LessonPage({
               <h2 style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: '0.75rem' }}>
                 {dl.file_name}
               </h2>
-              <iframe
-                src={dl.file_url}
-                title={dl.file_name}
-                sandbox="allow-scripts allow-forms allow-same-origin"
-                style={{
-                  width: '100%', height: '600px', border: '1px solid rgba(200,220,192,0.35)',
-                  borderRadius: '0.75rem', background: '#FFFFFF',
-                }}
-              />
+              <HtmlEmbed url={dl.file_url} title={dl.file_name} />
             </section>
           ))}
 

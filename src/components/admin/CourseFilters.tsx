@@ -78,7 +78,7 @@ export default function CourseFilters() {
       </div>
 
       {/* Filters + CTA */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center flex-wrap gap-3">
         <div
           className="flex items-center rounded-lg p-1"
           style={{ background: 'var(--admin-surface-container)' }}

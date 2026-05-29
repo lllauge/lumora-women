@@ -748,6 +748,15 @@ blockquote, .pull-quote {
     gap: 0 !important;
     padding: 0 !important;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .dashboard-sidebar-nav::-webkit-scrollbar {
+    display: none;
+  }
+  .dashboard-sidebar-nav a {
+    white-space: nowrap;
+    flex-shrink: 0;
   }
   .dashboard-sidebar-footer {
     display: none;

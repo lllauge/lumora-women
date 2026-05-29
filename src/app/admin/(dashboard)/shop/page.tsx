@@ -152,7 +152,7 @@ export default async function AdminShopPage({ searchParams }: { searchParams: Se
     <div className="space-y-6">
 
       {/* Top action bar */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <p
             className="uppercase"

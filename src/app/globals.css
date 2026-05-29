@@ -691,9 +691,6 @@ blockquote, .pull-quote {
   .save-bar-status-text {
     display: none;
   }
-  .save-bar-preview {
-    display: none !important;
-  }
   .admin-save-bar button {
     padding-left: 1rem !important;
     padding-right: 1rem !important;

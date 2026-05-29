@@ -418,9 +418,27 @@ export default function LessonPage({
           {/* Inline HTML viewers */}
           {downloads.filter((d) => d.file_type === 'text/html').map((dl) => (
             <section key={dl.id} aria-label={dl.file_name} style={{ marginBottom: '2rem' }}>
-              <h2 style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: '0.75rem' }}>
-                {dl.file_name}
-              </h2>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.75rem', flexWrap: 'wrap' as const }}>
+                <h2 style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', margin: 0 }}>
+                  {dl.file_name}
+                </h2>
+                <a
+                  href={dl.file_url}
+                  download={dl.file_name}
+                  aria-label={`Download ${dl.file_name}`}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '0.4rem',
+                    padding: '0.4rem 0.875rem', borderRadius: '999px',
+                    border: '1px solid rgba(200,220,192,0.45)', background: '#FFFFFF',
+                    textDecoration: 'none', flexShrink: 0,
+                    fontFamily: 'var(--font-sans)', fontSize: '0.8rem', fontWeight: 600,
+                    color: 'var(--text-secondary)',
+                  }}
+                >
+                  <Download className="w-3.5 h-3.5" aria-hidden="true" style={{ color: 'var(--botanical-green)' }} />
+                  Download
+                </a>
+              </div>
               <HtmlEmbed url={dl.file_url} title={dl.file_name} />
             </section>
           ))}

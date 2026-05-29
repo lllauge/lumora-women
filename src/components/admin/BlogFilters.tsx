@@ -73,7 +73,7 @@ export default function BlogFilters() {
         />
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         {/* Segmented status filter */}
         <div
           role="radiogroup"

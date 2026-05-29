@@ -4,7 +4,7 @@ import { useState, useEffect, use } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { CheckCircle, ChevronLeft, ChevronRight, Download, Play } from 'lucide-react'
+import { CheckCircle, ChevronLeft, ChevronRight, Download, Play, Menu, X } from 'lucide-react'
 
 type Download = {
   id: string
@@ -99,6 +99,7 @@ export default function LessonPage({
   const [completed, setCompleted] = useState(false)
   const [marking, setMarking] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   // Update document title when lesson loads
   useEffect(() => {
@@ -227,33 +228,47 @@ export default function LessonPage({
     : 0
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--page-bg)' }}>
+    <div className="lesson-layout">
+
+      {/* Mobile sidebar backdrop */}
+      {sidebarOpen && (
+        <div
+          className="lesson-sidebar-backdrop"
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
 
       {/* Sidebar */}
       <aside
         aria-label="Course curriculum"
-        style={{
-          width: '280px', flexShrink: 0,
-          background: '#162814',
-          display: 'flex', flexDirection: 'column',
-          height: '100vh', overflow: 'hidden',
-        }}
+        className={`lesson-sidebar${sidebarOpen ? ' is-open' : ''}`}
       >
         {/* Header */}
         <div style={{ padding: '1.25rem 1rem', borderBottom: '1px solid rgba(200,220,192,0.1)' }}>
-          <Link
-            href={courseId ? `/courses/${courseId}` : '/dashboard'}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '0.5rem',
-              textDecoration: 'none', marginBottom: '0.75rem',
-              fontFamily: 'var(--font-sans)', fontSize: '0.75rem',
-              color: 'rgba(200,220,192,0.8)',
-              minHeight: '44px',
-            }}
-          >
-            <ChevronLeft className="w-3.5 h-3.5" aria-hidden="true" />
-            Back to course
-          </Link>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Link
+              href={courseId ? `/courses/${courseId}` : '/dashboard'}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '0.5rem',
+                textDecoration: 'none', marginBottom: '0.75rem',
+                fontFamily: 'var(--font-sans)', fontSize: '0.75rem',
+                color: 'rgba(200,220,192,0.8)',
+                minHeight: '44px',
+              }}
+            >
+              <ChevronLeft className="w-3.5 h-3.5" aria-hidden="true" />
+              Back to course
+            </Link>
+            <button
+              className="lesson-sidebar-close"
+              onClick={() => setSidebarOpen(false)}
+              aria-label="Close curriculum"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(200,220,192,0.8)', padding: '0.25rem', marginBottom: '0.75rem' }}
+            >
+              <X size={20} aria-hidden="true" />
+            </button>
+          </div>
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '0.875rem', fontWeight: 700, color: '#FFFFFF', lineHeight: 1.3 }}>
             {loading ? 'Loading…' : courseTitle}
           </h2>
@@ -277,6 +292,7 @@ export default function LessonPage({
                       <Link
                         href={`/lesson/${l.id}`}
                         aria-current={isActive ? 'page' : undefined}
+                        onClick={() => setSidebarOpen(false)}
                         style={{
                           display: 'flex', alignItems: 'center', gap: '0.625rem',
                           padding: '0.5rem 1rem',
@@ -311,7 +327,21 @@ export default function LessonPage({
       </aside>
 
       {/* Main */}
-      <main id="main-content" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+      <main id="main-content" className="lesson-main">
+        {/* Mobile top bar */}
+        <div className="lesson-mobile-bar">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Open course curriculum"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+          >
+            <Menu size={20} aria-hidden="true" />
+            <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', fontWeight: 600 }}>Curriculum</span>
+          </button>
+          <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, textAlign: 'center' }}>
+            {loading ? '' : lesson?.title}
+          </span>
+        </div>
 
         {/* Video area — only render when there is a video */}
         {(loading || lesson?.video_url) && (

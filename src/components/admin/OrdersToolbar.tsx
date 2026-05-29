@@ -93,7 +93,7 @@ export default function OrdersToolbar() {
         />
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         {/* Date range */}
         <div className="relative">
           <CalendarDays

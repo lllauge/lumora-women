@@ -4,7 +4,7 @@ import { useState, useEffect, use } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { CheckCircle, ChevronLeft, ChevronRight, Download, BookOpen, Info, Play } from 'lucide-react'
+import { CheckCircle, ChevronLeft, ChevronRight, Download, Play } from 'lucide-react'
 
 type Download = {
   id: string
@@ -59,7 +59,6 @@ export default function LessonPage({
   const [downloads, setDownloads] = useState<Download[]>([])
   const [completed, setCompleted] = useState(false)
   const [marking, setMarking] = useState(false)
-  const [activeTab, setActiveTab] = useState<'notes' | 'downloads' | 'about'>('notes')
   const [loading, setLoading] = useState(true)
 
   // Update document title when lesson loads
@@ -188,12 +187,6 @@ export default function LessonPage({
     ? Math.round(((currentIdx + 1) / allLessons.length) * 100)
     : 0
 
-  const tabs = [
-    { key: 'notes' as const,     icon: <BookOpen className="w-4 h-4" aria-hidden="true" />, label: 'Notes',     tabId: 'tab-notes',     panelId: 'panel-notes' },
-    { key: 'downloads' as const, icon: <Download className="w-4 h-4" aria-hidden="true" />, label: `Downloads${downloads.length > 0 ? ` (${downloads.length})` : ''}`, tabId: 'tab-downloads', panelId: 'panel-downloads' },
-    { key: 'about' as const,     icon: <Info className="w-4 h-4" aria-hidden="true" />,     label: 'About',     tabId: 'tab-about',     panelId: 'panel-about' },
-  ]
-
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--page-bg)' }}>
 
@@ -301,13 +294,13 @@ export default function LessonPage({
               />
             ) : (
               <video
-                key={lesson.video_url}
+                key={lesson?.video_url}
                 controls
                 style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                 playsInline
-                aria-label={`Video: ${lesson.title}`}
+                aria-label={`Video: ${lesson?.title}`}
               >
-                <source src={lesson.video_url!} />
+                <source src={lesson?.video_url ?? ''} />
                 <track kind="captions" label="English captions" srcLang="en" default />
                 Your browser does not support the video element.
               </video>
@@ -372,68 +365,24 @@ export default function LessonPage({
             </div>
           )}
 
-          {/* Tabs */}
-          <div
-            role="tablist"
-            aria-label="Lesson content"
-            style={{ borderBottom: '1px solid rgba(200,220,192,0.35)', display: 'flex', gap: '0.25rem', marginBottom: '1.75rem' }}
-          >
-            {tabs.map(({ key, icon, label, tabId, panelId }) => (
-              <button
-                key={key}
-                id={tabId}
-                role="tab"
-                aria-selected={activeTab === key}
-                aria-controls={panelId}
-                onClick={() => setActiveTab(key)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '0.375rem',
-                  padding: '0.75rem 1rem',
-                  fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 600,
-                  color: activeTab === key ? 'var(--botanical-green)' : 'var(--text-secondary)',
-                  borderTop: 'none', borderLeft: 'none', borderRight: 'none',
-                  borderBottom: activeTab === key ? '2px solid var(--botanical-green)' : '2px solid transparent',
-                  background: 'none', cursor: 'pointer',
-                  minHeight: '44px',
-                }}
-              >
-                {icon}
-                {label}
-              </button>
-            ))}
-          </div>
+          {/* Notes */}
+          {(loading || lesson?.content) && (
+            <section aria-label="Lesson notes" style={{ maxWidth: '48rem', marginBottom: '2rem' }}>
+              {lesson?.content && (
+                <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9375rem', color: 'var(--text-secondary)', lineHeight: 1.8 }}>
+                  {lesson.content}
+                </p>
+              )}
+            </section>
+          )}
 
-          {/* Tab panels */}
-          <div
-            id="panel-notes"
-            role="tabpanel"
-            aria-labelledby="tab-notes"
-            hidden={activeTab !== 'notes'}
-            style={{ maxWidth: '48rem' }}
-          >
-            {lesson?.content ? (
-              <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9375rem', color: 'var(--text-secondary)', lineHeight: 1.8 }}>
-                {lesson.content}
-              </p>
-            ) : (
-              <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9375rem', color: 'var(--text-muted)' }}>
-                No notes for this lesson.
-              </p>
-            )}
-          </div>
-
-          <div
-            id="panel-downloads"
-            role="tabpanel"
-            aria-labelledby="tab-downloads"
-            hidden={activeTab !== 'downloads'}
-            style={{ maxWidth: '36rem' }}
-          >
-            {downloads.length === 0 ? (
-              <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9375rem', color: 'var(--text-muted)' }}>
-                No downloads for this lesson.
-              </p>
-            ) : (
+          {/* Downloads */}
+          {downloads.length > 0 && (
+            <section aria-label="Downloads" style={{ maxWidth: '36rem', marginBottom: '2rem' }}>
+              <h2 style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                <Download className="w-4 h-4" aria-hidden="true" />
+                Downloads
+              </h2>
               <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', listStyle: 'none', padding: 0, margin: 0 }}>
                 {downloads.map((dl) => (
                   <li key={dl.id}>
@@ -457,20 +406,8 @@ export default function LessonPage({
                   </li>
                 ))}
               </ul>
-            )}
-          </div>
-
-          <div
-            id="panel-about"
-            role="tabpanel"
-            aria-labelledby="tab-about"
-            hidden={activeTab !== 'about'}
-            style={{ maxWidth: '48rem' }}
-          >
-            <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9375rem', color: 'var(--text-muted)' }}>
-              No description available.
-            </p>
-          </div>
+            </section>
+          )}
 
           {/* Prev / Next navigation */}
           <nav aria-label="Lesson navigation" style={{ display: 'flex', justifyContent: 'space-between', marginTop: '3rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(200,220,192,0.35)' }}>

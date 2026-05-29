@@ -448,10 +448,7 @@ export default function LessonPage({
           {/* Inline HTML viewers */}
           {downloads.filter((d) => d.file_type === 'text/html').map((dl) => (
             <section key={dl.id} aria-label={dl.file_name} style={{ marginBottom: '2rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.75rem', flexWrap: 'wrap' as const }}>
-                <h2 style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', margin: 0 }}>
-                  {dl.file_name}
-                </h2>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '1rem', marginBottom: '0.75rem', flexWrap: 'wrap' as const }}>
                 <a
                   href={dl.file_url}
                   download={dl.file_name}

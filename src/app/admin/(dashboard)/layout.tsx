@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import AdminSidebar from '@/components/admin/AdminSidebar'
-import AdminTopbar from '@/components/admin/AdminTopbar'
+import AdminShellClient from '@/components/admin/AdminShellClient'
 
 /**
  * Defense-in-depth: proxy.ts already blocks non-admins at the edge,
@@ -46,10 +45,8 @@ export default async function AdminAppLayout({
   }
 
   return (
-    <div className="admin-shell">
-      <AdminSidebar />
-      <AdminTopbar adminName={adminName} adminEmail={adminEmail} />
-      <main id="main-content" className="admin-main">{children}</main>
-    </div>
+    <AdminShellClient adminName={adminName} adminEmail={adminEmail}>
+      {children}
+    </AdminShellClient>
   )
 }

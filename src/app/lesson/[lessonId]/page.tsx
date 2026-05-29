@@ -440,7 +440,7 @@ export default function LessonPage({
                     <a
                       href={dl.file_url}
                       download
-                      aria-label={`Download ${dl.title}`}
+                      aria-label={`Download ${dl.file_name}`}
                       style={{
                         display: 'flex', alignItems: 'center', gap: '0.75rem',
                         padding: '0.875rem 1rem', borderRadius: '0.75rem',

@@ -158,7 +158,7 @@ export default function CourseDetailContent({ courseId }: { courseId: string }) 
       </div>
 
       {/* Main content */}
-      <div style={{ maxWidth: '72rem', margin: '0 auto', padding: '3rem 1.5rem', display: 'grid', gridTemplateColumns: '1fr minmax(0, 320px)', gap: '3rem', alignItems: 'start' }}>
+      <div className="course-detail-grid" style={{ maxWidth: '72rem', margin: '0 auto', padding: '3rem 1.5rem' }}>
 
         {/* Left column */}
         <div>
@@ -250,7 +250,7 @@ export default function CourseDetailContent({ courseId }: { courseId: string }) 
         </div>
 
         {/* Right column — sticky purchase card */}
-        <div style={{ position: 'sticky', top: '5rem' }}>
+        <div className="course-detail-sidebar">
           <div
             style={{
               background: '#FFFFFF', borderRadius: '1.25rem',
@@ -325,6 +325,29 @@ export default function CourseDetailContent({ courseId }: { courseId: string }) 
           </div>
         </div>
       </div>
+      <style>{`
+        .course-detail-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 2rem;
+          align-items: start;
+        }
+        @media (min-width: 1024px) {
+          .course-detail-grid {
+            grid-template-columns: 1fr minmax(0, 320px);
+            gap: 3rem;
+          }
+        }
+        .course-detail-sidebar {
+          position: static;
+        }
+        @media (min-width: 1024px) {
+          .course-detail-sidebar {
+            position: sticky;
+            top: 5rem;
+          }
+        }
+      `}</style>
     </main>
   )
 }

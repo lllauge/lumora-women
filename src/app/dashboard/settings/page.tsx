@@ -93,7 +93,7 @@ export default async function SettingsPage() {
             Profile
           </h2>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+          <div className="settings-name-grid" style={{ marginBottom: '1rem' }}>
             <Field label="First Name" value={profile?.first_name ?? ''} />
             <Field label="Last Name" value={profile?.last_name ?? ''} />
           </div>
@@ -130,6 +130,18 @@ export default async function SettingsPage() {
           </Link>
         </div>
       </main>
+      <style>{`
+        .settings-name-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 1rem;
+        }
+        @media (min-width: 480px) {
+          .settings-name-grid {
+            grid-template-columns: 1fr 1fr;
+          }
+        }
+      `}</style>
     </div>
   )
 }

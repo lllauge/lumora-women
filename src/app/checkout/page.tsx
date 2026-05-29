@@ -87,7 +87,7 @@ function CheckoutContent() {
   const price = course ? `$${(course.price / 100).toFixed(2)}` : '—'
 
   return (
-    <div style={{ maxWidth: '56rem', margin: '0 auto', padding: '3rem 1.5rem', display: 'grid', gridTemplateColumns: '1fr minmax(0, 340px)', gap: '3rem', alignItems: 'start' }}>
+    <div className="checkout-grid" style={{ maxWidth: '56rem', margin: '0 auto', padding: '3rem 1.5rem' }}>
 
       {/* Left — order details */}
       <div>
@@ -281,6 +281,20 @@ function CheckoutContent() {
           </p>
         </div>
       </div>
+      <style>{`
+        .checkout-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 2rem;
+          align-items: start;
+        }
+        @media (min-width: 1024px) {
+          .checkout-grid {
+            grid-template-columns: 1fr minmax(0, 340px);
+            gap: 3rem;
+          }
+        }
+      `}</style>
     </div>
   )
 }

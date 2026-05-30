@@ -169,7 +169,11 @@ export async function saveBlogPost(
 
 function isMissingScheduleColumnError(msg: string): boolean {
   // Postgres: 'column "published_at" of relation "blog_posts" does not exist'
-  return /column.*"?(published_at|scheduled_at)"? .* does not exist/i.test(msg)
+  // PostgREST schema cache: "Could not find the 'published_at' column of 'blog_posts' in the schema cache"
+  return (
+    /column.*['"]?(published_at|scheduled_at)['"]?.*does not exist/i.test(msg) ||
+    /could not find.*['"]?(published_at|scheduled_at)['"]?.*schema cache/i.test(msg)
+  )
 }
 
 function revalidateBlogPaths(postId: string, slug: string) {

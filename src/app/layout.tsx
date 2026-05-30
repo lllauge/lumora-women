@@ -8,6 +8,15 @@ export const metadata: Metadata = {
     template: '%s | Lumora Women',
   },
   description: "Practical wellness education for women navigating postpartum recovery, hormone health, and every season of womanhood.",
+  icons: {
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/icon.png', type: 'image/png', sizes: '512x512' },
+    ],
+    apple: [
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

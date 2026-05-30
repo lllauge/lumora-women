@@ -27,7 +27,7 @@ export default function FreeCourseCapturePage({
   const router = useRouter()
   const captchaRef = useRef<HCaptcha>(null)
   const [course, setCourse] = useState<Course | null>(null)
-  const [form, setForm] = useState({ firstName: '', email: '' })
+  const [form, setForm] = useState({ firstName: '', email: '', password: '', confirm: '' })
   const [ageConfirmed, setAgeConfirmed] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -84,6 +84,16 @@ export default function FreeCourseCapturePage({
       return
     }
 
+    if (form.password.length < 8 || !/[A-Z]/.test(form.password) || !/[0-9]/.test(form.password)) {
+      setError('Password must be at least 8 characters and include one uppercase letter and one number.')
+      return
+    }
+
+    if (form.password !== form.confirm) {
+      setError('Passwords do not match.')
+      return
+    }
+
     if (!ageConfirmed) {
       setError('You must confirm you are 18 years of age or older to access this course.')
       return
@@ -114,47 +124,46 @@ export default function FreeCourseCapturePage({
       return
     }
 
-    // Sign up or sign in the user, then enroll via the API route
+    // Sign up the user with their chosen password. They can enroll after confirming email.
     const supabase = createClient()
     const { data: existingSession } = await supabase.auth.getUser()
-    let userId: string | undefined
 
     if (existingSession.user) {
-      userId = existingSession.user.id
-    } else {
-      const tempPassword = Math.random().toString(36).slice(-8) + 'Aa1!'
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: form.email.toLowerCase(),
-        password: tempPassword,
-        options: {
-          captchaToken: captchaToken ?? undefined,
-          data: { first_name: form.firstName },
-        },
+      await fetch('/api/enrollments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ courseId }),
       })
-      if (signUpError) {
-        if (signUpError.message.toLowerCase().includes('already registered')) {
+      router.push('/free-course/confirmation')
+      return
+    } else {
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: form.firstName,
+          email: form.email,
+          password: form.password,
+          captchaToken,
+        }),
+      })
+
+      const result = await response.json().catch(() => ({} as { error?: string }))
+      if (!response.ok) {
+        const message = result.error ?? 'Account creation failed. Please try again.'
+        if (message.toLowerCase().includes('already')) {
           setAlreadyRegistered(true)
         } else {
-          setError(signUpError.message)
+          setError(message)
         }
         captchaRef.current?.resetCaptcha()
         setCaptchaToken(null)
         setLoading(false)
         return
       }
-      userId = signUpData?.user?.id
     }
 
-    // Enroll via the API route (which uses service role for the DB insert)
-    if (userId) {
-      await fetch('/api/enrollments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ courseId }),
-      })
-    }
-
-    router.push('/free-course/confirmation')
+    router.push('/verify-email')
   }
 
   const includes = [
@@ -241,7 +250,7 @@ export default function FreeCourseCapturePage({
                   Get Free Access
                 </h2>
                 <p className="mb-6" style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9rem', color: 'var(--on-surface-variant)' }}>
-                  Enter your name and email to get instant access.
+                  Create your free account to access this course.
                 </p>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -274,6 +283,42 @@ export default function FreeCourseCapturePage({
                       placeholder="jane@example.com"
                       required
                       aria-required="true"
+                      style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '0.5rem', border: '1.5px solid var(--outline-variant)', fontFamily: 'var(--font-sans)', fontSize: '1rem', color: 'var(--deep-earth)', background: '#FFF', boxSizing: 'border-box' as const, minHeight: '44px' }}
+                      onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--sage-green-deep)')}
+                      onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--outline-variant)')}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="fc-password" style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--deep-earth)', display: 'block', marginBottom: '0.375rem' }}>
+                      Password <span aria-hidden="true" style={{ color: '#DC2626' }}>*</span>
+                    </label>
+                    <input
+                      id="fc-password"
+                      type="password"
+                      value={form.password}
+                      onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                      placeholder="Min 8 chars, 1 uppercase, 1 number"
+                      required
+                      aria-required="true"
+                      autoComplete="new-password"
+                      style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '0.5rem', border: '1.5px solid var(--outline-variant)', fontFamily: 'var(--font-sans)', fontSize: '1rem', color: 'var(--deep-earth)', background: '#FFF', boxSizing: 'border-box' as const, minHeight: '44px' }}
+                      onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--sage-green-deep)')}
+                      onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--outline-variant)')}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="fc-confirm-password" style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--deep-earth)', display: 'block', marginBottom: '0.375rem' }}>
+                      Confirm Password <span aria-hidden="true" style={{ color: '#DC2626' }}>*</span>
+                    </label>
+                    <input
+                      id="fc-confirm-password"
+                      type="password"
+                      value={form.confirm}
+                      onChange={(e) => setForm((f) => ({ ...f, confirm: e.target.value }))}
+                      placeholder="Repeat your password"
+                      required
+                      aria-required="true"
+                      autoComplete="new-password"
                       style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '0.5rem', border: '1.5px solid var(--outline-variant)', fontFamily: 'var(--font-sans)', fontSize: '1rem', color: 'var(--deep-earth)', background: '#FFF', boxSizing: 'border-box' as const, minHeight: '44px' }}
                       onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--sage-green-deep)')}
                       onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--outline-variant)')}

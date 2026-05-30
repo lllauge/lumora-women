@@ -99,19 +99,19 @@ export default function SignUpPage() {
     >
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <AuthInput label="First Name"  value={form.firstName} onChange={set('firstName')} error={errors.firstName} placeholder="Jane" />
-          <AuthInput label="Last Name"   value={form.lastName}  onChange={set('lastName')}  error={errors.lastName}  placeholder="Doe" />
+          <AuthInput label="First Name"  value={form.firstName} onChange={set('firstName')} error={errors.firstName} placeholder="Jane" required autoComplete="given-name" />
+          <AuthInput label="Last Name"   value={form.lastName}  onChange={set('lastName')}  error={errors.lastName}  placeholder="Doe" required autoComplete="family-name" />
         </div>
-        <AuthInput label="Email Address" type="email"    value={form.email}    onChange={set('email')}    error={errors.email}    placeholder="jane@example.com" />
+        <AuthInput label="Email Address" type="email"    value={form.email}    onChange={set('email')}    error={errors.email}    placeholder="jane@example.com" required autoComplete="email" />
         <div>
-          <AuthInput label="Password" type="password" value={form.password} onChange={set('password')} error={errors.password} placeholder="Min 8 chars, 1 uppercase, 1 number" />
+          <AuthInput label="Password" type="password" value={form.password} onChange={set('password')} error={errors.password} placeholder="Min 8 chars, 1 uppercase, 1 number" required autoComplete="new-password" />
           {showPwHints && (
             <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', color: 'var(--on-surface-variant)', marginTop: '0.25rem' }}>
               Still needs: {pwStrengthIssues.join(', ')}.
             </p>
           )}
         </div>
-        <AuthInput label="Confirm Password" type="password" value={form.confirm} onChange={set('confirm')} error={errors.confirm} placeholder="Repeat your password" />
+        <AuthInput label="Confirm Password" type="password" value={form.confirm} onChange={set('confirm')} error={errors.confirm} placeholder="Repeat your password" required autoComplete="new-password" />
 
         {/* Age confirmation — required for legal contract compliance in California */}
         <div>

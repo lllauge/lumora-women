@@ -8,9 +8,13 @@ import { sanitizeField } from '@/lib/sanitize'
 
 const SignupSchema = z.object({
   firstName: z.string().min(1).max(80),
-  lastName: z.string().min(1).max(80),
+  lastName: z.string().max(80).optional().default(''),
   email: z.string().email().max(254),
-  password: z.string().min(8).max(128),
+  password: z.string()
+    .min(8)
+    .max(128)
+    .regex(/[A-Z]/, 'Password must include one uppercase letter.')
+    .regex(/[0-9]/, 'Password must include one number.'),
   captchaToken: z.string().optional().nullable(),
 })
 

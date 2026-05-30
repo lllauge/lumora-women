@@ -447,60 +447,101 @@ export default function BlogPostEditor({
               </p>
             )}
 
-            <div>
-              <label
-                className="uppercase block mb-1"
-                style={{
-                  fontFamily: 'var(--font-hanken)',
-                  fontSize: '0.625rem',
-                  fontWeight: 700,
-                  letterSpacing: '0.1em',
-                  color: 'var(--admin-on-surface-variant)',
-                }}
-              >
-                Schedule For Later
-              </label>
-              <input
-                type="datetime-local"
-                value={scheduleAt}
-                onChange={(e) => setScheduleAt(e.target.value)}
-                disabled={!schedulingAvailable}
-                style={{ background: 'var(--admin-surface-low)', fontSize: '0.8125rem' }}
-              />
-              <button
-                type="button"
-                disabled={pending || !scheduleAt || !schedulingAvailable}
-                onClick={() => handleSave({ kind: 'schedule', at: new Date(scheduleAt).toISOString() })}
-                className="mt-2 w-full flex items-center justify-center gap-2 py-2 rounded-lg transition-colors disabled:opacity-50"
+            {currentStatus === 'Published' ? (
+              <div
+                className="rounded-lg p-4"
                 style={{
                   background: 'var(--admin-sage-container)',
-                  color: 'var(--admin-on-sage-container)',
-                  fontFamily: 'var(--font-hanken)',
-                  fontWeight: 600,
-                  fontSize: '0.8125rem',
-                  letterSpacing: '0.04em',
-                  border: 'none',
-                  cursor: (pending || !scheduleAt || !schedulingAvailable) ? 'not-allowed' : 'pointer',
+                  border: '1px solid var(--admin-outline-variant)',
                 }}
               >
-                <CalendarClock size={14} />
-                Schedule
-              </button>
-              {!schedulingAvailable && (
-                <p
-                  className="mt-2 italic"
+                <p style={{
+                  fontFamily: 'var(--font-hanken)',
+                  fontSize: '0.8125rem',
+                  fontWeight: 700,
+                  color: 'var(--admin-on-sage-container)',
+                  margin: 0,
+                }}>
+                  This post is live.
+                </p>
+                <p style={{
+                  fontFamily: 'var(--font-hanken)',
+                  fontSize: '0.75rem',
+                  color: 'var(--admin-on-surface-variant)',
+                  lineHeight: 1.5,
+                  marginTop: '0.35rem',
+                }}>
+                  Edits can be saved with Update &amp; Publish. Scheduling is only shown for drafts.
+                </p>
+              </div>
+            ) : schedulingAvailable ? (
+              <div>
+                <label
+                  className="uppercase block mb-1"
                   style={{
                     fontFamily: 'var(--font-hanken)',
-                    fontSize: '0.7rem',
+                    fontSize: '0.625rem',
+                    fontWeight: 700,
+                    letterSpacing: '0.1em',
                     color: 'var(--admin-on-surface-variant)',
-                    lineHeight: 1.4,
                   }}
                 >
-                  Run <code>supabase-schema-v3.sql</code> to enable scheduling
-                  (adds <code>published_at</code> + <code>scheduled_at</code>).
+                  Schedule For Later
+                </label>
+                <input
+                  type="datetime-local"
+                  value={scheduleAt}
+                  onChange={(e) => setScheduleAt(e.target.value)}
+                  style={{ background: 'var(--admin-surface-low)', fontSize: '0.8125rem' }}
+                />
+                <button
+                  type="button"
+                  disabled={pending || !scheduleAt}
+                  onClick={() => handleSave({ kind: 'schedule', at: new Date(scheduleAt).toISOString() })}
+                  className="mt-2 w-full flex items-center justify-center gap-2 py-2 rounded-lg transition-colors disabled:opacity-50"
+                  style={{
+                    background: 'var(--admin-sage-container)',
+                    color: 'var(--admin-on-sage-container)',
+                    fontFamily: 'var(--font-hanken)',
+                    fontWeight: 600,
+                    fontSize: '0.8125rem',
+                    letterSpacing: '0.04em',
+                    border: 'none',
+                    cursor: (pending || !scheduleAt) ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  <CalendarClock size={14} />
+                  Schedule Post
+                </button>
+              </div>
+            ) : (
+              <div
+                className="rounded-lg p-4"
+                style={{
+                  background: 'var(--admin-surface-low)',
+                  border: '1px solid var(--admin-outline-variant)',
+                }}
+              >
+                <p style={{
+                  fontFamily: 'var(--font-hanken)',
+                  fontSize: '0.8125rem',
+                  fontWeight: 700,
+                  color: 'var(--admin-on-surface)',
+                  margin: 0,
+                }}>
+                  Scheduling needs one database update.
                 </p>
-              )}
-            </div>
+                <p style={{
+                  fontFamily: 'var(--font-hanken)',
+                  fontSize: '0.75rem',
+                  color: 'var(--admin-on-surface-variant)',
+                  lineHeight: 1.5,
+                  marginTop: '0.35rem',
+                }}>
+                  Publish and draft saving work now. To turn on scheduled posts, run <code>supabase-schema-v3.sql</code> in Supabase.
+                </p>
+              </div>
+            )}
           </section>
 
           {/* Featured image */}

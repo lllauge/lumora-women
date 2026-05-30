@@ -27,11 +27,24 @@ function getAdminClient() {
 }
 
 function getSiteUrl(req: NextRequest) {
-  return (
+  const fromHeader =
+    req.headers.get('x-forwarded-host') ||
+    req.headers.get('host')
+
+  const requestOrigin = fromHeader
+    ? `${req.headers.get('x-forwarded-proto') || 'https'}://${fromHeader}`
+    : req.nextUrl.origin
+
+  const configured =
     process.env.NEXT_PUBLIC_SITE_URL ||
     process.env.NEXT_PUBLIC_APP_URL ||
-    req.nextUrl.origin
-  ).replace(/\/$/, '')
+    ''
+
+  const siteUrl = configured.includes('localhost') || configured.includes('127.0.0.1')
+    ? requestOrigin
+    : configured || requestOrigin
+
+  return siteUrl.replace(/\/$/, '')
 }
 
 function confirmationEmailHtml(firstName: string, actionLink: string) {

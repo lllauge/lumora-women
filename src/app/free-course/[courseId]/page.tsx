@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import HCaptcha from '@hcaptcha/react-hcaptcha'
 import { createClient } from '@/lib/supabase/client'
-import { subscribeToNewsletter } from '@/app/actions/subscribe'
 import { CheckCircle, Mail } from 'lucide-react'
 
 const HCAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY ?? ''
@@ -107,22 +106,6 @@ export default function FreeCourseCapturePage({
     setLoading(true)
     setError('')
     setAlreadyRegistered(false)
-
-    // Subscribe to newsletter via server action (handles rate limiting + hCaptcha)
-    const formData = new FormData()
-    formData.set('email', form.email.toLowerCase())
-    formData.set('first_name', form.firstName)
-    formData.set('source', 'free-course')
-    if (captchaToken) formData.set('hcaptchaToken', captchaToken)
-
-    const subResult = await subscribeToNewsletter(formData)
-    if (subResult.error) {
-      setError(subResult.error)
-      captchaRef.current?.resetCaptcha()
-      setCaptchaToken(null)
-      setLoading(false)
-      return
-    }
 
     // Sign up the user with their chosen password. They can enroll after confirming email.
     const supabase = createClient()

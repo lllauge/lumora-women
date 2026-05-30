@@ -128,6 +128,22 @@ export async function POST(req: NextRequest) {
     )
   }
 
+  const subscriber = { email, first_name: firstName || null }
+  const { error: subscriberError } = await supabase
+    .from('email_subscribers')
+    .upsert(
+      { ...subscriber, source: 'signup' },
+      { onConflict: 'email', ignoreDuplicates: false }
+    )
+
+  if (subscriberError && /source/i.test(subscriberError.message)) {
+    await supabase
+      .from('email_subscribers')
+      .upsert(subscriber, { onConflict: 'email', ignoreDuplicates: false })
+  } else if (subscriberError) {
+    console.error('[signup] subscriber upsert failed:', subscriberError.message)
+  }
+
   const resendKey = process.env.RESEND_API_KEY
   if (!resendKey) {
     console.error('[signup] RESEND_API_KEY is missing')

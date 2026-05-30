@@ -134,7 +134,10 @@ export default function SignUpPage() {
               aria-invalid={errors.age ? 'true' : undefined}
               style={{ marginTop: '0.2rem', width: '1rem', height: '1rem', flexShrink: 0, accentColor: 'var(--botanical-green)', cursor: 'pointer' }}
             />
-            I confirm I am <strong style={{ marginLeft: '0.25rem', marginRight: '0.25rem' }}>18 years of age or older</strong>.
+            <span>
+              I confirm I am{' '}
+              <strong style={{ fontWeight: 700 }}>18 years of age or older</strong>.
+            </span>
           </label>
           {errors.age && (
             <p id="age-confirm-error" role="alert" style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8rem', color: '#DC2626', marginTop: '0.375rem' }}>

@@ -326,7 +326,10 @@ export default function FreeCourseCapturePage({
                         aria-required="true"
                         style={{ marginTop: '0.2rem', width: '1rem', height: '1rem', flexShrink: 0, accentColor: 'var(--botanical-green)', cursor: 'pointer' }}
                       />
-                      I confirm I am <strong style={{ margin: '0 0.25rem' }}>18 years of age or older</strong>.
+                      <span>
+                        I confirm I am{' '}
+                        <strong style={{ fontWeight: 700 }}>18 years of age or older</strong>.
+                      </span>
                     </label>
                   </div>
 

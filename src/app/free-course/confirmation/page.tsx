@@ -69,7 +69,7 @@ export default function FreeCourseConfirmationPage() {
             lineHeight: 1.6,
           }}
         >
-          Once confirmed, come back and click <strong style={{ color: 'var(--deep-earth)' }}>"Get Free Access"</strong> to start learning.
+          Once confirmed, come back and click <strong style={{ color: 'var(--deep-earth)' }}>Get Free Access</strong> to start learning.
         </p>
 
         <Link

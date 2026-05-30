@@ -26,6 +26,7 @@ export default function FreeCourseCapturePage({
   const router = useRouter()
   const captchaRef = useRef<HCaptcha>(null)
   const [course, setCourse] = useState<Course | null>(null)
+  const [courseLoading, setCourseLoading] = useState(true)
   const [form, setForm] = useState({ firstName: '', email: '', password: '', confirm: '' })
   const [ageConfirmed, setAgeConfirmed] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -44,7 +45,10 @@ export default function FreeCourseCapturePage({
       .select('id, title, subtitle, description, thumbnail_url')
       .eq('id', courseId)
       .single()
-      .then(({ data }) => setCourse(data))
+      .then(({ data }) => {
+        setCourse(data)
+        setCourseLoading(false)
+      })
 
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) {
@@ -166,6 +170,19 @@ export default function FreeCourseCapturePage({
       </header>
 
       <main id="main-content" className="flex-1 flex items-center justify-center px-4 py-12">
+        {!courseLoading && !course ? (
+          <div className="w-full max-w-xl text-center rounded-2xl p-8" style={{ background: '#FFFFFF', border: '1px solid var(--outline-variant)', boxShadow: '0 4px 24px -4px rgba(61,43,36,0.10)' }}>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', color: 'var(--deep-earth)', lineHeight: 1.2, marginBottom: '0.85rem' }}>
+              This free course is not available
+            </h1>
+            <p style={{ fontFamily: 'var(--font-sans)', color: 'var(--on-surface-variant)', lineHeight: 1.7, marginBottom: '1.75rem' }}>
+              It may have moved, been unpublished, or the link may be incomplete.
+            </p>
+            <Link href="/courses" className="btn-primary" style={{ borderRadius: '999px', padding: '0.85rem 1.5rem' }}>
+              Browse Courses
+            </Link>
+          </div>
+        ) : (
         <div className="w-full max-w-4xl grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
           {/* Left — course info */}
           <div>
@@ -313,9 +330,18 @@ export default function FreeCourseCapturePage({
                     <label
                       htmlFor="fc-age-confirm"
                       style={{
-                        display: 'flex', alignItems: 'flex-start', gap: '0.625rem',
-                        cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: '0.875rem',
-                        color: 'var(--deep-earth)', lineHeight: 1.5,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.85rem',
+                        cursor: 'pointer',
+                        fontFamily: 'var(--font-sans)',
+                        fontSize: '0.95rem',
+                        color: 'var(--deep-earth)',
+                        lineHeight: 1.45,
+                        padding: '0.9rem 1rem',
+                        borderRadius: '0.75rem',
+                        border: '1px solid rgba(200,220,192,0.45)',
+                        background: ageConfirmed ? 'var(--pale-botanical)' : 'var(--warm-white)',
                       }}
                     >
                       <input
@@ -324,11 +350,10 @@ export default function FreeCourseCapturePage({
                         checked={ageConfirmed}
                         onChange={(e) => setAgeConfirmed(e.target.checked)}
                         aria-required="true"
-                        style={{ marginTop: '0.2rem', width: '1rem', height: '1rem', flexShrink: 0, accentColor: 'var(--botanical-green)', cursor: 'pointer' }}
+                        style={{ width: '1.25rem', height: '1.25rem', flexShrink: 0, accentColor: 'var(--botanical-green)', cursor: 'pointer' }}
                       />
-                      <span>
-                        I confirm I am{' '}
-                        <strong style={{ fontWeight: 700 }}>18 years of age or older</strong>.
+                      <span style={{ flex: 1 }}>
+                        I confirm I am <strong style={{ fontWeight: 800 }}>18 years of age or older</strong>
                       </span>
                     </label>
                   </div>
@@ -382,6 +407,7 @@ export default function FreeCourseCapturePage({
             )}
           </div>
         </div>
+        )}
       </main>
 
       {/* Email confirmation required modal */}

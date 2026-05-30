@@ -12,10 +12,20 @@ import { inferExtension, isR2Configured, uploadFileToR2 } from '@/lib/r2'
 const blogPostSchema = z.object({
   id: z.string().uuid().optional(),
   title:              z.string().min(1, 'Title is required').max(255),
-  slug:               z.string().min(1).max(255).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Slug must be lowercase letters, numbers, and hyphens only.'),
+  slug:               z.string().max(255).transform((value) =>
+    slugify(value || '', { lower: true, strict: true, trim: true })
+  ),
   body:               z.string().max(200_000).default(''),
   category:           z.string().max(120).nullable().optional().default(null),
   featured_image_url: z.string().max(2048).nullable().optional().default(null),
+}).superRefine((draft, ctx) => {
+  if (!draft.slug) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['slug'],
+      message: 'Slug is required.',
+    })
+  }
 })
 
 export type BlogPostDraft = z.infer<typeof blogPostSchema>

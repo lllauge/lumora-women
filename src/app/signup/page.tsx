@@ -118,10 +118,18 @@ export default function SignUpPage() {
           <label
             htmlFor="age-confirm"
             style={{
-              display: 'flex', alignItems: 'flex-start', gap: '0.625rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.85rem',
               cursor: 'pointer',
-              fontFamily: 'var(--font-sans)', fontSize: '0.875rem',
-              color: 'var(--deep-earth)', lineHeight: 1.5,
+              fontFamily: 'var(--font-sans)',
+              fontSize: '0.95rem',
+              color: 'var(--deep-earth)',
+              lineHeight: 1.45,
+              padding: '0.9rem 1rem',
+              borderRadius: '0.75rem',
+              border: errors.age ? '1px solid #FCA5A5' : '1px solid rgba(200,220,192,0.45)',
+              background: ageConfirmed ? 'var(--pale-botanical)' : 'var(--warm-white)',
             }}
           >
             <input
@@ -132,11 +140,10 @@ export default function SignUpPage() {
               aria-required="true"
               aria-describedby={errors.age ? 'age-confirm-error' : undefined}
               aria-invalid={errors.age ? 'true' : undefined}
-              style={{ marginTop: '0.2rem', width: '1rem', height: '1rem', flexShrink: 0, accentColor: 'var(--botanical-green)', cursor: 'pointer' }}
+              style={{ width: '1.25rem', height: '1.25rem', flexShrink: 0, accentColor: 'var(--botanical-green)', cursor: 'pointer' }}
             />
-            <span>
-              I confirm I am{' '}
-              <strong style={{ fontWeight: 700 }}>18 years of age or older</strong>.
+            <span style={{ flex: 1 }}>
+              I confirm I am <strong style={{ fontWeight: 800 }}>18 years of age or older</strong>
             </span>
           </label>
           {errors.age && (

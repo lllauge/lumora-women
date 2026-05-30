@@ -84,6 +84,37 @@ function CheckoutContent() {
     )
   }
 
+  if (!loading && !course) {
+    return (
+      <div style={{ maxWidth: '38rem', margin: '0 auto', padding: '5rem 1.5rem', textAlign: 'center' }}>
+        <h1
+          style={{
+            fontFamily: 'var(--font-display)',
+            fontWeight: 700,
+            fontSize: '2rem',
+            color: 'var(--text-primary)',
+            marginBottom: '0.85rem',
+          }}
+        >
+          This checkout link is no longer available
+        </h1>
+        <p
+          style={{
+            fontFamily: 'var(--font-sans)',
+            color: 'var(--text-secondary)',
+            lineHeight: 1.7,
+            marginBottom: '1.75rem',
+          }}
+        >
+          The course may have moved, been unpublished, or the link may be incomplete.
+        </p>
+        <Link href="/courses" className="btn-primary" style={{ borderRadius: '999px', padding: '0.85rem 1.5rem' }}>
+          Browse Courses
+        </Link>
+      </div>
+    )
+  }
+
   const price = course ? `$${(course.price / 100).toFixed(2)}` : '—'
 
   return (
@@ -229,9 +260,18 @@ function CheckoutContent() {
             <label
               htmlFor="checkout-age-confirm"
               style={{
-                display: 'flex', alignItems: 'flex-start', gap: '0.625rem',
-                cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: '0.875rem',
-                color: 'var(--text-secondary)', lineHeight: 1.5,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.85rem',
+                cursor: 'pointer',
+                fontFamily: 'var(--font-sans)',
+                fontSize: '0.95rem',
+                color: 'var(--text-primary)',
+                lineHeight: 1.45,
+                padding: '0.9rem 1rem',
+                borderRadius: '0.75rem',
+                border: '1px solid rgba(200,220,192,0.45)',
+                background: ageConfirmed ? 'var(--pale-botanical)' : 'var(--warm-white)',
               }}
             >
               <input
@@ -240,11 +280,16 @@ function CheckoutContent() {
                 checked={ageConfirmed}
                 onChange={(e) => setAgeConfirmed(e.target.checked)}
                 aria-required="true"
-                style={{ marginTop: '0.2rem', width: '1rem', height: '1rem', flexShrink: 0, accentColor: 'var(--botanical-green)', cursor: 'pointer' }}
+                style={{
+                  width: '1.25rem',
+                  height: '1.25rem',
+                  flexShrink: 0,
+                  accentColor: 'var(--botanical-green)',
+                  cursor: 'pointer',
+                }}
               />
-              <span>
-                I confirm I am{' '}
-                <strong style={{ fontWeight: 700 }}>18 years of age or older</strong>.
+              <span style={{ flex: 1 }}>
+                I confirm I am <strong style={{ fontWeight: 800 }}>18 years of age or older</strong>
               </span>
             </label>
           </div>

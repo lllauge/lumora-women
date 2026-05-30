@@ -12,7 +12,10 @@ export default function StudentSearch() {
   const initialQ = searchParams?.get('q') ?? ''
   const [q, setQ] = useState(initialQ)
 
-  useEffect(() => { setQ(searchParams?.get('q') ?? '') }, [searchParams])
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setQ(searchParams?.get('q') ?? '')
+  }, [searchParams])
 
   useEffect(() => {
     if (q === initialQ) return

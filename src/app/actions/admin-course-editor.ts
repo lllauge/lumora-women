@@ -149,7 +149,7 @@ export async function saveCourse(
 
   // ── 3. Lessons per module — diff & write ─────────────────────────────────
   for (let i = 0; i < draft.modules.length; i++) {
-    const module = draft.modules[i]
+    const courseModule = draft.modules[i]
     const moduleId = moduleResolvedIds[i]
 
     const { data: existingLessonsRaw } = await supabase
@@ -159,8 +159,8 @@ export async function saveCourse(
     const keptLessonIds = new Set<string>()
     const lessonResolvedIds: string[] = []
 
-    for (let j = 0; j < module.lessons.length; j++) {
-      const l = module.lessons[j]
+    for (let j = 0; j < courseModule.lessons.length; j++) {
+      const l = courseModule.lessons[j]
       const lessonPayload = {
         title:        l.title.trim(),
         content:      l.content?.trim() || null,
@@ -192,9 +192,9 @@ export async function saveCourse(
     }
 
     // ── 4. Downloads per lesson — replace strategy ─────────────────────────
-    for (let j = 0; j < module.lessons.length; j++) {
+    for (let j = 0; j < courseModule.lessons.length; j++) {
       const lessonId = lessonResolvedIds[j]
-      const downloads = module.lessons[j].downloads
+      const downloads = courseModule.lessons[j].downloads
 
       // Wipe and re-insert. Downloads carry no progress data.
       const { error: delErr } = await supabase.from('downloads').delete().eq('lesson_id', lessonId)

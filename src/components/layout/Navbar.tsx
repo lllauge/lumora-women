@@ -38,7 +38,10 @@ export default function Navbar({ showShop = false }: { showShop?: boolean }) {
     return () => subscription.unsubscribe()
   }, [isConfigured])
 
-  useEffect(() => setMobileOpen(false), [pathname])
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMobileOpen(false)
+  }, [pathname])
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 50)

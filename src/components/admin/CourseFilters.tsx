@@ -21,6 +21,7 @@ export default function CourseFilters() {
 
   // Keep local input in sync if the URL changes externally.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setQ(searchParams?.get('q') ?? '')
   }, [searchParams])
 

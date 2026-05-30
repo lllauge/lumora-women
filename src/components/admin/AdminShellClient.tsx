@@ -70,7 +70,10 @@ export default function AdminShellClient({
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   // Close sidebar on route change
-  useEffect(() => { setSidebarOpen(false) }, [pathname])
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSidebarOpen(false)
+  }, [pathname])
 
   const initials = adminName
     .split(/\s+/)

@@ -22,6 +22,8 @@ export default function BlogFilters() {
   const [q, setQ] = useState(initialQ)
 
   useEffect(() => {
+    // Keep the search input aligned with browser back/forward and filter links.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setQ(searchParams?.get('q') ?? '')
   }, [searchParams])
 

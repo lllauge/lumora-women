@@ -179,7 +179,7 @@ export default function WorkWithMePage() {
           </p>
 
           <Link
-            href="/checkout?courseId=high-ticket"
+            href="/contact"
             className="btn-primary"
             style={{ display: 'inline-block', borderRadius: '999px', padding: '1.125rem 3rem', fontSize: '1.0625rem' }}
           >
@@ -315,7 +315,7 @@ export default function WorkWithMePage() {
               &ldquo;You don&apos;t have to figure this out alone — and you don&apos;t have to rush it. Let&apos;s do this properly.&rdquo;
             </p>
             <Link
-              href="/checkout?courseId=high-ticket"
+              href="/contact"
               className="btn-primary"
               style={{ display: 'inline-block', borderRadius: '999px', padding: '1rem 2.5rem', fontSize: '1rem' }}
             >
@@ -381,7 +381,7 @@ export default function WorkWithMePage() {
               honor that feeling and take the next step.
             </p>
             <Link
-              href="/checkout?courseId=high-ticket"
+              href="/contact"
               className="btn-primary"
               style={{ display: 'inline-block', borderRadius: '999px', padding: '1.125rem 3rem', fontSize: '1.0625rem' }}
             >

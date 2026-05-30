@@ -96,7 +96,10 @@ export default function BlogContent() {
   }, [])
 
   useEffect(() => {
+    // Fetching posts intentionally updates local list state when the selected category changes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchPosts(category, 0, false)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPage(0)
   }, [category, fetchPosts])
 

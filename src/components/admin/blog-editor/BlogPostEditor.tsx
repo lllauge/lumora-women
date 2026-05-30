@@ -79,7 +79,7 @@ export default function BlogPostEditor({
     return {
       id: initial.id,
       title,
-      slug: slug || cleanSlug(title || 'untitled'),
+      slug: cleanSlug(slug || title || 'untitled'),
       body,
       category: category.trim() || null,
       featured_image_url: featuredImage.trim() || null,

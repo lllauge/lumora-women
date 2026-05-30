@@ -105,6 +105,40 @@ export default function CourseDetailContent({ courseId }: { courseId: string }) 
   const firstLesson = modules[0]?.lessons[0]
   const totalLessons = modules.reduce((sum, m) => sum + m.lessons.length, 0)
 
+  if (!loading && !course) {
+    return (
+      <main id="main-content" style={{ background: 'var(--page-bg)', minHeight: '70vh', padding: '5rem 1.5rem' }}>
+        <div style={{ maxWidth: '42rem', margin: '0 auto', textAlign: 'center' }}>
+          <h1
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: 'clamp(2rem, 4vw, 2.75rem)',
+              fontWeight: 700,
+              color: 'var(--text-primary)',
+              marginBottom: '1rem',
+            }}
+          >
+            This course is not available
+          </h1>
+          <p
+            style={{
+              fontFamily: 'var(--font-sans)',
+              fontSize: '1rem',
+              color: 'var(--text-secondary)',
+              lineHeight: 1.7,
+              marginBottom: '2rem',
+            }}
+          >
+            It may have moved, been unpublished, or the link may be incomplete.
+          </p>
+          <Link href="/courses" className="btn-primary" style={{ borderRadius: '999px', padding: '0.85rem 1.5rem' }}>
+            Browse Courses
+          </Link>
+        </div>
+      </main>
+    )
+  }
+
   return (
     <main id="main-content" style={{ background: 'var(--page-bg)', minHeight: '100vh' }}>
 

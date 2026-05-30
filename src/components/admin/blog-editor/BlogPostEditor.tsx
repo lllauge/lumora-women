@@ -41,6 +41,7 @@ export default function BlogPostEditor({
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null)
 
   const [title, setTitle]                       = useState(initial.title)
@@ -61,32 +62,37 @@ export default function BlogPostEditor({
   // Auto-derive slug from title until the user manually edits it
   function handleTitleChange(v: string) {
     setTitle(v)
+    setFieldErrors((e) => ({ ...e, title: [] }))
     if (!slugManuallyEdited) {
-      const auto = slugify(v || '', { lower: true, strict: true, trim: true })
+      const auto = cleanSlug(v)
       setSlug(auto)
+      setFieldErrors((e) => ({ ...e, slug: [] }))
     }
   }
   function handleSlugChange(v: string) {
-    setSlug(v)
+    setSlug(cleanSlug(v))
     setSlugEdited(true)
+    setFieldErrors((e) => ({ ...e, slug: [] }))
   }
 
   function buildPayload() {
     return {
       id: initial.id,
       title,
-      slug: slug || slugify(title || 'untitled', { lower: true, strict: true, trim: true }),
+      slug: slug || cleanSlug(title || 'untitled'),
       body,
       category: category.trim() || null,
       featured_image_url: featuredImage.trim() || null,
     }
   }
 
-  function handleSave(action: BlogAction) {
+  function handleSave(action: BlogAction, afterSave?: (result: { postId: string; slug: string }) => void) {
     setErrorMsg(null)
+    setFieldErrors({})
 
     if (!title.trim()) {
       setErrorMsg('Please add a title before saving.')
+      setFieldErrors({ title: ['Title is required.'] })
       return
     }
     if (action.kind === 'schedule' && !action.at) {
@@ -98,14 +104,22 @@ export default function BlogPostEditor({
       const result = await saveBlogPost(buildPayload(), action)
       if (!result.ok) {
         setErrorMsg(result.error)
+        setFieldErrors(result.fieldErrors ?? {})
         return
       }
       setLastSavedAt(new Date())
+      afterSave?.({ postId: result.postId, slug: result.slug })
       if (mode === 'new') {
         router.push(`/admin/blog/edit/${result.postId}`)
       } else {
         router.refresh()
       }
+    })
+  }
+
+  function handlePreview() {
+    handleSave({ kind: 'draft' }, (result) => {
+      window.open(`/blog/${result.slug}?preview=1`, '_blank', 'noopener,noreferrer')
     })
   }
 
@@ -209,6 +223,16 @@ export default function BlogPostEditor({
                 lineHeight: 1.15,
               }}
             />
+            {fieldErrors.title?.length ? (
+              <p style={{
+                fontFamily: 'var(--font-hanken)',
+                fontSize: '0.75rem',
+                color: 'var(--admin-error)',
+                margin: 0,
+              }}>
+                {fieldErrors.title[0]}
+              </p>
+            ) : null}
             <div className="flex items-center gap-3">
               <label
                 className="uppercase"
@@ -244,6 +268,25 @@ export default function BlogPostEditor({
                 }}
               />
             </div>
+            {fieldErrors.slug?.length ? (
+              <p style={{
+                fontFamily: 'var(--font-hanken)',
+                fontSize: '0.75rem',
+                color: 'var(--admin-error)',
+                margin: 0,
+              }}>
+                {fieldErrors.slug[0]}
+              </p>
+            ) : (
+              <p style={{
+                fontFamily: 'var(--font-hanken)',
+                fontSize: '0.7rem',
+                color: 'var(--admin-on-surface-variant)',
+                margin: 0,
+              }}>
+                Slugs are formatted automatically with lowercase letters, numbers, and hyphens.
+              </p>
+            )}
           </div>
 
           {/* Editor card */}
@@ -307,29 +350,27 @@ export default function BlogPostEditor({
               >
                 Save Draft
               </button>
-              <a
-                href={initial.id ? `/blog/${slug || initial.slug}` : '#'}
-                target="_blank"
-                rel="noreferrer"
-                aria-disabled={!initial.id}
-                onClick={(e) => { if (!initial.id) e.preventDefault() }}
+              <button
+                type="button"
+                disabled={pending || !title.trim()}
+                onClick={handlePreview}
                 className="py-2.5 rounded-lg transition-colors text-center inline-flex items-center justify-center gap-1.5"
                 style={{
                   border: '1px solid var(--admin-primary-container)',
-                  color: initial.id ? 'var(--admin-primary-container)' : 'var(--admin-outline-variant)',
+                  color: title.trim() ? 'var(--admin-primary-container)' : 'var(--admin-outline-variant)',
                   background: 'transparent',
                   fontFamily: 'var(--font-hanken)',
                   fontWeight: 600,
                   fontSize: '0.8125rem',
                   letterSpacing: '0.04em',
-                  cursor: initial.id ? 'pointer' : 'not-allowed',
+                  cursor: pending || !title.trim() ? 'not-allowed' : 'pointer',
                   textDecoration: 'none',
-                  opacity: initial.id ? 1 : 0.6,
+                  opacity: title.trim() ? 1 : 0.6,
                 }}
               >
                 <Eye size={14} />
                 Preview
-              </a>
+              </button>
             </div>
 
             {/* Save state line */}
@@ -567,4 +608,8 @@ function toLocalDatetimeInput(d: Date): string {
     `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
     `T${pad(d.getHours())}:${pad(d.getMinutes())}`
   )
+}
+
+function cleanSlug(value: string): string {
+  return slugify(value || '', { lower: true, strict: true, trim: true })
 }

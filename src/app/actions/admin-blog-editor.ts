@@ -6,6 +6,7 @@ import { z } from 'zod'
 import slugify from 'slugify'
 import { createClient } from '@/lib/supabase/server'
 import { inferExtension, isR2Configured, uploadFileToR2 } from '@/lib/r2'
+import { sanitizeBlogHtml } from '@/lib/blog-html'
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
@@ -120,7 +121,7 @@ export async function saveBlogPost(
   const corePayload = {
     title:              draft.title.trim(),
     slug,
-    body:               draft.body ?? '',
+    body:               sanitizeBlogHtml(draft.body ?? ''),
     category:           draft.category?.trim() || null,
     featured_image_url: draft.featured_image_url?.trim() || null,
     published,

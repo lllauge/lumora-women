@@ -5,11 +5,13 @@ import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
 import Underline from '@tiptap/extension-underline'
 import Placeholder from '@tiptap/extension-placeholder'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Bold, Italic, Underline as UnderlineIcon, Strikethrough, Code,
   Heading2, Heading3, List, ListOrdered, Quote, Link2, Undo2, Redo2,
+  FileCode2, Pencil,
 } from 'lucide-react'
+import { countWordsFromHtml, sanitizeBlogHtml } from '@/lib/blog-html'
 
 export default function TiptapEditor({
   value,
@@ -20,6 +22,9 @@ export default function TiptapEditor({
   onChange: (html: string, wordCount: number) => void
   placeholder?: string
 }) {
+  const [mode, setMode] = useState<'visual' | 'html'>('visual')
+  const [htmlDraft, setHtmlDraft] = useState(value || '')
+
   const editor = useEditor({
     // Don't render on the server — ProseMirror needs the DOM
     immediatelyRender: false,
@@ -48,17 +53,17 @@ export default function TiptapEditor({
       const html = editor.getHTML()
       const wordCount = editor.getText().split(/\s+/).filter(Boolean).length
       onChange(html, wordCount)
+      if (mode === 'visual') setHtmlDraft(html)
     },
   })
 
   // If the parent resets the value (e.g. server refresh), sync the editor.
   useEffect(() => {
     if (!editor) return
-    if (editor.getHTML() !== value) {
+    if (mode === 'visual' && editor.getHTML() !== value) {
       editor.commands.setContent(value || '', { emitUpdate: false })
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editor, value])
+  }, [editor, value, mode])
 
   if (!editor) {
     return (
@@ -74,8 +79,29 @@ export default function TiptapEditor({
       </div>
     )
   }
+  const activeEditor = editor
 
-  const wordCount = editor.getText().split(/\s+/).filter(Boolean).length
+  const wordCount = activeEditor.getText().split(/\s+/).filter(Boolean).length
+
+  function switchToHtml() {
+    const currentHtml = activeEditor.getHTML()
+    setHtmlDraft(currentHtml)
+    setMode('html')
+  }
+
+  function switchToVisual() {
+    const clean = sanitizeBlogHtml(htmlDraft)
+    setHtmlDraft(clean)
+    activeEditor.commands.setContent(clean || '', { emitUpdate: false })
+    onChange(clean, countWordsFromHtml(clean))
+    setMode('visual')
+  }
+
+  function handleHtmlChange(raw: string) {
+    setHtmlDraft(raw)
+    const clean = sanitizeBlogHtml(raw)
+    onChange(clean, countWordsFromHtml(clean))
+  }
 
   return (
     <>
@@ -145,6 +171,28 @@ export default function TiptapEditor({
 
         <div className="flex-1" />
 
+        <div
+          className="inline-flex rounded-lg p-0.5"
+          style={{
+            background: 'var(--admin-surface-container)',
+            border: '1px solid var(--admin-outline-variant)',
+          }}
+          aria-label="Editor mode"
+        >
+          <ModeButton active={mode === 'visual'} label="Visual editor" onClick={() => {
+            if (mode !== 'visual') switchToVisual()
+          }}>
+            <Pencil size={14} />
+            Visual
+          </ModeButton>
+          <ModeButton active={mode === 'html'} label="HTML source editor" onClick={() => {
+            if (mode !== 'html') switchToHtml()
+          }}>
+            <FileCode2 size={14} />
+            HTML
+          </ModeButton>
+        </div>
+
         <span
           className="px-3"
           style={{
@@ -153,14 +201,52 @@ export default function TiptapEditor({
             color: 'var(--admin-on-surface-variant)',
           }}
         >
-          Words: {wordCount.toLocaleString()}
+          Words: {(mode === 'html' ? countWordsFromHtml(sanitizeBlogHtml(htmlDraft)) : wordCount).toLocaleString()}
         </span>
       </div>
 
       {/* Content surface */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar">
-        <EditorContent editor={editor} />
-      </div>
+      {mode === 'html' ? (
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div
+            className="px-4 py-3"
+            style={{
+              background: 'rgba(234, 244, 226, 0.55)',
+              borderBottom: '1px solid var(--admin-outline-variant)',
+              fontFamily: 'var(--font-hanken)',
+              fontSize: '0.75rem',
+              color: 'var(--admin-on-surface-variant)',
+              lineHeight: 1.5,
+            }}
+          >
+            Paste or edit safe HTML here. Scripts, unsafe attributes, and unsupported embed sources are removed automatically before saving.
+          </div>
+          <textarea
+            value={htmlDraft}
+            onChange={(e) => handleHtmlChange(e.target.value)}
+            spellCheck={false}
+            aria-label="Blog post HTML"
+            className="flex-1 custom-scrollbar"
+            style={{
+              resize: 'none',
+              width: '100%',
+              border: 'none',
+              borderRadius: 0,
+              padding: '1.25rem',
+              background: '#101b10',
+              color: '#f7f4eb',
+              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+              fontSize: '0.875rem',
+              lineHeight: 1.65,
+              outline: 'none',
+            }}
+          />
+        </div>
+      ) : (
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
+          <EditorContent editor={editor} />
+        </div>
+      )}
 
       {/* Prose styles — scoped to the editor surface */}
       <style jsx global>{`
@@ -287,5 +373,38 @@ function Divider() {
       style={{ background: 'var(--admin-outline-variant)' }}
       aria-hidden
     />
+  )
+}
+
+function ModeButton({
+  active,
+  label,
+  onClick,
+  children,
+}: {
+  active: boolean
+  label: string
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      aria-pressed={active}
+      onClick={onClick}
+      className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 transition-colors"
+      style={{
+        border: 'none',
+        background: active ? 'var(--admin-surface)' : 'transparent',
+        color: active ? 'var(--admin-primary-container)' : 'var(--admin-on-surface-variant)',
+        fontFamily: 'var(--font-hanken)',
+        fontSize: '0.75rem',
+        fontWeight: 700,
+        cursor: 'pointer',
+      }}
+    >
+      {children}
+    </button>
   )
 }

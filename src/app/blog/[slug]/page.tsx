@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import NavbarWrapper from '@/components/layout/NavbarWrapper'
 import FooterWrapper from '@/components/layout/FooterWrapper'
 import { createAdminClient, createClient } from '@/lib/supabase/server'
+import { sanitizeBlogHtml } from '@/lib/blog-html'
 
 type Params = Promise<{ slug: string }>
 type SearchParams = Promise<{ preview?: string }>
@@ -165,7 +166,7 @@ export default async function BlogPostPage({
 
           <div
             className="blog-post-body"
-            dangerouslySetInnerHTML={{ __html: post.body ?? '' }}
+            dangerouslySetInnerHTML={{ __html: sanitizeBlogHtml(post.body ?? '') }}
           />
         </article>
       </main>

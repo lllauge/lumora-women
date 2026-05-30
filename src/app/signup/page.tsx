@@ -65,7 +65,7 @@ export default function SignUpPage() {
     setServerError('')
 
     const supabase = createClient()
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: form.email,
       password: form.password,
       options: {
@@ -86,6 +86,14 @@ export default function SignUpPage() {
       return
     }
 
+    if (!data.user?.id) {
+      setServerError('Your account could not be created. Please try again or contact support.')
+      captchaRef.current?.resetCaptcha()
+      setCaptchaToken(null)
+      setLoading(false)
+      return
+    }
+
     // Redirect to a "check your email" page instead of straight to dashboard
     router.push('/verify-email')
   }
@@ -99,7 +107,7 @@ export default function SignUpPage() {
       subtitle="Join thousands of women on the journey back to themselves."
     >
       <form onSubmit={handleSubmit} className="space-y-5">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <AuthInput label="First Name"  value={form.firstName} onChange={set('firstName')} error={errors.firstName} placeholder="Jane" />
           <AuthInput label="Last Name"   value={form.lastName}  onChange={set('lastName')}  error={errors.lastName}  placeholder="Doe" />
         </div>

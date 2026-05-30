@@ -4,7 +4,6 @@ import { useState, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import HCaptcha from '@hcaptcha/react-hcaptcha'
-import { createClient } from '@/lib/supabase/client'
 import AuthCard from '@/components/layout/AuthCard'
 import AuthInput from '@/components/ui/AuthInput'
 
@@ -64,30 +63,22 @@ export default function SignUpPage() {
     setLoading(true)
     setServerError('')
 
-    const supabase = createClient()
-    const { data, error } = await supabase.auth.signUp({
-      email: form.email,
-      password: form.password,
-      options: {
-        captchaToken: captchaToken ?? undefined,
-        data: {
-          first_name: form.firstName,
-          last_name: form.lastName,
-        },
-        emailRedirectTo: `${window.location.origin}/dashboard`,
-      },
+    const response = await fetch('/api/auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        firstName: form.firstName,
+        lastName: form.lastName,
+        email: form.email,
+        password: form.password,
+        captchaToken,
+      }),
     })
 
-    if (error) {
-      setServerError(error.message)
-      captchaRef.current?.resetCaptcha()
-      setCaptchaToken(null)
-      setLoading(false)
-      return
-    }
+    const result = await response.json().catch(() => ({} as { error?: string }))
 
-    if (!data.user?.id) {
-      setServerError('Your account could not be created. Please try again or contact support.')
+    if (!response.ok) {
+      setServerError(result.error || 'Your account could not be created. Please try again.')
       captchaRef.current?.resetCaptcha()
       setCaptchaToken(null)
       setLoading(false)

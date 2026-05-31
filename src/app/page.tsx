@@ -112,7 +112,7 @@ function Hero() {
             </div>
           </div>
 
-          {/* Right — image placeholder */}
+          {/* Right — hero bloom video */}
           <div className="relative">
             <div
               className="aspect-[4/5] overflow-hidden editorial-shadow transform lg:rotate-2 hover:rotate-0 transition-transform duration-700"
@@ -121,13 +121,25 @@ function Hero() {
                 background: 'linear-gradient(135deg, var(--section-tint) 0%, var(--section-sand) 100%)',
               }}
             >
-              <div className="w-full h-full flex flex-col items-center justify-center gap-4 opacity-50">
-                <div className="w-28 h-28 rounded-full" style={{ background: 'var(--botanical-light)' }} />
-                <div className="w-56 h-3 rounded-full" style={{ background: 'var(--botanical-green)' }} />
-                <div className="w-40 h-3 rounded-full" style={{ background: 'var(--dark-card-bg)' }} />
-                <p className="mt-4 text-xs uppercase tracking-widest" style={{ color: 'var(--dark-card-bg)', fontFamily: 'var(--font-sans)' }}>
-                  Replace with lifestyle photo
-                </p>
+              <div className="hero-bloom-media">
+                <img
+                  src="/media/lumora-bloom-poster.jpg"
+                  alt=""
+                  aria-hidden="true"
+                  className="hero-bloom-poster"
+                />
+                <video
+                  className="hero-bloom-video"
+                  src="/media/lumora-bloom-hero.mp4"
+                  poster="/media/lumora-bloom-poster.jpg"
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  preload="none"
+                  aria-hidden="true"
+                />
+                <div className="hero-bloom-overlay" aria-hidden="true" />
               </div>
             </div>
             <div
@@ -138,6 +150,39 @@ function Hero() {
 
         </div>
       </div>
+      <style>{`
+        .hero-bloom-media {
+          position: relative;
+          width: 100%;
+          height: 100%;
+          background: var(--section-tint);
+        }
+        .hero-bloom-poster,
+        .hero-bloom-video {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+        .hero-bloom-video {
+          z-index: 1;
+        }
+        .hero-bloom-overlay {
+          position: absolute;
+          inset: 0;
+          z-index: 2;
+          pointer-events: none;
+          background:
+            linear-gradient(180deg, rgba(249, 248, 243, 0.08), rgba(232, 217, 197, 0.14)),
+            radial-gradient(circle at 50% 35%, rgba(255, 255, 255, 0.12), transparent 45%);
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .hero-bloom-video {
+            display: none;
+          }
+        }
+      `}</style>
     </section>
   )
 }

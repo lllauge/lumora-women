@@ -4,8 +4,8 @@ import FooterWrapper from '@/components/layout/FooterWrapper'
 import BlogContent from '@/components/blog/BlogContent'
 
 export const metadata: Metadata = {
-  title: 'The Journal | Lumora Women',
-  description: 'Deep dives into holistic health, conscious living, and the art of modern sanctuary.',
+  title: 'Real Talk | Lumora Women',
+  description: 'Honest, science-backed conversations about motherhood, hormones, weight loss, energy, and building strength in who you are now.',
 }
 
 export default function BlogPage() {

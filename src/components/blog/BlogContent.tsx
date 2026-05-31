@@ -142,7 +142,7 @@ export default function BlogContent() {
             display: 'block',
             marginBottom: '1rem',
           }}>
-            Reflections &amp; Rituals
+            Health. Hormones. The Whole Truth.
           </span>
           <h1 style={{
             fontFamily: 'var(--font-display)',
@@ -152,7 +152,7 @@ export default function BlogContent() {
             lineHeight: 1.1,
             marginBottom: '1.25rem',
           }}>
-            The Journal
+            Real Talk
           </h1>
           <p style={{
             fontFamily: 'var(--font-sans)',
@@ -162,8 +162,10 @@ export default function BlogContent() {
             maxWidth: '36rem',
             margin: '0 auto',
           }}>
-            Deep dives into holistic health, conscious living, and the art of modern sanctuary.
-            Curated wisdom for the intentional woman.
+            Motherhood changes your body, brain, hormones, and sense of self.
+            Here, we talk honestly about losing weight, getting your energy back,
+            understanding your body, and building strength in who you are now.
+            Backed by real science. No fluff, no filters.
           </p>
         </div>
       </section>

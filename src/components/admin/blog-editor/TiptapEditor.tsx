@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react'
 import {
   Bold, Italic, Underline as UnderlineIcon, Strikethrough, Code,
   Heading2, Heading3, List, ListOrdered, Quote, Link2, Undo2, Redo2,
-  FileCode2, Pencil,
+  FileCode2, MousePointerClick, Pencil,
 } from 'lucide-react'
 import { countWordsFromHtml, sanitizeBlogHtml } from '@/lib/blog-html'
 
@@ -103,6 +103,32 @@ export default function TiptapEditor({
     onChange(clean, countWordsFromHtml(clean))
   }
 
+  function insertCtaButton() {
+    const selectedText = activeEditor.state.doc.textBetween(
+      activeEditor.state.selection.from,
+      activeEditor.state.selection.to,
+      ' '
+    ).trim()
+    const label = window.prompt('Button text', selectedText || 'Get the free course')
+    if (label === null) return
+
+    const href = window.prompt('Button link', '/free-course/')
+    if (href === null) return
+
+    const cleanLabel = label.trim()
+    const cleanHref = href.trim()
+    if (!cleanLabel || !isSafeCtaHref(cleanHref)) {
+      window.alert('Please enter button text and a safe link. Internal links should start with /, or use https://.')
+      return
+    }
+
+    activeEditor
+      .chain()
+      .focus()
+      .insertContent(`<p><a class="blog-cta-button" href="${escapeAttr(cleanHref)}">${escapeHtml(cleanLabel)}</a></p>`)
+      .run()
+  }
+
   return (
     <>
       {/* Toolbar */}
@@ -158,6 +184,9 @@ export default function TiptapEditor({
           label="Link"
         >
           <Link2 size={16} />
+        </TBtn>
+        <TBtn editor={editor} cmd={insertCtaButton} active={false} label="CTA button">
+          <MousePointerClick size={16} />
         </TBtn>
 
         <Divider />
@@ -374,6 +403,23 @@ function Divider() {
       aria-hidden
     />
   )
+}
+
+function isSafeCtaHref(href: string): boolean {
+  return /^(\/(?!\/)|https:\/\/|http:\/\/|mailto:|tel:)/i.test(href)
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function escapeAttr(value: string): string {
+  return escapeHtml(value)
 }
 
 function ModeButton({

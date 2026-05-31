@@ -13,7 +13,13 @@ const allowedTags = [
 ]
 
 const allowedAttributes: Record<string, sanitizeHtml.AllowedAttribute[]> = {
-  a: ['href', 'name', 'target', 'rel'],
+  a: [
+    'href',
+    'name',
+    'target',
+    'rel',
+    { name: 'class', multiple: true, values: ['blog-cta-button', 'blog-cta-button-secondary'] },
+  ],
   img: ['src', 'alt', 'title', 'width', 'height', 'loading'],
   iframe: ['src', 'title', 'width', 'height', 'allow', 'allowfullscreen', 'frameborder'],
   th: ['colspan', 'rowspan'],

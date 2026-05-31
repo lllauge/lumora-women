@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import Link from 'next/link'
 import NavbarWrapper from '@/components/layout/NavbarWrapper'
 import FooterWrapper from '@/components/layout/FooterWrapper'
 import { createAdminClient, createClient } from '@/lib/supabase/server'
@@ -17,6 +18,11 @@ type BlogPost = {
   featured_image_url: string | null
   published: boolean
   created_at: string
+}
+
+function estimateReadingTime(html: string): number {
+  const words = html.replace(/<[^>]+>/g, ' ').trim().split(/\s+/).length
+  return Math.max(1, Math.round(words / 200))
 }
 
 async function isAdminUser() {
@@ -79,96 +85,91 @@ export default async function BlogPostPage({
 
   if (!post) notFound()
 
+  const readTime = estimateReadingTime(post.body ?? '')
+  const formattedDate = new Date(post.created_at).toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  })
+
   return (
     <>
       <NavbarWrapper />
-      <main id="main-content" style={{ background: 'var(--page-bg)', minHeight: '70vh' }}>
-        <article style={{ maxWidth: '54rem', margin: '0 auto', padding: '5rem 1.25rem' }}>
-          {preview === '1' && !post.published ? (
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                borderRadius: '999px',
-                padding: '0.45rem 0.85rem',
-                marginBottom: '1.5rem',
-                background: 'var(--admin-sage-container, #EAF2E7)',
-                color: 'var(--text-primary)',
-                fontFamily: 'var(--font-hanken)',
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-              }}
-            >
-              Draft Preview
+      <main id="main-content" style={{ background: 'var(--page-bg)', minHeight: '80vh' }}>
+
+        {/* ── Article header ───────────────────────────────────────── */}
+        <header className="blog-article-header">
+          <div className="blog-article-header__inner">
+
+            {/* Back link */}
+            <Link href="/blog" className="blog-back-link" aria-label="Back to all articles">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M10 3L5 8L10 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              All Articles
+            </Link>
+
+            {/* Draft badge */}
+            {preview === '1' && !post.published && (
+              <span className="blog-draft-badge">Draft Preview</span>
+            )}
+
+            {/* Category */}
+            {post.category && (
+              <p className="blog-article-category">{post.category}</p>
+            )}
+
+            {/* Title */}
+            <h1 className="blog-article-title">{post.title}</h1>
+
+            {/* Meta line */}
+            <div className="blog-article-meta">
+              <time dateTime={post.created_at}>{formattedDate}</time>
+              <span className="blog-article-meta__dot" aria-hidden="true" />
+              <span>{readTime} min read</span>
             </div>
-          ) : null}
+          </div>
+        </header>
 
-          {post.category ? (
-            <p
-              style={{
-                margin: '0 0 0.9rem',
-                fontFamily: 'var(--font-hanken)',
-                fontSize: '0.78rem',
-                fontWeight: 700,
-                letterSpacing: '0.14em',
-                color: 'var(--botanical-green)',
-                textTransform: 'uppercase',
-              }}
-            >
-              {post.category}
-            </p>
-          ) : null}
-
-          <h1
-            style={{
-              margin: 0,
-              fontFamily: 'var(--font-eb-garamond)',
-              fontSize: 'clamp(2.65rem, 8vw, 4.75rem)',
-              lineHeight: 0.95,
-              letterSpacing: '-0.02em',
-              color: 'var(--text-primary)',
-            }}
-          >
-            {post.title}
-          </h1>
-
-          <p
-            style={{
-              margin: '1.25rem 0 2rem',
-              fontFamily: 'var(--font-hanken)',
-              color: 'var(--text-secondary)',
-              fontSize: '0.95rem',
-            }}
-          >
-            {new Date(post.created_at).toLocaleDateString('en-US', {
-              month: 'long',
-              day: 'numeric',
-              year: 'numeric',
-            })}
-          </p>
-
-          {post.featured_image_url ? (
+        {/* ── Featured image ────────────────────────────────────────── */}
+        {post.featured_image_url && (
+          <div className="blog-hero-image-wrap">
             <img
               src={post.featured_image_url}
               alt=""
-              style={{
-                width: '100%',
-                aspectRatio: '1200 / 630',
-                objectFit: 'cover',
-                borderRadius: '1.25rem',
-                marginBottom: '2.5rem',
-                border: '1px solid var(--outline-variant)',
-              }}
+              className="blog-hero-image"
             />
-          ) : null}
+          </div>
+        )}
 
+        {/* ── Article body ─────────────────────────────────────────── */}
+        <div className="blog-article-body-wrap">
           <div
-            className="blog-post-body"
+            className="blog-post-body blog-post-body--drop-cap"
             dangerouslySetInnerHTML={{ __html: sanitizeBlogHtml(post.body ?? '') }}
           />
-        </article>
+
+          {/* ── Divider ──────────────────────────────────────────── */}
+          <div className="blog-article-rule" aria-hidden="true">
+            <span />
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <circle cx="9" cy="9" r="3" fill="var(--botanical-green)" opacity="0.5"/>
+            </svg>
+            <span />
+          </div>
+
+          {/* ── End CTA ──────────────────────────────────────────── */}
+          <div className="blog-end-cta">
+            <p className="blog-end-cta__eyebrow">Keep reading</p>
+            <h2 className="blog-end-cta__heading">Enjoyed this article?</h2>
+            <p className="blog-end-cta__body">
+              Get weekly insights on hormones, nutrition, and living well — delivered straight to your inbox.
+            </p>
+            <Link href="/blog" className="blog-end-cta__link">
+              Browse more articles
+            </Link>
+          </div>
+        </div>
       </main>
       <FooterWrapper />
     </>

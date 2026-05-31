@@ -227,8 +227,8 @@ function Hero() {
             inset: 0;
             z-index: 2;
             background:
-              linear-gradient(90deg, rgba(249, 248, 243, 0.84) 0%, rgba(249, 248, 243, 0.56) 50%, rgba(249, 248, 243, 0.72) 100%),
-              linear-gradient(180deg, rgba(249, 248, 243, 0.78) 0%, rgba(249, 248, 243, 0.42) 48%, rgba(249, 248, 243, 0.92) 100%);
+              radial-gradient(ellipse at 28% 42%, rgba(249, 248, 243, 0.9) 0%, rgba(249, 248, 243, 0.76) 36%, rgba(249, 248, 243, 0.28) 68%, rgba(249, 248, 243, 0.12) 100%),
+              linear-gradient(180deg, rgba(249, 248, 243, 0.1) 0%, rgba(249, 248, 243, 0.24) 58%, rgba(249, 248, 243, 0.88) 100%);
           }
           .hero-mobile-bloom-poster,
           .hero-mobile-bloom-video {
@@ -238,7 +238,7 @@ function Hero() {
             height: 100%;
             object-fit: cover;
             object-position: center;
-            opacity: 0.82;
+            opacity: 1;
             transform: scale(1.08);
           }
           .hero-mobile-bloom-poster {
@@ -249,6 +249,7 @@ function Hero() {
           }
           .hero-copy {
             max-width: 38rem;
+            text-shadow: 0 1px 18px rgba(249, 248, 243, 0.9);
           }
           .hero-bloom-wrap {
             display: none;
@@ -270,13 +271,13 @@ function Hero() {
           }
           .hero-mobile-bloom-poster,
           .hero-mobile-bloom-video {
-            opacity: 0.78;
-            object-position: 62% center;
+            opacity: 1;
+            object-position: 58% center;
           }
           .hero-mobile-bloom::after {
             background:
-              linear-gradient(90deg, rgba(249, 248, 243, 0.86) 0%, rgba(249, 248, 243, 0.58) 48%, rgba(249, 248, 243, 0.72) 100%),
-              linear-gradient(180deg, rgba(249, 248, 243, 0.8) 0%, rgba(249, 248, 243, 0.44) 48%, rgba(249, 248, 243, 0.94) 100%);
+              radial-gradient(ellipse at 32% 40%, rgba(249, 248, 243, 0.92) 0%, rgba(249, 248, 243, 0.72) 38%, rgba(249, 248, 243, 0.18) 72%, rgba(249, 248, 243, 0.04) 100%),
+              linear-gradient(180deg, rgba(249, 248, 243, 0.04) 0%, rgba(249, 248, 243, 0.18) 58%, rgba(249, 248, 243, 0.9) 100%);
           }
         }
         @media (prefers-reduced-motion: reduce) {

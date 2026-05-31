@@ -227,8 +227,8 @@ function Hero() {
             inset: 0;
             z-index: 2;
             background:
-              linear-gradient(90deg, rgba(249, 248, 243, 0.92) 0%, rgba(249, 248, 243, 0.78) 48%, rgba(249, 248, 243, 0.9) 100%),
-              linear-gradient(180deg, rgba(249, 248, 243, 0.9) 0%, rgba(249, 248, 243, 0.62) 52%, rgba(249, 248, 243, 0.96) 100%);
+              linear-gradient(90deg, rgba(249, 248, 243, 0.84) 0%, rgba(249, 248, 243, 0.56) 50%, rgba(249, 248, 243, 0.72) 100%),
+              linear-gradient(180deg, rgba(249, 248, 243, 0.78) 0%, rgba(249, 248, 243, 0.42) 48%, rgba(249, 248, 243, 0.92) 100%);
           }
           .hero-mobile-bloom-poster,
           .hero-mobile-bloom-video {
@@ -238,8 +238,8 @@ function Hero() {
             height: 100%;
             object-fit: cover;
             object-position: center;
-            opacity: 0.42;
-            transform: scale(1.04);
+            opacity: 0.82;
+            transform: scale(1.08);
           }
           .hero-mobile-bloom-poster {
             z-index: 0;
@@ -270,13 +270,13 @@ function Hero() {
           }
           .hero-mobile-bloom-poster,
           .hero-mobile-bloom-video {
-            opacity: 0.38;
-            object-position: 58% center;
+            opacity: 0.78;
+            object-position: 62% center;
           }
           .hero-mobile-bloom::after {
             background:
-              linear-gradient(90deg, rgba(249, 248, 243, 0.94) 0%, rgba(249, 248, 243, 0.78) 48%, rgba(249, 248, 243, 0.9) 100%),
-              linear-gradient(180deg, rgba(249, 248, 243, 0.92) 0%, rgba(249, 248, 243, 0.68) 52%, rgba(249, 248, 243, 0.98) 100%);
+              linear-gradient(90deg, rgba(249, 248, 243, 0.86) 0%, rgba(249, 248, 243, 0.58) 48%, rgba(249, 248, 243, 0.72) 100%),
+              linear-gradient(180deg, rgba(249, 248, 243, 0.8) 0%, rgba(249, 248, 243, 0.44) 48%, rgba(249, 248, 243, 0.94) 100%);
           }
         }
         @media (prefers-reduced-motion: reduce) {

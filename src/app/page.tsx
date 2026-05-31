@@ -113,9 +113,9 @@ function Hero() {
           </div>
 
           {/* Right — hero bloom video */}
-          <div className="relative">
+          <div className="hero-bloom-wrap relative">
             <div
-              className="aspect-[4/5] overflow-hidden editorial-shadow transform lg:rotate-2 hover:rotate-0 transition-transform duration-700"
+              className="hero-bloom-frame aspect-[4/5] overflow-hidden editorial-shadow transform lg:rotate-2 hover:rotate-0 transition-transform duration-700"
               style={{
                 borderRadius: '120px',
                 background: 'linear-gradient(135deg, var(--section-tint) 0%, var(--section-sand) 100%)',
@@ -134,10 +134,12 @@ function Hero() {
                   poster="/media/lumora-bloom-poster.jpg"
                   autoPlay
                   muted
+                  controls={false}
                   loop
                   playsInline
-                  preload="none"
+                  preload="metadata"
                   aria-hidden="true"
+                  tabIndex={-1}
                 />
                 <div className="hero-bloom-overlay" aria-hidden="true" />
               </div>
@@ -176,6 +178,33 @@ function Hero() {
           background:
             linear-gradient(180deg, rgba(249, 248, 243, 0.08), rgba(232, 217, 197, 0.14)),
             radial-gradient(circle at 50% 35%, rgba(255, 255, 255, 0.12), transparent 45%);
+        }
+        @media (max-width: 1023px) {
+          .hero-bloom-wrap {
+            max-width: min(22rem, 82vw);
+            margin: 0 auto;
+          }
+          .hero-bloom-frame {
+            aspect-ratio: 3 / 4;
+            border-radius: 92px !important;
+            transform: none !important;
+          }
+          .hero-bloom-video::-webkit-media-controls,
+          .hero-bloom-video::-webkit-media-controls-panel,
+          .hero-bloom-video::-webkit-media-controls-start-playback-button {
+            display: none !important;
+            -webkit-appearance: none;
+          }
+        }
+        @media (max-width: 640px) {
+          .hero-bloom-wrap {
+            max-width: min(18rem, 76vw);
+            margin-top: -0.5rem;
+          }
+          .hero-bloom-frame {
+            aspect-ratio: 1 / 1.18;
+            border-radius: 72px !important;
+          }
         }
         @media (prefers-reduced-motion: reduce) {
           .hero-bloom-video {

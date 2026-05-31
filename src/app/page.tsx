@@ -40,14 +40,33 @@ async function getRecentPosts() {
 function Hero() {
   return (
     <section
-      className="overflow-hidden"
+      className="hero-section overflow-hidden"
       style={{ background: 'var(--page-bg)' }}
     >
+      <div className="hero-mobile-bloom" aria-hidden="true">
+        <img
+          src="/media/lumora-bloom-poster.jpg"
+          alt=""
+          className="hero-mobile-bloom-poster"
+        />
+        <video
+          className="hero-mobile-bloom-video"
+          src="/media/lumora-bloom-hero.mp4"
+          poster="/media/lumora-bloom-poster.jpg"
+          autoPlay
+          muted
+          controls={false}
+          loop
+          playsInline
+          preload="auto"
+          tabIndex={-1}
+        />
+      </div>
       <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-16 py-16 lg:py-28">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
 
           {/* Left — text */}
-          <div className="space-y-6">
+          <div className="hero-copy space-y-6">
             <span
               className="inline-block text-xs uppercase mb-2 px-4 py-1.5 rounded-full"
               style={{
@@ -153,6 +172,16 @@ function Hero() {
         </div>
       </div>
       <style>{`
+        .hero-section {
+          position: relative;
+        }
+        .hero-section > .max-w-7xl {
+          position: relative;
+          z-index: 2;
+        }
+        .hero-mobile-bloom {
+          display: none;
+        }
         .hero-bloom-media {
           position: relative;
           width: 100%;
@@ -180,15 +209,53 @@ function Hero() {
             radial-gradient(circle at 50% 35%, rgba(255, 255, 255, 0.12), transparent 45%);
         }
         @media (max-width: 1023px) {
+          .hero-section {
+            min-height: auto;
+            background: var(--page-bg);
+          }
+          .hero-mobile-bloom {
+            display: block;
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            overflow: hidden;
+            pointer-events: none;
+          }
+          .hero-mobile-bloom::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            z-index: 2;
+            background:
+              linear-gradient(90deg, rgba(249, 248, 243, 0.92) 0%, rgba(249, 248, 243, 0.78) 48%, rgba(249, 248, 243, 0.9) 100%),
+              linear-gradient(180deg, rgba(249, 248, 243, 0.9) 0%, rgba(249, 248, 243, 0.62) 52%, rgba(249, 248, 243, 0.96) 100%);
+          }
+          .hero-mobile-bloom-poster,
+          .hero-mobile-bloom-video {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+            opacity: 0.42;
+            transform: scale(1.04);
+          }
+          .hero-mobile-bloom-poster {
+            z-index: 0;
+          }
+          .hero-mobile-bloom-video {
+            z-index: 1;
+          }
+          .hero-copy {
+            max-width: 38rem;
+          }
           .hero-bloom-wrap {
-            max-width: min(22rem, 82vw);
-            margin: 0 auto;
+            display: none;
           }
-          .hero-bloom-frame {
-            aspect-ratio: 3 / 4;
-            border-radius: 92px !important;
-            transform: none !important;
-          }
+          .hero-mobile-bloom-video::-webkit-media-controls,
+          .hero-mobile-bloom-video::-webkit-media-controls-panel,
+          .hero-mobile-bloom-video::-webkit-media-controls-start-playback-button,
           .hero-bloom-video::-webkit-media-controls,
           .hero-bloom-video::-webkit-media-controls-panel,
           .hero-bloom-video::-webkit-media-controls-start-playback-button {
@@ -197,16 +264,23 @@ function Hero() {
           }
         }
         @media (max-width: 640px) {
-          .hero-bloom-wrap {
-            max-width: min(18rem, 76vw);
-            margin-top: -0.5rem;
+          .hero-section > .max-w-7xl {
+            padding-top: 4.25rem;
+            padding-bottom: 4.5rem;
           }
-          .hero-bloom-frame {
-            aspect-ratio: 1 / 1.18;
-            border-radius: 72px !important;
+          .hero-mobile-bloom-poster,
+          .hero-mobile-bloom-video {
+            opacity: 0.38;
+            object-position: 58% center;
+          }
+          .hero-mobile-bloom::after {
+            background:
+              linear-gradient(90deg, rgba(249, 248, 243, 0.94) 0%, rgba(249, 248, 243, 0.78) 48%, rgba(249, 248, 243, 0.9) 100%),
+              linear-gradient(180deg, rgba(249, 248, 243, 0.92) 0%, rgba(249, 248, 243, 0.68) 52%, rgba(249, 248, 243, 0.98) 100%);
           }
         }
         @media (prefers-reduced-motion: reduce) {
+          .hero-mobile-bloom-video,
           .hero-bloom-video {
             display: none;
           }

@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { logAdminAction } from '@/lib/audit-log'
+import { getVerifiedAdminUser } from '@/lib/admin-guard'
 
 function getAdminClient() {
   return createServiceClient(
@@ -13,18 +14,8 @@ function getAdminClient() {
   )
 }
 
-async function assertAdmin() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthorized.')
-  const { data: profile } = await supabase
-    .from('users').select('role').eq('id', user.id).maybeSingle()
-  if (profile?.role !== 'admin') throw new Error('Unauthorized.')
-  return user
-}
-
 export async function deleteSubscriber(formData: FormData) {
-  const user = await assertAdmin()
+  const { user } = await getVerifiedAdminUser()
   const id = (formData.get('id') ?? '').toString().trim()
   if (!id) return { ok: false, error: 'Missing subscriber id.' }
 
@@ -68,7 +59,7 @@ export async function exportEmailListCSV({
   // ── Step 1: Assert admin session ──────────────────────────────────────────
   let user: { id: string; email?: string | undefined }
   try {
-    user = await assertAdmin()
+    ;({ user } = await getVerifiedAdminUser())
   } catch {
     return { ok: false, error: 'Unauthorized.' }
   }

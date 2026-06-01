@@ -1,10 +1,10 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
 import AdminShellClient from '@/components/admin/AdminShellClient'
+import { getVerifiedAdminUser } from '@/lib/admin-guard'
 
 /**
  * Defense-in-depth: proxy.ts already blocks non-admins at the edge,
- * but we still verify role here so server components can rely on it.
+ * but we still verify the signed admin session here so server components can rely on it.
  * If proxy ever short-circuits (e.g. during local dev without Supabase),
  * this redirect closes the gap.
  */
@@ -21,20 +21,19 @@ export default async function AdminAppLayout({
   let adminEmail = 'admin@lumorawomen.com'
 
   if (supabaseConfigured) {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-
-    if (!user) redirect('/admin/login')
-
-    const { data: profile } = await supabase
-      .from('users')
-      .select('email, first_name, last_name, role')
-      .eq('id', user.id)
-      .maybeSingle()
-
-    if (profile?.role !== 'admin') {
+    let session: Awaited<ReturnType<typeof getVerifiedAdminUser>>
+    try {
+      session = await getVerifiedAdminUser()
+    } catch {
       redirect('/admin/login?error=unauthorized')
     }
+
+    const { user, supabase } = session
+    const { data: profile } = await supabase
+      .from('users')
+      .select('email, first_name, last_name')
+      .eq('id', user.id)
+      .maybeSingle()
 
     adminEmail = profile?.email ?? user.email ?? adminEmail
     const fullName = [profile?.first_name, profile?.last_name]

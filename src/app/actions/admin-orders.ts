@@ -2,17 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { rangeBounds } from '@/lib/orders-range'
-
-// ─── Admin guard ──────────────────────────────────────────────────────────────
-
-async function assertAdmin() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthorized.')
-  const { data: profile } = await supabase
-    .from('users').select('role').eq('id', user.id).maybeSingle()
-  if (profile?.role !== 'admin') throw new Error('Unauthorized.')
-}
+import { getVerifiedAdminUser } from '@/lib/admin-guard'
 
 // ─── Order detail (drawer) ────────────────────────────────────────────────────
 
@@ -42,7 +32,7 @@ type OrderDetailResult =
   | { ok: false; error: string }
 
 export async function getOrderDetail(orderId: string): Promise<OrderDetailResult> {
-  try { await assertAdmin() } catch { return { ok: false, error: 'Unauthorized.' } }
+  try { await getVerifiedAdminUser() } catch { return { ok: false, error: 'Unauthorized.' } }
 
   if (!orderId) return { ok: false, error: 'Missing order id.' }
 
@@ -110,7 +100,7 @@ export type OrdersExportResult =
 export async function exportOrdersCSV(
   args: { q?: string; range?: string } = {}
 ): Promise<OrdersExportResult> {
-  try { await assertAdmin() } catch { return { ok: false, error: 'Unauthorized.' } }
+  try { await getVerifiedAdminUser() } catch { return { ok: false, error: 'Unauthorized.' } }
 
   const supabase = await createClient()
   const { from } = rangeBounds(args.range ?? '30d')

@@ -7,6 +7,11 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { verifyTotp } from '@/lib/totp'
 import { logAdminAction } from '@/lib/audit-log'
 import { checkRateLimit } from '@/lib/rate-limit'
+import {
+  adminSessionCookies,
+  createSignedAdminCookie,
+  verifySignedAdminCookie,
+} from '@/lib/admin-session'
 
 export type AdminAuthResult = { error?: string }
 
@@ -92,25 +97,31 @@ export async function signInAdmin(formData: FormData): Promise<AdminAuthResult> 
   })
 
   if (profile?.totp_secret) {
+    const pendingCookie = await createSignedAdminCookie('totp-pending', signInData.user.id, 5 * 60)
     // TOTP configured — require second factor
-    cookieStore.set('totp_pending', '1', {
+    cookieStore.set(adminSessionCookies.pending, pendingCookie, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 5 * 60, // 5 minute window to enter TOTP
       path: '/',
     })
+    cookieStore.delete(adminSessionCookies.legacyPending)
+    cookieStore.delete(adminSessionCookies.legacyMfa)
     redirect('/admin/verify-totp')
   }
 
   // No TOTP configured — grant direct access (setup mode)
-  cookieStore.set('totp_verified', '1', {
+  const mfaCookie = await createSignedAdminCookie('mfa', signInData.user.id, 8 * 60 * 60)
+  cookieStore.set(adminSessionCookies.mfa, mfaCookie, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     maxAge: 8 * 60 * 60,
     path: '/',
   })
+  cookieStore.delete(adminSessionCookies.legacyPending)
+  cookieStore.delete(adminSessionCookies.legacyMfa)
 
   await logAdminAction({
     adminUserId: signInData.user.id,
@@ -131,16 +142,19 @@ export async function verifyAdminTotp(formData: FormData): Promise<AdminAuthResu
   }
 
   const cookieStore = await cookies()
-  const pending = cookieStore.get('totp_pending')?.value
-  if (pending !== '1') {
-    return { error: 'No pending TOTP session. Please log in first.' }
-  }
-
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
     return { error: 'Session expired. Please log in again.' }
+  }
+
+  const pending = cookieStore.get(adminSessionCookies.pending)?.value
+  const pendingIsValid = await verifySignedAdminCookie(pending, 'totp-pending', user.id)
+  if (!pendingIsValid) {
+    cookieStore.delete(adminSessionCookies.pending)
+    cookieStore.delete(adminSessionCookies.legacyPending)
+    return { error: 'No pending TOTP session. Please log in first.' }
   }
 
   // Get TOTP secret via service role (not exposed to client via RLS)
@@ -185,8 +199,10 @@ export async function verifyAdminTotp(formData: FormData): Promise<AdminAuthResu
   }
 
   // TOTP verified — grant full admin access
-  cookieStore.delete('totp_pending')
-  cookieStore.set('totp_verified', '1', {
+  const mfaCookie = await createSignedAdminCookie('mfa', user.id, 8 * 60 * 60)
+  cookieStore.delete(adminSessionCookies.pending)
+  cookieStore.delete(adminSessionCookies.legacyPending)
+  cookieStore.set(adminSessionCookies.mfa, mfaCookie, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
@@ -207,9 +223,11 @@ export async function signOutAdmin(): Promise<void> {
   }
   await supabase.auth.signOut()
   const cookieStore = await cookies()
-  cookieStore.delete('admin_login_at')
-  cookieStore.delete('totp_pending')
-  cookieStore.delete('totp_verified')
+  cookieStore.delete(adminSessionCookies.loginAt)
+  cookieStore.delete(adminSessionCookies.pending)
+  cookieStore.delete(adminSessionCookies.mfa)
+  cookieStore.delete(adminSessionCookies.legacyPending)
+  cookieStore.delete(adminSessionCookies.legacyMfa)
   redirect('/admin/login')
 }
 

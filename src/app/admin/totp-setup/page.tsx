@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
 import TotpSetupClient from '@/components/admin/TotpSetupClient'
 import { generateTotpSecret, generateQrCode } from '@/lib/totp'
+import { getVerifiedAdminUser } from '@/lib/admin-guard'
 
 export const metadata: Metadata = {
   title: 'Set Up Two-Factor Authentication',
@@ -10,17 +10,12 @@ export const metadata: Metadata = {
 }
 
 export default async function TotpSetupPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/admin/login')
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  if (profile?.role !== 'admin') redirect('/admin/login?error=unauthorized')
+  let session: Awaited<ReturnType<typeof getVerifiedAdminUser>>
+  try {
+    session = await getVerifiedAdminUser()
+  } catch {
+    redirect('/admin/login?error=unauthorized')
+  }
 
   // Generate new TOTP secret for this admin
   const { base32, otpauthUrl } = generateTotpSecret()
@@ -30,7 +25,7 @@ export default async function TotpSetupPage() {
     <TotpSetupClient
       secret={base32}
       qrCodeDataUrl={qrCodeDataUrl}
-      userId={user.id}
+      userId={session.user.id}
     />
   )
 }

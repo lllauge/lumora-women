@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import slugify from 'slugify'
 import { createClient } from '@/lib/supabase/server'
+import { getVerifiedAdminUser } from '@/lib/admin-guard'
 import { inferExtension, isR2Configured, uploadFileToR2 } from '@/lib/r2'
 import { sanitizeBlogHtml } from '@/lib/blog-html'
 
@@ -44,7 +45,7 @@ type SaveResult =
 
 export async function generateUniqueSlug(title: string, ignoreId?: string): Promise<string> {
   const base = slugify(title || 'untitled', { lower: true, strict: true, trim: true }) || 'untitled'
-  const supabase = await createClient()
+  const { supabase } = await getVerifiedAdminUser()
 
   let candidate = base
   let attempt = 1
@@ -76,7 +77,12 @@ export async function saveBlogPost(
     }
   }
   const draft = parsed.data
-  const supabase = await createClient()
+  let supabase: Awaited<ReturnType<typeof createClient>>
+  try {
+    ;({ supabase } = await getVerifiedAdminUser())
+  } catch {
+    return { ok: false, error: 'Unauthorized.' }
+  }
 
   // Resolve slug uniqueness server-side (in case the user didn't override)
   let slug = draft.slug.trim()
@@ -192,6 +198,12 @@ export type UploadBlogAssetResult =
   | { ok: false; error: string; r2Configured: boolean }
 
 export async function uploadBlogAsset(formData: FormData): Promise<UploadBlogAssetResult> {
+  try {
+    await getVerifiedAdminUser()
+  } catch {
+    return { ok: false, error: 'Unauthorized.', r2Configured: isR2Configured() }
+  }
+
   const file   = formData.get('file')
   const kind   = (formData.get('kind') ?? '').toString()
   const postId = (formData.get('postId') ?? '').toString() || 'unfiled'
@@ -229,7 +241,12 @@ export async function uploadBlogAsset(formData: FormData): Promise<UploadBlogAss
 export async function deleteBlogPostFromEditor(formData: FormData) {
   const id = (formData.get('id') ?? '').toString().trim()
   if (!id) return { ok: false, error: 'Missing post id.' }
-  const supabase = await createClient()
+  let supabase: Awaited<ReturnType<typeof createClient>>
+  try {
+    ;({ supabase } = await getVerifiedAdminUser())
+  } catch {
+    return { ok: false, error: 'Unauthorized.' }
+  }
   const { error } = await supabase.from('blog_posts').delete().eq('id', id)
   if (error) return { ok: false, error: error.message }
   revalidatePath('/admin/blog')

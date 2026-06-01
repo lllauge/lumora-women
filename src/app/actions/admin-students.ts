@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { getVerifiedAdminUser } from '@/lib/admin-guard'
 
 export type CourseProgress = {
   course_id: string
@@ -49,7 +50,12 @@ export async function getStudentDetail(userId: string): Promise<StudentDetailRes
     return { ok: false, error: 'Missing user id.' }
   }
 
-  const supabase = await createClient()
+  let supabase: Awaited<ReturnType<typeof createClient>>
+  try {
+    ;({ supabase } = await getVerifiedAdminUser())
+  } catch {
+    return { ok: false, error: 'Unauthorized.' }
+  }
 
   const [
     userQ,

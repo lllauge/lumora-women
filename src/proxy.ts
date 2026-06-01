@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { adminSessionCookies, verifySignedAdminCookie } from '@/lib/admin-session'
 
 const ADMIN_LOGIN_PATH = '/admin/login'
 const ADMIN_VERIFY_TOTP_PATH = '/admin/verify-totp'
@@ -125,19 +126,30 @@ export async function proxy(request: NextRequest) {
         url.pathname = ADMIN_LOGIN_PATH
         url.searchParams.set('error', 'session_expired')
         const redirect = NextResponse.redirect(url)
-        redirect.cookies.delete('admin_login_at')
-        redirect.cookies.delete('totp_verified')
+        redirect.cookies.delete(adminSessionCookies.loginAt)
+        redirect.cookies.delete(adminSessionCookies.pending)
+        redirect.cookies.delete(adminSessionCookies.mfa)
+        redirect.cookies.delete(adminSessionCookies.legacyPending)
+        redirect.cookies.delete(adminSessionCookies.legacyMfa)
         return redirect
       }
     }
 
     // ── TOTP gate ─────────────────────────────────────────────────────────
     // After password login, admin must complete TOTP before accessing dashboard.
-    const totpVerified = request.cookies.get('totp_verified')?.value === '1'
-    const totpPending = request.cookies.get('totp_pending')?.value === '1'
+    const totpVerified = await verifySignedAdminCookie(
+      request.cookies.get(adminSessionCookies.mfa)?.value,
+      'mfa',
+      user.id
+    )
+    const totpPending = await verifySignedAdminCookie(
+      request.cookies.get(adminSessionCookies.pending)?.value,
+      'totp-pending',
+      user.id
+    )
 
     if (!isTotpPage && !isLoginPage) {
-      if (totpPending && !totpVerified) {
+      if (!totpVerified) {
         // Password verified but TOTP not yet done
         const url = request.nextUrl.clone()
         url.pathname = ADMIN_VERIFY_TOTP_PATH
@@ -150,6 +162,13 @@ export async function proxy(request: NextRequest) {
       const url = request.nextUrl.clone()
       url.pathname = '/admin'
       url.search = ''
+      return NextResponse.redirect(url)
+    }
+
+    if (isTotpPage && !totpPending && !totpVerified) {
+      const url = request.nextUrl.clone()
+      url.pathname = ADMIN_LOGIN_PATH
+      url.searchParams.set('error', 'totp_expired')
       return NextResponse.redirect(url)
     }
   }

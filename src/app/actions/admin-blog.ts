@@ -1,26 +1,16 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { createClient } from '@/lib/supabase/server'
 import { logAdminAction } from '@/lib/audit-log'
+import { getVerifiedAdminUser } from '@/lib/admin-guard'
 
 type ActionResult = { ok?: boolean; error?: string }
-
-async function getAdminUser() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthorized.')
-  const { data: profile } = await supabase
-    .from('users').select('role').eq('id', user.id).maybeSingle()
-  if (profile?.role !== 'admin') throw new Error('Unauthorized.')
-  return { user, supabase }
-}
 
 export async function deleteBlogPost(formData: FormData): Promise<ActionResult> {
   const id = (formData.get('id') ?? '').toString().trim()
   if (!id) return { error: 'Missing post id.' }
 
-  const { user, supabase } = await getAdminUser()
+  const { user, supabase } = await getVerifiedAdminUser()
 
   const { data: old } = await supabase.from('blog_posts').select('title, slug').eq('id', id).maybeSingle()
 

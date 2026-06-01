@@ -2,7 +2,7 @@
 
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { verifyTotp } from '@/lib/totp'
-import { createClient } from '@/lib/supabase/server'
+import { getVerifiedAdminUser } from '@/lib/admin-guard'
 import { logAdminAction } from '@/lib/audit-log'
 
 function getAdminClient() {
@@ -25,23 +25,18 @@ export async function saveTotpSecret(formData: FormData): Promise<TotpResult> {
     return { error: 'Missing required fields.' }
   }
 
-  // Verify current user session + admin role
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  let user: { id: string }
+  try {
+    ;({ user } = await getVerifiedAdminUser())
+  } catch {
+    return { error: 'Unauthorized.' }
+  }
+
   if (!user || user.id !== userId) {
     return { error: 'Unauthorized.' }
   }
 
   const adminClient = getAdminClient()
-  const { data: profile } = await adminClient
-    .from('users')
-    .select('role')
-    .eq('id', userId)
-    .maybeSingle()
-
-  if (profile?.role !== 'admin') {
-    return { error: 'Unauthorized.' }
-  }
 
   // Verify the token against the generated secret before saving
   const isValid = verifyTotp(token, secret)
@@ -71,15 +66,14 @@ export async function saveTotpSecret(formData: FormData): Promise<TotpResult> {
 
 /** Remove TOTP from admin account (disables 2FA). */
 export async function disableTotp(): Promise<TotpResult> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Unauthorized.' }
+  let user: { id: string }
+  try {
+    ;({ user } = await getVerifiedAdminUser())
+  } catch {
+    return { error: 'Unauthorized.' }
+  }
 
   const adminClient = getAdminClient()
-  const { data: profile } = await adminClient
-    .from('users').select('role').eq('id', user.id).maybeSingle()
-
-  if (profile?.role !== 'admin') return { error: 'Unauthorized.' }
 
   const { error } = await adminClient
     .from('users')

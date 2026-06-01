@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { inferExtension, isR2Configured, uploadFileToR2 } from '@/lib/r2'
 import { getStreamDirectUploadUrl, isStreamConfigured, type StreamDirectUploadResult } from '@/lib/cloudflare-stream'
+import { getVerifiedAdminUser } from '@/lib/admin-guard'
 
 export { isStreamConfigured }
 
@@ -14,6 +15,7 @@ export { isStreamConfigured }
  * The browser uploads directly to Cloudflare — no server proxy.
  */
 export async function getStreamUploadUrl(): Promise<StreamDirectUploadResult> {
+  try { await getVerifiedAdminUser() } catch { return { ok: false, error: 'Unauthorized.' } }
   return getStreamDirectUploadUrl()
 }
 
@@ -90,7 +92,7 @@ export async function saveCourse(
     }
   }
   const draft = parsed.data
-  const supabase = await createClient()
+  const { supabase } = await getVerifiedAdminUser()
 
   // ── 1. Course row ────────────────────────────────────────────────────────
   const coursePayload = {
@@ -241,6 +243,10 @@ export type UploadAssetResult =
  * `kind`: 'thumbnail' | 'download' just controls the key prefix.
  */
 export async function uploadCourseAsset(formData: FormData): Promise<UploadAssetResult> {
+  try { await getVerifiedAdminUser() } catch {
+    return { ok: false, error: 'Unauthorized.', r2Configured: isR2Configured() }
+  }
+
   const file     = formData.get('file')
   const kind     = (formData.get('kind') ?? '').toString()
   const courseId = (formData.get('courseId') ?? '').toString() || 'unfiled'

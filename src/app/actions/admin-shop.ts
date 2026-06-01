@@ -5,17 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { inferExtension, isR2Configured, uploadFileToR2 } from '@/lib/r2'
-
-// ─── Admin guard ──────────────────────────────────────────────────────────────
-
-async function assertAdmin() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthorized.')
-  const { data: profile } = await supabase
-    .from('users').select('role').eq('id', user.id).maybeSingle()
-  if (profile?.role !== 'admin') throw new Error('Unauthorized.')
-}
+import { getVerifiedAdminUser } from '@/lib/admin-guard'
 
 // ─── Save product ─────────────────────────────────────────────────────────────
 
@@ -40,7 +30,7 @@ export async function saveProduct(
   rawDraft: unknown,
   options: { publish: boolean }
 ): Promise<SaveResult> {
-  try { await assertAdmin() } catch { return { ok: false, error: 'Unauthorized.' } }
+  try { await getVerifiedAdminUser() } catch { return { ok: false, error: 'Unauthorized.' } }
 
   const parsed = productSchema.safeParse(rawDraft)
   if (!parsed.success) {
@@ -88,7 +78,7 @@ export async function saveProduct(
 // ─── Archive ──────────────────────────────────────────────────────────────────
 
 export async function archiveProduct(formData: FormData) {
-  try { await assertAdmin() } catch { return { ok: false, error: 'Unauthorized.' } }
+  try { await getVerifiedAdminUser() } catch { return { ok: false, error: 'Unauthorized.' } }
 
   const id = (formData.get('id') ?? '').toString().trim()
   if (!id) return { ok: false, error: 'Missing product id.' }
@@ -109,7 +99,7 @@ export type UploadProductImageResult =
   | { ok: false; error: string; r2Configured: boolean }
 
 export async function uploadProductImage(formData: FormData): Promise<UploadProductImageResult> {
-  try { await assertAdmin() } catch {
+  try { await getVerifiedAdminUser() } catch {
     return { ok: false, error: 'Unauthorized.', r2Configured: isR2Configured() }
   }
 

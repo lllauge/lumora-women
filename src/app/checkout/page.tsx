@@ -5,12 +5,13 @@ import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Lock, CheckCircle } from 'lucide-react'
+import { formatCurrency } from '@/utils/format'
 
 type Course = {
   id: string
   title: string
   subtitle: string | null
-  price: number
+  price: number | string
   thumbnail_url: string | null
 }
 
@@ -115,7 +116,7 @@ function CheckoutContent() {
     )
   }
 
-  const price = course ? `$${(course.price / 100).toFixed(2)}` : '—'
+  const price = course ? formatCurrency(course.price, { precise: true }) : '—'
 
   return (
     <div className="checkout-grid" style={{ maxWidth: '56rem', margin: '0 auto', padding: '3rem 1.5rem' }}>

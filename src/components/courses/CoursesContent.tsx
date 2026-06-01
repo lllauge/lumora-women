@@ -3,12 +3,13 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { formatCurrency } from '@/utils/format'
 
 type Course = {
   id: string
   title: string
   subtitle: string | null
-  price: number
+  price: number | string
   is_free: boolean
   thumbnail_url: string | null
 }
@@ -159,7 +160,7 @@ export default function CoursesContent() {
 
 function CourseCard({ course }: { course: Course }) {
   const href = course.is_free ? `/free-course/${course.id}` : `/courses/${course.id}`
-  const priceLabel = course.is_free ? 'Free' : `$${(course.price / 100).toFixed(0)}`
+  const priceLabel = course.is_free ? 'Free' : formatCurrency(course.price, { precise: true })
 
   return (
     <Link href={href} style={{ display: 'block', textDecoration: 'none' }}>

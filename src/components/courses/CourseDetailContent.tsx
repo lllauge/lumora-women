@@ -4,6 +4,7 @@ import { useState, useEffect, use } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { CheckCircle, ChevronDown, ChevronUp, Play, Lock } from 'lucide-react'
+import { formatCurrency } from '@/utils/format'
 
 type Lesson = {
   id: string
@@ -23,7 +24,7 @@ type Course = {
   title: string
   subtitle: string | null
   description: string | null
-  price: number
+  price: number | string
   is_free: boolean
   thumbnail_url: string | null
 }
@@ -317,7 +318,7 @@ export default function CourseDetailContent({ courseId }: { courseId: string }) 
                     backgroundClip: 'text',
                   }}
                 >
-                  {course?.is_free ? 'Free' : `$${course ? (course.price / 100).toFixed(0) : '—'}`}
+                  {course?.is_free ? 'Free' : formatCurrency(course?.price, { precise: true })}
                 </span>
               </div>
 

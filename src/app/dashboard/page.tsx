@@ -240,7 +240,7 @@ function NavItem({
 function CourseProgressCard({ item }: { item: EnrolledCourse }) {
   const course = item.courses
   const pct = item.totalLessons > 0 ? Math.round((item.completedCount / item.totalLessons) * 100) : 0
-  const href = item.firstLessonId ? `/lesson/${item.firstLessonId}` : `/courses/${course.id}`
+  const href = item.firstLessonId ? `/lesson/${item.firstLessonId}` : `/lesson/course/${course.id}`
   const hasLessons = item.totalLessons > 0
 
   return (

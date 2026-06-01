@@ -337,32 +337,13 @@ export default function CourseDetailContent({ courseId }: { courseId: string }) 
               </div>
 
               {enrolled ? (
-                firstLesson ? (
-                  <Link
-                    href={`/lesson/${firstLesson.id}`}
-                    className="btn-primary"
-                    style={{ display: 'block', textAlign: 'center', borderRadius: '0.5rem', padding: '0.9rem', marginBottom: '0.75rem' }}
-                  >
-                    Continue Learning →
-                  </Link>
-                ) : (
-                  <div
-                    role="status"
-                    style={{
-                      display: 'block',
-                      textAlign: 'center',
-                      borderRadius: '0.5rem',
-                      padding: '0.9rem',
-                      marginBottom: '0.75rem',
-                      background: 'var(--section-tint)',
-                      color: 'var(--text-secondary)',
-                      fontFamily: 'var(--font-sans)',
-                      fontWeight: 700,
-                    }}
-                  >
-                    Lessons not available yet
-                  </div>
-                )
+                <Link
+                  href={firstLesson ? `/lesson/${firstLesson.id}` : `/lesson/course/${courseId}`}
+                  className="btn-primary"
+                  style={{ display: 'block', textAlign: 'center', borderRadius: '0.5rem', padding: '0.9rem', marginBottom: '0.75rem' }}
+                >
+                  Continue Learning →
+                </Link>
               ) : course?.is_free ? (
                 <Link
                   href={`/free-course/${courseId}`}

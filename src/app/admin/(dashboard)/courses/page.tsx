@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { formatCurrency, formatNumber, formatShortDate } from '@/utils/format'
 import CourseFilters from '@/components/admin/CourseFilters'
 import ArchiveCourseButton from '@/components/admin/ArchiveCourseButton'
+import DeleteCourseButton from '@/components/admin/DeleteCourseButton'
 
 export const metadata: Metadata = {
   title: 'Course Manager',
@@ -493,6 +494,11 @@ export default async function AdminCoursesPage({ searchParams }: { searchParams:
                             <Pencil size={18} />
                           </Link>
                           <ArchiveCourseButton courseId={course.id} courseTitle={course.title} />
+                          <DeleteCourseButton
+                            courseId={course.id}
+                            courseTitle={course.title}
+                            enrollmentCount={enrolled}
+                          />
                         </div>
                       </td>
                     </tr>

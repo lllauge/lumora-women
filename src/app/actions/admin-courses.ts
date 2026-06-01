@@ -67,3 +67,37 @@ export async function publishCourse(formData: FormData): Promise<ActionResult> {
   revalidatePath('/admin')
   return { ok: true }
 }
+
+export async function deleteCourse(formData: FormData): Promise<ActionResult> {
+  const id = (formData.get('id') ?? '').toString().trim()
+  if (!id) return { error: 'Missing course id.' }
+
+  const { user, supabase } = await getAdminUser()
+
+  const { data: old } = await supabase
+    .from('courses')
+    .select('title, price, is_free, published')
+    .eq('id', id)
+    .maybeSingle()
+
+  const { error } = await supabase
+    .from('courses')
+    .delete()
+    .eq('id', id)
+
+  if (error) return { error: error.message }
+
+  await logAdminAction({
+    adminUserId: user.id,
+    action: 'delete',
+    tableName: 'courses',
+    recordId: id,
+    oldValues: old ?? undefined,
+  })
+
+  revalidatePath('/admin/courses')
+  revalidatePath('/admin')
+  revalidatePath('/courses')
+  revalidatePath(`/courses/${id}`)
+  return { ok: true }
+}

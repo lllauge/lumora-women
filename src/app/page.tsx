@@ -8,6 +8,7 @@ export const metadata: Metadata = {
 }
 import FooterWrapper from '@/components/layout/FooterWrapper'
 import EmailCaptureForm from '@/components/home/EmailCaptureForm'
+import HeroBloomVideo from '@/components/home/HeroBloomVideo'
 import { createClient } from '@/lib/supabase/server'
 import { ArrowRight, Quote } from 'lucide-react'
 
@@ -44,22 +45,10 @@ function Hero() {
       style={{ background: 'var(--page-bg)' }}
     >
       <div className="hero-mobile-bloom" aria-hidden="true">
-        <img
-          src="/media/lumora-bloom-poster.jpg"
-          alt=""
-          className="hero-mobile-bloom-poster"
-        />
-        <video
-          className="hero-mobile-bloom-video"
-          src="/media/lumora-bloom-hero.mp4"
-          poster="/media/lumora-bloom-poster.jpg"
-          autoPlay
-          muted
-          controls={false}
-          loop
-          playsInline
+        <HeroBloomVideo
+          posterClassName="hero-mobile-bloom-poster"
+          videoClassName="hero-mobile-bloom-video"
           preload="auto"
-          tabIndex={-1}
         />
       </div>
       <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-16 py-16 lg:py-28">
@@ -141,24 +130,9 @@ function Hero() {
               }}
             >
               <div className="hero-bloom-media">
-                <img
-                  src="/media/lumora-bloom-poster.jpg"
-                  alt=""
-                  aria-hidden="true"
-                  className="hero-bloom-poster"
-                />
-                <video
-                  className="hero-bloom-video"
-                  src="/media/lumora-bloom-hero.mp4"
-                  poster="/media/lumora-bloom-poster.jpg"
-                  autoPlay
-                  muted
-                  controls={false}
-                  loop
-                  playsInline
-                  preload="metadata"
-                  aria-hidden="true"
-                  tabIndex={-1}
+                <HeroBloomVideo
+                  posterClassName="hero-bloom-poster"
+                  videoClassName="hero-bloom-video"
                 />
                 <div className="hero-bloom-overlay" aria-hidden="true" />
               </div>

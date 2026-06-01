@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import Stripe from 'stripe'
-import { AlertCircle, CheckCircle, LoaderCircle } from 'lucide-react'
+import { AlertCircle, LoaderCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { fulfillPaidCourseCheckout } from '@/lib/stripe-fulfillment'
 
@@ -61,6 +62,7 @@ async function confirmCheckout(sessionId: string | undefined) {
       status: 'success' as const,
       title: 'Welcome to Lumora Women',
       message: 'Your purchase is confirmed and your course access is live.',
+      startPath: result.startPath,
     }
   } catch (err) {
     console.error('[checkout confirmation] failed:', err)
@@ -75,14 +77,17 @@ async function confirmCheckout(sessionId: string | undefined) {
 export default async function CheckoutConfirmationPage({ searchParams }: PageProps) {
   const params = await searchParams
   const result = await confirmCheckout(params.session_id)
-  const isSuccess = result.status === 'success'
+  if (result.status === 'success') {
+    redirect(result.startPath)
+  }
+
   const isProcessing = result.status === 'processing'
   const isLogin = result.status === 'login'
   const loginHref = `/login?redirectTo=${encodeURIComponent(
     `/checkout/confirmation${params.session_id ? `?session_id=${params.session_id}` : ''}`
   )}`
 
-  const Icon = isSuccess ? CheckCircle : isProcessing ? LoaderCircle : AlertCircle
+  const Icon = isProcessing ? LoaderCircle : AlertCircle
 
   return (
     <main
@@ -107,12 +112,12 @@ export default async function CheckoutConfirmationPage({ searchParams }: PagePro
         <div
           className="inline-flex items-center justify-center w-20 h-20 rounded-full mb-6"
           style={{
-            background: isSuccess ? 'var(--sage-green-light)' : 'rgba(226, 194, 198, 0.35)',
+            background: 'rgba(226, 194, 198, 0.35)',
           }}
         >
           <Icon
             className="w-10 h-10"
-            style={{ color: isSuccess ? 'var(--sage-green-dark)' : 'var(--warm-terracotta)' }}
+            style={{ color: 'var(--warm-terracotta)' }}
             aria-hidden="true"
           />
         </div>
@@ -146,7 +151,7 @@ export default async function CheckoutConfirmationPage({ searchParams }: PagePro
           className="btn-primary"
           style={{ borderRadius: '0.5rem', padding: '0.9rem 2rem', width: '100%', justifyContent: 'center' }}
         >
-          {isLogin ? 'Log In' : isSuccess ? 'Start Learning →' : 'Go to My Dashboard'}
+          {isLogin ? 'Log In' : 'Go to My Dashboard'}
         </Link>
 
         <Link

@@ -1,6 +1,7 @@
 import Stripe from 'stripe'
 import { z } from 'zod'
 import { createAdminClient } from '@/lib/supabase/server'
+import { getCourseStartPath, sendCourseAccessEmail } from '@/lib/course-access'
 
 const CheckoutMetadataSchema = z.object({
   courseId: z.string().uuid(),
@@ -8,7 +9,7 @@ const CheckoutMetadataSchema = z.object({
 })
 
 export type FulfillmentResult =
-  | { ok: true; courseId: string; userId: string; orderCreated: boolean }
+  | { ok: true; courseId: string; userId: string; orderCreated: boolean; startPath: string }
   | { ok: false; error: string; status?: number }
 
 export async function fulfillPaidCourseCheckout(
@@ -75,5 +76,14 @@ export async function fulfillPaidCourseCheckout(
     return { ok: false, error: enrollmentError.message, status: 500 }
   }
 
-  return { ok: true, courseId, userId, orderCreated }
+  if (orderCreated) {
+    try {
+      await sendCourseAccessEmail(supabase, { userId, courseId })
+    } catch (err) {
+      console.error('[stripe fulfillment] course access email failed:', err)
+    }
+  }
+
+  const startPath = await getCourseStartPath(supabase, courseId)
+  return { ok: true, courseId, userId, orderCreated, startPath }
 }

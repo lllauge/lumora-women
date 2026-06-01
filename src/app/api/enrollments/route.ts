@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { requireSameOrigin } from '@/lib/request-security'
+import { getCourseStartPath, sendCourseAccessEmail } from '@/lib/course-access'
 
 const UuidSchema = z.string().uuid()
 
@@ -89,6 +90,13 @@ export async function POST(req: NextRequest) {
 
   // Use service role for the insert (enrollment RLS no longer allows client inserts)
   const adminClient = getAdminClient()
+  const { data: existingEnrollment } = await adminClient
+    .from('enrollments')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('course_id', courseId)
+    .maybeSingle()
+
   const { error } = await adminClient
     .from('enrollments')
     .upsert(
@@ -100,5 +108,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json({ enrolled: true })
+  if (!existingEnrollment) {
+    try {
+      await sendCourseAccessEmail(adminClient, { userId: user.id, courseId })
+    } catch (err) {
+      console.error('[free enrollment] course access email failed:', err)
+    }
+  }
+
+  const startPath = await getCourseStartPath(adminClient, courseId)
+  return NextResponse.json({ enrolled: true, startPath })
 }

@@ -67,7 +67,8 @@ export default function FreeCourseCapturePage({
       body: JSON.stringify({ courseId }),
     })
     if (res.ok) {
-      router.push(`/courses/${courseId}`)
+      const data = await res.json().catch(() => ({}))
+      router.push(data.startPath ?? `/courses/${courseId}`)
     } else {
       const data = await res.json().catch(() => ({}))
       if (res.status === 403 && data.error?.toLowerCase().includes('confirm')) {
@@ -116,12 +117,13 @@ export default function FreeCourseCapturePage({
     const { data: existingSession } = await supabase.auth.getUser()
 
     if (existingSession.user) {
-      await fetch('/api/enrollments', {
+      const enrollResponse = await fetch('/api/enrollments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ courseId }),
       })
-      router.push('/free-course/confirmation')
+      const enrollResult = await enrollResponse.json().catch(() => ({}))
+      router.push(enrollResult.startPath ?? `/courses/${courseId}`)
       return
     } else {
       const response = await fetch('/api/auth/signup', {

@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { z } from 'zod'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient, createClient } from '@/lib/supabase/server'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { requireSameOrigin } from '@/lib/request-security'
+import { getCourseStartPath } from '@/lib/course-access'
+import { fulfillPaidCourseCheckout } from '@/lib/stripe-fulfillment'
 
 const CheckoutSchema = z.object({
   courseId: z.string().uuid('courseId must be a valid UUID'),
@@ -35,6 +37,34 @@ function getCheckoutSiteUrl(req: NextRequest) {
   }
 
   return normalizeOrigin(requestOrigin(req)) ?? 'https://www.lumorawomen.com'
+}
+
+async function recoverRecentPaidCheckout(
+  stripe: Stripe,
+  input: { userId: string; userEmail: string | undefined; courseId: string }
+) {
+  const sessions = await stripe.checkout.sessions.list({
+    limit: 100,
+    expand: ['data.payment_intent'],
+  })
+
+  const matchingSession = sessions.data.find((session) => {
+    if (session.payment_status !== 'paid') return false
+
+    const metadataMatches =
+      session.metadata?.userId === input.userId &&
+      session.metadata?.courseId === input.courseId
+
+    const emailMatches =
+      !!input.userEmail &&
+      session.customer_email?.toLowerCase() === input.userEmail.toLowerCase() &&
+      session.metadata?.courseId === input.courseId
+
+    return metadataMatches || emailMatches
+  })
+
+  if (!matchingSession) return null
+  return fulfillPaidCourseCheckout(matchingSession, input.userId)
 }
 
 export async function POST(req: NextRequest) {
@@ -118,14 +148,27 @@ export async function POST(req: NextRequest) {
     .eq('course_id', course.id)
     .maybeSingle()
 
-  if (existingEnrollment) {
-    return NextResponse.json({ error: 'You already have access to this course.' }, { status: 409 })
-  }
-
   const stripe = new Stripe(stripeKey)
   const siteUrl = getCheckoutSiteUrl(req)
 
+  if (existingEnrollment) {
+    const adminClient = await createAdminClient()
+    const startPath = await getCourseStartPath(adminClient, course.id)
+    return NextResponse.json({ accessGranted: true, startPath })
+  }
+
+  const recovered = await recoverRecentPaidCheckout(stripe, {
+    userId: user.id,
+    userEmail: user.email,
+    courseId: course.id,
+  })
+
+  if (recovered?.ok) {
+    return NextResponse.json({ accessGranted: true, startPath: recovered.startPath, recovered: true })
+  }
+
   const stripeSession = await stripe.checkout.sessions.create({
+    client_reference_id: `${user.id}:${course.id}`,
     payment_method_types: ['card'],
     line_items: [
       {
@@ -144,6 +187,10 @@ export async function POST(req: NextRequest) {
     payment_intent_data: {
       receipt_email: user.email,
       description: `${course.title} | Lumora Women`,
+      metadata: {
+        courseId: course.id,
+        userId: user.id,
+      },
     },
     metadata: {
       courseId: course.id,

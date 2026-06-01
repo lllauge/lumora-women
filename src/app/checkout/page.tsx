@@ -63,6 +63,11 @@ function CheckoutContent() {
     })
 
     const json = await res.json()
+    if (json.accessGranted && json.startPath) {
+      router.push(json.startPath)
+      return
+    }
+
     if (json.error) {
       setError(json.error)
       setPaying(false)

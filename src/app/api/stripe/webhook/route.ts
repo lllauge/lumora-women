@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
       user_id: userId,
       course_id: courseId,
       stripe_session_id: session.id,
-      amount: session.amount_total ?? 0,
+      amount: (session.amount_total ?? 0) / 100,
       status: 'paid',
     })
 

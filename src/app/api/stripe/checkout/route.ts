@@ -73,6 +73,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'This course is free — no checkout needed.' }, { status: 400 })
   }
 
+  const priceInDollars = Number(course.price ?? 0)
+  const unitAmount = Math.round(priceInDollars * 100)
+  if (!Number.isFinite(unitAmount) || unitAmount <= 0) {
+    return NextResponse.json({ error: 'This course does not have a valid checkout price.' }, { status: 400 })
+  }
+
   const stripe = new Stripe(stripeKey)
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
 
@@ -83,7 +89,7 @@ export async function POST(req: NextRequest) {
         price_data: {
           currency: 'usd',
           product_data: { name: course.title },
-          unit_amount: course.price,
+          unit_amount: unitAmount,
         },
         quantity: 1,
       },

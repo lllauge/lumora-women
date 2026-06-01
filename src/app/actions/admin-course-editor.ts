@@ -45,10 +45,18 @@ const courseSchema = z.object({
   title:          z.string().min(1, 'Title is required').max(255),
   subtitle:       z.string().max(500).nullable().optional().default(''),
   description:    z.string().max(20000).nullable().optional().default(''),
-  price:          z.number().min(0).max(10000),
+  price:          z.coerce.number().min(0).max(10000),
   is_free:        z.boolean(),
   thumbnail_url:  z.string().max(2048).nullable().optional().default(''),
   modules:        z.array(moduleSchema).default([]),
+}).superRefine((draft, ctx) => {
+  if (!draft.is_free && draft.price <= 0) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['price'],
+      message: 'Paid courses need a price greater than $0.',
+    })
+  }
 })
 
 export type CourseDraft = z.infer<typeof courseSchema>
@@ -89,7 +97,7 @@ export async function saveCourse(
     title:          draft.title.trim(),
     subtitle:       draft.subtitle?.trim() || null,
     description:    draft.description?.trim() || null,
-    price:          draft.is_free ? 0 : draft.price,
+    price:          draft.is_free ? 0 : Number(draft.price.toFixed(2)),
     is_free:        draft.is_free,
     thumbnail_url:  draft.thumbnail_url?.trim() || null,
     published:      options.publish,

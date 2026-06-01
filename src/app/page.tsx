@@ -80,7 +80,7 @@ function Hero() {
                 letterSpacing: '-0.02em',
               }}
             >
-              You don&apos;t have to figure this out alone.
+              Even Flowers Bloom in the Desert.
             </h1>
 
             <p
@@ -92,7 +92,7 @@ function Hero() {
                 color: 'var(--text-secondary)',
               }}
             >
-              An intimate sanctuary built for real women — the ones navigating postpartum recovery, hormone shifts, and the quiet work of coming back to themselves. Guided journeys through wellness, mindfulness, and the art of self-discovery.
+              Real courses, real women, real support. Everything you need to grow through this season and Bloom.
             </p>
 
             <div className="flex flex-wrap gap-4 pt-2">

@@ -264,7 +264,9 @@ export async function uploadCourseAsset(formData: FormData): Promise<UploadAsset
                          : `courses/${courseId}/downloads`
   const key = `${folder}/${randomUUID()}.${ext}`
 
-  const result = await uploadFileToR2(file, key)
+  const result = await uploadFileToR2(file, key, {
+    access: kind === 'thumbnail' ? 'public' : 'private',
+  })
   if (!result.ok) return { ok: false, error: result.error, r2Configured: isR2Configured() }
 
   return {

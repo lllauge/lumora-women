@@ -13,6 +13,8 @@ export type R2Config = {
   accessKeyId: string
   secretAccessKey: string
   bucket: string
+  publicBucket: string
+  privateBucket: string
   publicUrl: string
 }
 
@@ -21,10 +23,12 @@ export function getR2Config(): R2Config | null {
   const accessKeyId      = process.env.R2_ACCESS_KEY_ID
   const secretAccessKey  = process.env.R2_SECRET_ACCESS_KEY
   const bucket           = process.env.R2_BUCKET_NAME
+  const publicBucket     = process.env.R2_PUBLIC_BUCKET_NAME ?? bucket
+  const privateBucket    = process.env.R2_PRIVATE_BUCKET_NAME ?? bucket
   const publicUrl        = process.env.R2_PUBLIC_URL
 
   const allPresent =
-    !!accountId && !!accessKeyId && !!secretAccessKey && !!bucket && !!publicUrl
+    !!accountId && !!accessKeyId && !!secretAccessKey && !!bucket && !!publicBucket && !!privateBucket && !!publicUrl
 
   if (!allPresent) return null
 
@@ -39,6 +43,8 @@ export function getR2Config(): R2Config | null {
     accessKeyId:     accessKeyId!,
     secretAccessKey: secretAccessKey!,
     bucket:          bucket!,
+    publicBucket:    publicBucket!,
+    privateBucket:   privateBucket!,
     publicUrl:       publicUrl!.replace(/\/+$/, ''),
   }
 }
@@ -65,28 +71,36 @@ export type UploadResult =
   | { ok: true;  url: string; key: string; size: number; contentType: string }
   | { ok: false; error: string }
 
+type R2Access = 'public' | 'private'
+
 /**
  * Uploads a File (server-side, after FormData parsing) to R2 under `key` and
  * returns the public URL. Caller is responsible for picking a sensible key
  * (e.g. `courses/{id}/thumbnails/uuid.jpg`).
  */
-export async function uploadFileToR2(file: File, key: string): Promise<UploadResult> {
+export async function uploadFileToR2(
+  file: File,
+  key: string,
+  options: { access?: R2Access } = {}
+): Promise<UploadResult> {
   const config = getR2Config()
   if (!config) {
     return {
       ok: false,
       error:
-        'Cloudflare R2 is not configured. Add R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, R2_PUBLIC_URL to .env.local — or paste an external URL instead.',
+        'Cloudflare R2 is not configured. Add R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, R2_PUBLIC_URL to .env.local — or paste an external URL instead. For production, also set R2_PUBLIC_BUCKET_NAME and R2_PRIVATE_BUCKET_NAME.',
     }
   }
 
   try {
     const client = getClient(config)
     const buffer = Buffer.from(await file.arrayBuffer())
+    const access = options.access ?? 'public'
+    const bucket = access === 'private' ? config.privateBucket : config.publicBucket
 
     await client.send(
       new PutObjectCommand({
-        Bucket: config.bucket,
+        Bucket: bucket,
         Key: key,
         Body: buffer,
         ContentType: file.type || 'application/octet-stream',
@@ -141,7 +155,7 @@ export async function getR2Object(key: string, range?: string | null) {
   const client = getClient(config)
   return client.send(
     new GetObjectCommand({
-      Bucket: config.bucket,
+      Bucket: config.privateBucket,
       Key: key,
       Range: range || undefined,
     })

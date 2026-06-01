@@ -269,7 +269,7 @@ export async function uploadCourseAsset(formData: FormData): Promise<UploadAsset
 
   return {
     ok: true,
-    url: result.url,
+    url: kind === 'thumbnail' ? result.url : `r2://${result.key}`,
     name: file.name,
     size: result.size,
     contentType: result.contentType,

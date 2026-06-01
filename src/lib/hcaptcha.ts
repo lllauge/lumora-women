@@ -6,8 +6,8 @@
 export async function verifyHcaptcha(token: string | null | undefined): Promise<boolean> {
   const secret = process.env.HCAPTCHA_SECRET_KEY
   if (!secret) {
-    // hCaptcha not configured — skip verification in development
-    return true
+    // Keep local development usable, but never silently bypass CAPTCHA in production.
+    return process.env.NODE_ENV !== 'production'
   }
 
   if (!token) return false
@@ -22,7 +22,7 @@ export async function verifyHcaptcha(token: string | null | undefined): Promise<
     const data = await res.json() as { success: boolean; 'error-codes'?: string[] }
     return data.success === true
   } catch {
-    // Fail open so a hCaptcha outage doesn't block legitimate users
-    return true
+    // In production, fail closed. Bot protection should not silently disappear.
+    return process.env.NODE_ENV !== 'production'
   }
 }

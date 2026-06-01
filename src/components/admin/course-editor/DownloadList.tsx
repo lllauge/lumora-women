@@ -63,11 +63,8 @@ export default function DownloadList({
               style={{ background: 'var(--admin-surface)', border: '1px solid var(--admin-outline-variant)' }}
             >
               <FileText size={14} style={{ color: 'var(--admin-on-surface-variant)', flexShrink: 0 }} />
-              <a
-                href={d.file_url}
-                target="_blank"
-                rel="noreferrer"
-                title={d.file_url}
+              <span
+                title={d.file_url.startsWith('r2://') ? 'Protected course asset' : d.file_url}
                 className="flex-1 truncate hover:underline"
                 style={{
                   fontFamily: 'var(--font-hanken)',
@@ -77,7 +74,7 @@ export default function DownloadList({
                 }}
               >
                 {d.file_name || d.file_url}
-              </a>
+              </span>
               <button
                 type="button"
                 aria-label={`Remove ${d.file_name}`}

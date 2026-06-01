@@ -47,12 +47,16 @@ type SidebarModule = {
 
 const GOLD = 'linear-gradient(to right, #F0D060 0%, #C8980A 25%, #E8C040 50%, #A87808 75%, #D4AC30 100%)'
 
+function protectedAssetUrl(url: string) {
+  return `/api/course-assets?url=${encodeURIComponent(url)}`
+}
+
 function HtmlEmbed({ url, title }: { url: string; title: string }) {
   const [html, setHtml] = useState<string | null>(null)
   const [error, setError] = useState(false)
 
   useEffect(() => {
-    fetch(`/api/html-proxy?url=${encodeURIComponent(url)}`)
+    fetch(protectedAssetUrl(url))
       .then((r) => {
         if (!r.ok) throw new Error('fetch failed')
         return r.text()
@@ -369,7 +373,7 @@ export default function LessonPage({
                 playsInline
                 aria-label={`Video: ${lesson?.title}`}
               >
-                <source src={lesson?.video_url ?? ''} />
+                <source src={lesson?.video_url ? protectedAssetUrl(lesson.video_url) : ''} />
                 <track kind="captions" label="English captions" srcLang="en" default />
                 Your browser does not support the video element.
               </video>
@@ -450,7 +454,7 @@ export default function LessonPage({
             <section key={dl.id} aria-label={dl.file_name} style={{ marginBottom: '2rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '1rem', marginBottom: '0.75rem', flexWrap: 'wrap' as const }}>
                 <a
-                  href={dl.file_url}
+                  href={protectedAssetUrl(dl.file_url)}
                   download={dl.file_name}
                   aria-label={`Download ${dl.file_name}`}
                   style={{
@@ -481,7 +485,7 @@ export default function LessonPage({
                 {downloads.filter((d) => d.file_type !== 'text/html').map((dl) => (
                   <li key={dl.id}>
                     <a
-                      href={dl.file_url}
+                      href={protectedAssetUrl(dl.file_url)}
                       download
                       aria-label={`Download ${dl.file_name}`}
                       style={{

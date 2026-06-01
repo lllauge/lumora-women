@@ -34,9 +34,10 @@ export async function checkRateLimit(
       .gte('created_at', windowStart)
 
     if (error) {
-      // If the table doesn't exist yet, allow the request (fail open)
-      console.error('[rate-limit] DB error, failing open:', error.message)
-      return { allowed: true, remaining: max - 1 }
+      console.error('[rate-limit] DB error:', error.message)
+      return process.env.NODE_ENV === 'production'
+        ? { allowed: false, retryAfterSeconds: 60 }
+        : { allowed: true, remaining: max - 1 }
     }
 
     const current = count ?? 0
@@ -49,8 +50,10 @@ export async function checkRateLimit(
 
     return { allowed: true, remaining: max - current - 1 }
   } catch (err) {
-    console.error('[rate-limit] Unexpected error, failing open:', err)
-    return { allowed: true, remaining: max - 1 }
+    console.error('[rate-limit] Unexpected error:', err)
+    return process.env.NODE_ENV === 'production'
+      ? { allowed: false, retryAfterSeconds: 60 }
+      : { allowed: true, remaining: max - 1 }
   }
 }
 

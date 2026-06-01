@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
+import { GetObjectCommand, S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 
 const PLACEHOLDER_PREFIX = 'your_'
 
@@ -108,6 +108,44 @@ export async function uploadFileToR2(file: File, key: string): Promise<UploadRes
       error: err instanceof Error ? err.message : 'Unknown R2 upload error.',
     }
   }
+}
+
+export function getR2ObjectKeyFromUrl(value: string): string | null {
+  const config = getR2Config()
+  if (!config) return null
+
+  if (value.startsWith('r2://')) {
+    return value.slice('r2://'.length).replace(/^\/+/, '')
+  }
+
+  if (value.startsWith(config.publicUrl + '/')) {
+    return decodeURIComponent(value.slice(config.publicUrl.length + 1))
+  }
+
+  try {
+    const parsed = new URL(value)
+    const publicUrl = new URL(config.publicUrl)
+    if (parsed.origin !== publicUrl.origin) return null
+    return decodeURIComponent(parsed.pathname.replace(/^\/+/, ''))
+  } catch {
+    return null
+  }
+}
+
+export async function getR2Object(key: string, range?: string | null) {
+  const config = getR2Config()
+  if (!config) {
+    throw new Error('Cloudflare R2 is not configured.')
+  }
+
+  const client = getClient(config)
+  return client.send(
+    new GetObjectCommand({
+      Bucket: config.bucket,
+      Key: key,
+      Range: range || undefined,
+    })
+  )
 }
 
 /** Returns the file extension (without dot), inferred from filename + MIME. */

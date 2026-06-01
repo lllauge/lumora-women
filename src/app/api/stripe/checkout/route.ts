@@ -141,6 +141,10 @@ export async function POST(req: NextRequest) {
     success_url: `${siteUrl}/checkout/confirmation?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${siteUrl}/courses/${courseId}`,
     customer_email: user.email,
+    payment_intent_data: {
+      receipt_email: user.email,
+      description: `${course.title} | Lumora Women`,
+    },
     metadata: {
       courseId: course.id,
       userId: user.id,

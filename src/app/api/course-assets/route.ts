@@ -35,38 +35,67 @@ async function canAccessAsset(assetUrl: string) {
     .maybeSingle()
 
   const isAdmin = profile?.role === 'admin'
+  if (isAdmin) {
+    return { allowed: true, status: 200, filename: null, inline: true }
+  }
 
   const { data: videoLesson } = await supabase
     .from('lessons')
-    .select('id, title')
+    .select('id, title, modules(course_id)')
     .eq('video_url', assetUrl)
     .maybeSingle()
 
-  if (videoLesson || isAdmin) {
+  if (videoLesson) {
+    const courseId = ((videoLesson.modules as { course_id?: string } | null)?.course_id) ?? null
+    const enrolled = courseId
+      ? await userIsEnrolled(supabase, user.id, courseId)
+      : false
+
     return {
-      allowed: !!videoLesson || isAdmin,
-      status: videoLesson || isAdmin ? 200 : 404,
-      filename: videoLesson?.title ? `${videoLesson.title}.mp4` : null,
+      allowed: enrolled,
+      status: enrolled ? 200 : 404,
+      filename: videoLesson.title ? `${videoLesson.title}.mp4` : null,
       inline: true,
     }
   }
 
   const { data: download } = await supabase
     .from('downloads')
-    .select('id, file_name, file_type')
+    .select('id, file_name, file_type, lessons(modules(course_id))')
     .eq('file_url', assetUrl)
     .maybeSingle()
 
   if (download) {
+    const lesson = download.lessons as { modules?: { course_id?: string } | null } | null
+    const courseId = lesson?.modules?.course_id ?? null
+    const enrolled = courseId
+      ? await userIsEnrolled(supabase, user.id, courseId)
+      : false
+
     return {
-      allowed: true,
-      status: 200,
+      allowed: enrolled,
+      status: enrolled ? 200 : 404,
       filename: download.file_name ?? null,
       inline: download.file_type === 'text/html',
     }
   }
 
   return { allowed: false, status: 404, filename: null, inline: true }
+}
+
+async function userIsEnrolled(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  courseId: string
+) {
+  const { data } = await supabase
+    .from('enrollments')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('course_id', courseId)
+    .maybeSingle()
+
+  return !!data
 }
 
 export async function GET(req: NextRequest) {

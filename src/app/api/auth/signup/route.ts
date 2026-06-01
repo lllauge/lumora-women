@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { verifyHcaptcha } from '@/lib/hcaptcha'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { sanitizeField } from '@/lib/sanitize'
+import { requireSameOrigin } from '@/lib/request-security'
 
 const SignupSchema = z.object({
   firstName: z.string().min(1).max(80),
@@ -68,6 +69,9 @@ function confirmationEmailHtml(firstName: string, actionLink: string) {
 }
 
 export async function POST(req: NextRequest) {
+  const originError = requireSameOrigin(req)
+  if (originError) return originError
+
   const ip = getClientIp(req.headers)
   const limit = await checkRateLimit(`signup:${ip}`, 8, 60 * 60)
   if (!limit.allowed) {

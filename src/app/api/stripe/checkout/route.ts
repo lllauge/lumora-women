@@ -3,12 +3,16 @@ import Stripe from 'stripe'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
+import { requireSameOrigin } from '@/lib/request-security'
 
 const CheckoutSchema = z.object({
   courseId: z.string().uuid('courseId must be a valid UUID'),
 })
 
 export async function POST(req: NextRequest) {
+  const originError = requireSameOrigin(req)
+  if (originError) return originError
+
   // ── Rate limiting: 10 checkout attempts per hour per IP ──────────────────
   const ip = getClientIp(req.headers)
   const rateLimit = await checkRateLimit(`checkout:${ip}`, 10, 3600)
@@ -77,6 +81,17 @@ export async function POST(req: NextRequest) {
   const unitAmount = Math.round(priceInDollars * 100)
   if (!Number.isFinite(unitAmount) || unitAmount <= 0) {
     return NextResponse.json({ error: 'This course does not have a valid checkout price.' }, { status: 400 })
+  }
+
+  const { data: existingEnrollment } = await supabase
+    .from('enrollments')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('course_id', course.id)
+    .maybeSingle()
+
+  if (existingEnrollment) {
+    return NextResponse.json({ error: 'You already have access to this course.' }, { status: 409 })
   }
 
   const stripe = new Stripe(stripeKey)

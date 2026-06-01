@@ -4,6 +4,7 @@ import { Resend } from 'resend'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { sanitizeField } from '@/lib/sanitize'
 import { verifyHcaptcha } from '@/lib/hcaptcha'
+import { requireSameOrigin } from '@/lib/request-security'
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'hello@lumorawomen.com'
 
@@ -23,6 +24,9 @@ const ContactSchema = z.object({
 })
 
 export async function POST(req: NextRequest) {
+  const originError = requireSameOrigin(req)
+  if (originError) return originError
+
   // ── Rate limiting: 3 submissions per hour per IP ──────────────────────────
   const ip = getClientIp(req.headers)
   const rateLimit = await checkRateLimit(`contact:${ip}`, 3, 3600)

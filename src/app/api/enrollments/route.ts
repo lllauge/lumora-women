@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { requireSameOrigin } from '@/lib/request-security'
 
 const UuidSchema = z.string().uuid()
 
@@ -40,6 +41,9 @@ export async function GET(req: NextRequest) {
 
 // POST /api/enrollments — enroll current user in a free course
 export async function POST(req: NextRequest) {
+  const originError = requireSameOrigin(req)
+  if (originError) return originError
+
   // ── Validate input ────────────────────────────────────────────────────────
   let body: unknown
   try {

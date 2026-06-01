@@ -30,16 +30,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing metadata' }, { status: 400 })
     }
 
-    const supabase = await createAdminClient()
+    if (session.payment_status !== 'paid') {
+      return NextResponse.json({ received: true })
+    }
 
-    // Create order record
-    await supabase.from('orders').insert({
-      user_id: userId,
-      course_id: courseId,
-      stripe_session_id: session.id,
-      amount: (session.amount_total ?? 0) / 100,
-      status: 'paid',
-    })
+    const supabase = await createAdminClient()
+    const stripePaymentId =
+      typeof session.payment_intent === 'string'
+        ? session.payment_intent
+        : session.payment_intent?.id ?? session.id
+
+    const { data: existingOrder } = await supabase
+      .from('orders')
+      .select('id')
+      .eq('stripe_payment_id', stripePaymentId)
+      .maybeSingle()
+
+    if (!existingOrder) {
+      // Create order record once. Stripe may retry webhooks, so this must be idempotent.
+      await supabase.from('orders').insert({
+        user_id: userId,
+        course_id: courseId,
+        stripe_payment_id: stripePaymentId,
+        amount: (session.amount_total ?? 0) / 100,
+        status: 'paid',
+      })
+    }
 
     // Enroll user
     await supabase.from('enrollments').upsert(

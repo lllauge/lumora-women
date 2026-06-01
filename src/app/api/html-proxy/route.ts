@@ -18,11 +18,29 @@ export async function GET(req: NextRequest) {
     if (!res.ok) {
       return new NextResponse('Failed to fetch resource', { status: res.status })
     }
+
+    const contentType = res.headers.get('content-type') ?? ''
+    if (!contentType.toLowerCase().includes('text/html')) {
+      return new NextResponse('Only HTML resources can be proxied here', { status: 415 })
+    }
+
     const html = await res.text()
     return new NextResponse(html, {
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
         'Cache-Control': 'private, max-age=300',
+        // This route exists only to render stored HTML. Never allow it to run JS
+        // in the app's origin.
+        'Content-Security-Policy': [
+          "default-src 'none'",
+          "img-src https: data:",
+          "style-src 'unsafe-inline'",
+          "font-src data:",
+          "base-uri 'none'",
+          "form-action 'none'",
+          "frame-ancestors 'none'",
+        ].join('; '),
+        'X-Content-Type-Options': 'nosniff',
       },
     })
   } catch {

@@ -56,5 +56,7 @@ export async function POST(request: Request) {
   return NextResponse.json({ ok: true, published: due.length, ids: due.map((p) => p.id) })
 }
 
-/** Allow GET for easy manual triggering / health checks (still needs the secret). */
-export const GET = POST
+/** Health check only. Publishing is intentionally POST-only. */
+export async function GET() {
+  return NextResponse.json({ ok: true, endpoint: 'publish-due', method: 'POST' })
+}

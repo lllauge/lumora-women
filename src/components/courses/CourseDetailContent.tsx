@@ -221,7 +221,21 @@ export default function CourseDetailContent({ courseId }: { courseId: string }) 
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {modules.map((mod) => {
+                {modules.length === 0 ? (
+                  <div
+                    style={{
+                      borderRadius: '0.75rem',
+                      border: '1px solid rgba(200,220,192,0.35)',
+                      background: '#FFFFFF',
+                      padding: '1.25rem',
+                      fontFamily: 'var(--font-sans)',
+                      color: 'var(--text-secondary)',
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    Lessons have not been added to this course yet.
+                  </div>
+                ) : modules.map((mod) => {
                   const isOpen = openModules.has(mod.id)
                   return (
                     <div
@@ -323,13 +337,32 @@ export default function CourseDetailContent({ courseId }: { courseId: string }) 
               </div>
 
               {enrolled ? (
-                <Link
-                  href={firstLesson ? `/lesson/${firstLesson.id}` : '/dashboard'}
-                  className="btn-primary"
-                  style={{ display: 'block', textAlign: 'center', borderRadius: '0.5rem', padding: '0.9rem', marginBottom: '0.75rem' }}
-                >
-                  Continue Learning →
-                </Link>
+                firstLesson ? (
+                  <Link
+                    href={`/lesson/${firstLesson.id}`}
+                    className="btn-primary"
+                    style={{ display: 'block', textAlign: 'center', borderRadius: '0.5rem', padding: '0.9rem', marginBottom: '0.75rem' }}
+                  >
+                    Continue Learning →
+                  </Link>
+                ) : (
+                  <div
+                    role="status"
+                    style={{
+                      display: 'block',
+                      textAlign: 'center',
+                      borderRadius: '0.5rem',
+                      padding: '0.9rem',
+                      marginBottom: '0.75rem',
+                      background: 'var(--section-tint)',
+                      color: 'var(--text-secondary)',
+                      fontFamily: 'var(--font-sans)',
+                      fontWeight: 700,
+                    }}
+                  >
+                    Lessons not available yet
+                  </div>
+                )
               ) : course?.is_free ? (
                 <Link
                   href={`/free-course/${courseId}`}

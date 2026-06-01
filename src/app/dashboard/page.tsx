@@ -241,6 +241,7 @@ function CourseProgressCard({ item }: { item: EnrolledCourse }) {
   const course = item.courses
   const pct = item.totalLessons > 0 ? Math.round((item.completedCount / item.totalLessons) * 100) : 0
   const href = item.firstLessonId ? `/lesson/${item.firstLessonId}` : `/courses/${course.id}`
+  const hasLessons = item.totalLessons > 0
 
   return (
     <div
@@ -303,7 +304,7 @@ function CourseProgressCard({ item }: { item: EnrolledCourse }) {
         {/* Continue button */}
         <Link
           href={href}
-          aria-label={pct === 100 ? `Review ${course.title}` : pct === 0 ? `Start ${course.title}` : `Continue ${course.title}`}
+          aria-label={!hasLessons ? `View ${course.title}` : pct === 100 ? `Review ${course.title}` : pct === 0 ? `Start ${course.title}` : `Continue ${course.title}`}
           className="gold-text"
           style={{
             flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.375rem',
@@ -312,7 +313,9 @@ function CourseProgressCard({ item }: { item: EnrolledCourse }) {
             minHeight: '44px',
           }}
         >
-          {pct === 100 ? (
+          {!hasLessons ? (
+            <>View <ChevronRight className="w-4 h-4" style={{ color: 'var(--gold-dark)' }} aria-hidden="true" /></>
+          ) : pct === 100 ? (
             <>Review <ChevronRight className="w-4 h-4" style={{ color: 'var(--gold-dark)' }} aria-hidden="true" /></>
           ) : pct === 0 ? (
             <><Play className="w-4 h-4" style={{ color: 'var(--gold-dark)' }} aria-hidden="true" /> Start</>

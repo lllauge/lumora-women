@@ -29,10 +29,11 @@ async function getEnrolledCourses(userId: string) {
     .from('enrollments')
     .select(`
       course_id,
+      enrolled_at,
       courses (id, title, subtitle, thumbnail_url, is_free)
     `)
     .eq('user_id', userId)
-    .order('created_at', { ascending: false })
+    .order('enrolled_at', { ascending: false })
 
   if (!enrollments) return []
 
@@ -49,11 +50,18 @@ async function getEnrolledCourses(userId: string) {
         (sum, m) => sum + ((m.lessons as { id: string }[])?.length ?? 0), 0
       )
 
-      const { count: completedCount } = await supabase
-        .from('lesson_progress')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .eq('completed', true)
+      const lessonIds = sortedModules.flatMap((m) =>
+        ((m.lessons as { id: string }[]) ?? []).map((lesson) => lesson.id)
+      )
+
+      const { count: completedCount } = lessonIds.length > 0
+        ? await supabase
+            .from('lesson_progress')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', userId)
+            .eq('completed', true)
+            .in('lesson_id', lessonIds)
+        : { count: 0 }
 
       const firstModule = sortedModules[0]
       let firstLessonId: string | null = null

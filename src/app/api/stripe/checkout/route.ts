@@ -9,6 +9,34 @@ const CheckoutSchema = z.object({
   courseId: z.string().uuid('courseId must be a valid UUID'),
 })
 
+function normalizeOrigin(value: string | null | undefined) {
+  if (!value) return null
+  try {
+    return new URL(value).origin
+  } catch {
+    return null
+  }
+}
+
+function requestOrigin(req: NextRequest) {
+  const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host')
+  const proto = req.headers.get('x-forwarded-proto') ?? 'https'
+  return host ? `${proto}://${host}` : req.nextUrl.origin
+}
+
+function getCheckoutSiteUrl(req: NextRequest) {
+  const configured = normalizeOrigin(process.env.NEXT_PUBLIC_SITE_URL)
+    ?? normalizeOrigin(process.env.NEXT_PUBLIC_APP_URL)
+  const configuredIsLocal =
+    configured?.includes('localhost') || configured?.includes('127.0.0.1')
+
+  if (configured && (process.env.NODE_ENV !== 'production' || !configuredIsLocal)) {
+    return configured
+  }
+
+  return normalizeOrigin(requestOrigin(req)) ?? 'https://www.lumorawomen.com'
+}
+
 export async function POST(req: NextRequest) {
   const originError = requireSameOrigin(req)
   if (originError) return originError
@@ -95,7 +123,7 @@ export async function POST(req: NextRequest) {
   }
 
   const stripe = new Stripe(stripeKey)
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+  const siteUrl = getCheckoutSiteUrl(req)
 
   const stripeSession = await stripe.checkout.sessions.create({
     payment_method_types: ['card'],

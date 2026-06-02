@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, use } from 'react'
+import { useState, useEffect, use, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -51,17 +51,136 @@ function protectedAssetUrl(url: string) {
   return `/api/course-assets?url=${encodeURIComponent(url)}`
 }
 
+function sanitizeCourseHtml(rawHtml: string) {
+  const doc = new DOMParser().parseFromString(rawHtml, 'text/html')
+
+  doc.querySelectorAll('script, iframe, object, embed, form, input, textarea, select, button, base, meta').forEach((node) => node.remove())
+
+  doc.querySelectorAll('*').forEach((node) => {
+    for (const attr of Array.from(node.attributes)) {
+      const name = attr.name.toLowerCase()
+      const value = attr.value.trim()
+
+      if (name.startsWith('on')) {
+        node.removeAttribute(attr.name)
+        continue
+      }
+
+      if ((name === 'href' || name === 'src') && /^javascript:/i.test(value)) {
+        node.removeAttribute(attr.name)
+      }
+    }
+  })
+
+  const fontLinks = Array.from(doc.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'))
+    .filter((link) => {
+      try {
+        return new URL(link.href).origin === 'https://fonts.googleapis.com'
+      } catch {
+        return false
+      }
+    })
+    .map((link) => `<link rel="stylesheet" href="${link.href}">`)
+    .join('')
+
+  const styles = Array.from(doc.querySelectorAll('style'))
+    .map((style) => {
+      const css = style.textContent
+        ?.replace(/html\s*,\s*body/g, ':host')
+        .replace(/(^|[\s{};])body(\s*[{,.#:])/g, '$1:host$2')
+        .replace(/min-height:\s*100vh/g, 'min-height: 100%')
+        .replace(/height:\s*100vh/g, 'min-height: 100%')
+        ?? ''
+      return `<style>${css}</style>`
+    })
+    .join('')
+
+  return `
+    <style>
+      :host {
+        display: block;
+        width: 100%;
+        min-height: 600px;
+        background: #FFFFFF;
+        color: #1A2818;
+        overflow: hidden;
+      }
+
+      * {
+        max-width: 100%;
+      }
+    </style>
+    ${fontLinks}
+    ${styles}
+    ${doc.body.innerHTML}
+  `
+}
+
 function HtmlEmbed({ url, title }: { url: string; title: string }) {
+  const hostRef = useRef<HTMLDivElement | null>(null)
+  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadHtml() {
+      try {
+        setStatus('loading')
+        const response = await fetch(protectedAssetUrl(url), {
+          credentials: 'same-origin',
+          cache: 'no-store',
+        })
+
+        if (!response.ok) {
+          throw new Error(`Could not load HTML asset: ${response.status}`)
+        }
+
+        const html = await response.text()
+        if (cancelled || !hostRef.current) return
+
+        const shadow = hostRef.current.shadowRoot ?? hostRef.current.attachShadow({ mode: 'open' })
+        shadow.innerHTML = sanitizeCourseHtml(html)
+        setStatus('ready')
+      } catch (error) {
+        console.error('[lesson-html] failed to render HTML asset:', error)
+        if (!cancelled) setStatus('error')
+      }
+    }
+
+    loadHtml()
+
+    return () => {
+      cancelled = true
+    }
+  }, [url])
+
   return (
-    <iframe
-      src={protectedAssetUrl(url)}
-      title={title}
-      referrerPolicy="no-referrer"
+    <div
+      ref={hostRef}
+      aria-label={title}
       style={{
-        width: '100%', height: '600px', border: '1px solid rgba(200,220,192,0.35)',
-        borderRadius: '0.75rem', background: '#FFFFFF',
+        width: '100%',
+        minHeight: '600px',
+        border: '1px solid rgba(200,220,192,0.35)',
+        borderRadius: '0.75rem',
+        background: '#FFFFFF',
+        overflow: 'hidden',
+        display: 'block',
       }}
-    />
+    >
+      {status === 'loading' && (
+        <div style={{ minHeight: '600px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--section-tint)' }}>
+          <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading guide…</span>
+        </div>
+      )}
+      {status === 'error' && (
+        <div style={{ minHeight: '220px', padding: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', background: 'var(--section-tint)' }}>
+          <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+            This guide could not be displayed inline. Use the download button above to open it.
+          </p>
+        </div>
+      )}
+    </div>
   )
 }
 

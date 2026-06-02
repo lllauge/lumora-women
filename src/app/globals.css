@@ -719,6 +719,9 @@ blockquote, .pull-quote {
   padding: 3rem 2.5rem;
   min-width: 0;
 }
+.dashboard-nav-label-mobile {
+  display: none;
+}
 @media (max-width: 767px) {
   .dashboard-layout {
     flex-direction: column;
@@ -726,34 +729,51 @@ blockquote, .pull-quote {
   .dashboard-sidebar {
     width: 100%;
     height: auto;
-    padding: 0.875rem 1rem;
+    padding: 1rem;
     position: sticky;
     top: 0;
     z-index: 40;
-    flex-direction: row;
-    align-items: center;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.875rem;
   }
   .dashboard-sidebar > a:first-child {
     margin-bottom: 0 !important;
     padding: 0 !important;
-    flex-shrink: 0;
-    margin-right: 0.75rem;
+    align-self: center;
+    margin-right: 0 !important;
   }
   .dashboard-sidebar-nav {
-    flex-direction: row !important;
-    flex: 1;
-    gap: 0 !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+    flex: none !important;
+    gap: 0.5rem !important;
     padding: 0 !important;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-  .dashboard-sidebar-nav::-webkit-scrollbar {
-    display: none;
+    overflow: visible;
   }
   .dashboard-sidebar-nav a {
+    justify-content: center;
+    gap: 0.4rem !important;
     white-space: nowrap;
+    min-width: 0;
+    padding: 0.625rem 0.5rem !important;
+    border-left: 0 !important;
+    font-size: 0.8125rem !important;
+    text-align: center;
+  }
+  .dashboard-sidebar-nav svg {
+    width: 1rem;
+    height: 1rem;
     flex-shrink: 0;
+  }
+  .dashboard-nav-label-full {
+    display: none;
+  }
+  .dashboard-nav-label-mobile {
+    display: inline;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .dashboard-sidebar-footer {
     display: none;

@@ -128,7 +128,7 @@ export default async function DashboardPage() {
         {/* Nav */}
         <nav aria-label="Dashboard sections" className="dashboard-sidebar-nav" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.25rem', padding: '0 0.75rem' }}>
           <NavItem href="/dashboard" icon={<LayoutDashboard className="w-4 h-4" aria-hidden="true" />} label="Dashboard" active />
-          <NavItem href="/courses" icon={<BookOpen className="w-4 h-4" aria-hidden="true" />} label="Browse Courses" />
+          <NavItem href="/courses" icon={<BookOpen className="w-4 h-4" aria-hidden="true" />} label="Browse Courses" mobileLabel="Browse" />
           <NavItem href="/dashboard/settings" icon={<Settings className="w-4 h-4" aria-hidden="true" />} label="Settings" />
         </nav>
 
@@ -211,9 +211,9 @@ export default async function DashboardPage() {
 }
 
 function NavItem({
-  href, icon, label, active,
+  href, icon, label, active, mobileLabel,
 }: {
-  href: string; icon: React.ReactNode; label: string; active?: boolean
+  href: string; icon: React.ReactNode; label: string; active?: boolean; mobileLabel?: string
 }) {
   return (
     <Link
@@ -232,7 +232,8 @@ function NavItem({
       }}
     >
       {icon}
-      {label}
+      <span className="dashboard-nav-label-full">{label}</span>
+      <span className="dashboard-nav-label-mobile">{mobileLabel ?? label}</span>
     </Link>
   )
 }

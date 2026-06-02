@@ -153,13 +153,24 @@ export async function getR2Object(key: string, range?: string | null) {
   }
 
   const client = getClient(config)
-  return client.send(
-    new GetObjectCommand({
-      Bucket: config.privateBucket,
-      Key: key,
-      Range: range || undefined,
-    })
-  )
+  const command = (bucket: string) => new GetObjectCommand({
+    Bucket: bucket,
+    Key: key,
+    Range: range || undefined,
+  })
+
+  try {
+    return await client.send(command(config.privateBucket))
+  } catch (error) {
+    if (config.privateBucket === config.publicBucket) {
+      throw error
+    }
+
+    // Course assets uploaded before the public/private bucket split may still
+    // live in the public bucket. Access is already checked before this helper
+    // is called, so this fallback preserves old courses without exposing files.
+    return client.send(command(config.publicBucket))
+  }
 }
 
 /** Returns the file extension (without dot), inferred from filename + MIME. */

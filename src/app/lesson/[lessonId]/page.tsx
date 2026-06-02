@@ -56,8 +56,7 @@ function HtmlEmbed({ url, title }: { url: string; title: string }) {
     <iframe
       src={protectedAssetUrl(url)}
       title={title}
-      sandbox="allow-forms"
-      loading="lazy"
+      referrerPolicy="no-referrer"
       style={{
         width: '100%', height: '600px', border: '1px solid rgba(200,220,192,0.35)',
         borderRadius: '0.75rem', background: '#FFFFFF',

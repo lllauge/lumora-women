@@ -129,20 +129,26 @@ export async function GET(req: NextRequest) {
     }
 
     const headers = new Headers()
+    const contentType = object.ContentType ?? 'application/octet-stream'
+    const isHtml = access.isHtml || contentType.toLowerCase().includes('text/html')
+
     headers.set('Accept-Ranges', 'bytes')
     headers.set('Cache-Control', 'private, no-store')
-    headers.set('Content-Type', object.ContentType ?? 'application/octet-stream')
+    headers.set('Content-Type', contentType)
     headers.set('Content-Disposition', contentDisposition(access.filename, access.inline))
     headers.set('X-Content-Type-Options', 'nosniff')
 
-    if (access.isHtml) {
+    if (isHtml) {
       headers.set(
         'Content-Security-Policy',
         [
           "default-src 'none'",
+          "script-src 'none'",
+          "object-src 'none'",
           "img-src https: data:",
-          "style-src 'unsafe-inline'",
-          "font-src data:",
+          "style-src 'unsafe-inline' https://fonts.googleapis.com",
+          "font-src https://fonts.gstatic.com data:",
+          "connect-src 'none'",
           "base-uri 'none'",
           "form-action 'none'",
           "frame-ancestors 'self'",

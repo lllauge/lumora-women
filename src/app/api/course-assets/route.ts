@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient, createClient } from '@/lib/supabase/server'
 import { getR2Object, getR2ObjectKeyFromUrl } from '@/lib/r2'
 
 function toWebStream(body: unknown): ReadableStream | null {
@@ -39,7 +39,9 @@ async function canAccessAsset(req: NextRequest, assetUrl: string) {
     return { allowed: false, status: 401, filename: null, inline: true, isHtml: false }
   }
 
-  const { data: profile } = await supabase
+  const db = await createAdminClient()
+
+  const { data: profile } = await db
     .from('users')
     .select('role')
     .eq('id', user.id)
@@ -50,7 +52,7 @@ async function canAccessAsset(req: NextRequest, assetUrl: string) {
     return { allowed: true, status: 200, filename: null, inline: true, isHtml: false }
   }
 
-  const { data: videoLesson } = await supabase
+  const { data: videoLesson } = await db
     .from('lessons')
     .select('id, title, modules(course_id)')
     .eq('video_url', assetUrl)
@@ -59,7 +61,7 @@ async function canAccessAsset(req: NextRequest, assetUrl: string) {
   if (videoLesson) {
     const courseId = ((videoLesson.modules as { course_id?: string } | null)?.course_id) ?? null
     const enrolled = courseId
-      ? await userIsEnrolled(supabase, user.id, courseId)
+      ? await userIsEnrolled(db, user.id, courseId)
       : false
 
     return {
@@ -71,7 +73,7 @@ async function canAccessAsset(req: NextRequest, assetUrl: string) {
     }
   }
 
-  const { data: download } = await supabase
+  const { data: download } = await db
     .from('downloads')
     .select('id, file_name, file_type, lessons(modules(course_id))')
     .eq('file_url', assetUrl)
@@ -81,7 +83,7 @@ async function canAccessAsset(req: NextRequest, assetUrl: string) {
     const lesson = download.lessons as { modules?: { course_id?: string } | null } | null
     const courseId = lesson?.modules?.course_id ?? null
     const enrolled = courseId
-      ? await userIsEnrolled(supabase, user.id, courseId)
+      ? await userIsEnrolled(db, user.id, courseId)
       : false
 
     return {
@@ -97,7 +99,7 @@ async function canAccessAsset(req: NextRequest, assetUrl: string) {
 }
 
 async function userIsEnrolled(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: Awaited<ReturnType<typeof createAdminClient>>,
   userId: string,
   courseId: string
 ) {

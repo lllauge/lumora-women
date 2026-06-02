@@ -1,0 +1,23 @@
+{
+  "name": "Lumora Women",
+  "short_name": "Lumora",
+  "description": "Practical wellness education for women navigating postpartum recovery, hormone health, and every season of womanhood.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F9F8F3",
+  "theme_color": "#1E3220",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

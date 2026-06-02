@@ -52,35 +52,12 @@ function protectedAssetUrl(url: string) {
 }
 
 function HtmlEmbed({ url, title }: { url: string; title: string }) {
-  const [html, setHtml] = useState<string | null>(null)
-  const [error, setError] = useState(false)
-
-  useEffect(() => {
-    fetch(protectedAssetUrl(url))
-      .then((r) => {
-        if (!r.ok) throw new Error('fetch failed')
-        return r.text()
-      })
-      .then(setHtml)
-      .catch(() => setError(true))
-  }, [url])
-
-  if (error) return (
-    <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-      Could not load content.
-    </p>
-  )
-  if (!html) return (
-    <div style={{ height: '600px', border: '1px solid rgba(200,220,192,0.35)', borderRadius: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--section-tint)' }}>
-      <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading…</span>
-    </div>
-  )
-
   return (
     <iframe
-      srcDoc={html}
+      src={protectedAssetUrl(url)}
       title={title}
-      sandbox="allow-scripts allow-forms allow-same-origin"
+      sandbox="allow-forms"
+      loading="lazy"
       style={{
         width: '100%', height: '600px', border: '1px solid rgba(200,220,192,0.35)',
         borderRadius: '0.75rem', background: '#FFFFFF',

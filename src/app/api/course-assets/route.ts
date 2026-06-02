@@ -25,7 +25,7 @@ async function canAccessAsset(assetUrl: string) {
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
-    return { allowed: false, status: 401, filename: null, inline: true }
+    return { allowed: false, status: 401, filename: null, inline: true, isHtml: false }
   }
 
   const { data: profile } = await supabase
@@ -36,7 +36,7 @@ async function canAccessAsset(assetUrl: string) {
 
   const isAdmin = profile?.role === 'admin'
   if (isAdmin) {
-    return { allowed: true, status: 200, filename: null, inline: true }
+    return { allowed: true, status: 200, filename: null, inline: true, isHtml: false }
   }
 
   const { data: videoLesson } = await supabase
@@ -56,6 +56,7 @@ async function canAccessAsset(assetUrl: string) {
       status: enrolled ? 200 : 404,
       filename: videoLesson.title ? `${videoLesson.title}.mp4` : null,
       inline: true,
+      isHtml: false,
     }
   }
 
@@ -77,10 +78,11 @@ async function canAccessAsset(assetUrl: string) {
       status: enrolled ? 200 : 404,
       filename: download.file_name ?? null,
       inline: download.file_type === 'text/html',
+      isHtml: download.file_type === 'text/html',
     }
   }
 
-  return { allowed: false, status: 404, filename: null, inline: true }
+  return { allowed: false, status: 404, filename: null, inline: true, isHtml: false }
 }
 
 async function userIsEnrolled(
@@ -132,6 +134,21 @@ export async function GET(req: NextRequest) {
     headers.set('Content-Type', object.ContentType ?? 'application/octet-stream')
     headers.set('Content-Disposition', contentDisposition(access.filename, access.inline))
     headers.set('X-Content-Type-Options', 'nosniff')
+
+    if (access.isHtml) {
+      headers.set(
+        'Content-Security-Policy',
+        [
+          "default-src 'none'",
+          "img-src https: data:",
+          "style-src 'unsafe-inline'",
+          "font-src data:",
+          "base-uri 'none'",
+          "form-action 'none'",
+          "frame-ancestors 'self'",
+        ].join('; ')
+      )
+    }
 
     if (object.ContentLength !== undefined) {
       headers.set('Content-Length', String(object.ContentLength))

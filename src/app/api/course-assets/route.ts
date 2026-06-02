@@ -73,28 +73,26 @@ async function canAccessAsset(req: NextRequest, assetUrl: string) {
     }
   }
 
-  const { data: download } = await db
+  // Use the user's own session for the download lookup so Supabase RLS
+  // handles the enrollment check — the "Enrolled users can view downloads"
+  // policy already ensures only enrolled students can see a download row.
+  const { data: download } = await supabase
     .from('downloads')
-    .select('id, file_name, file_type, lessons(modules(course_id))')
+    .select('id, file_name, file_type')
     .eq('file_url', assetUrl)
     .maybeSingle()
 
   if (download) {
-    const lesson = download.lessons as { modules?: { course_id?: string } | null } | null
-    const courseId = lesson?.modules?.course_id ?? null
-    const enrolled = courseId
-      ? await userIsEnrolled(db, user.id, courseId)
-      : false
-
     return {
-      allowed: enrolled,
-      status: enrolled ? 200 : 404,
+      allowed: true,
+      status: 200,
       filename: download.file_name ?? null,
       inline: download.file_type === 'text/html',
       isHtml: download.file_type === 'text/html',
     }
   }
 
+  console.error('[course-assets] asset not found or access denied:', { assetUrl, userId: user.id })
   return { allowed: false, status: 404, filename: null, inline: true, isHtml: false }
 }
 

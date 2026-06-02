@@ -16,6 +16,18 @@ export async function fulfillPaidCourseCheckout(
   session: Stripe.Checkout.Session,
   expectedUserId?: string
 ): Promise<FulfillmentResult> {
+  try {
+    return await _fulfill(session, expectedUserId)
+  } catch (err) {
+    console.error('[stripe fulfillment] unexpected error:', err)
+    return { ok: false, error: 'An unexpected error occurred during fulfillment.', status: 500 }
+  }
+}
+
+async function _fulfill(
+  session: Stripe.Checkout.Session,
+  expectedUserId?: string
+): Promise<FulfillmentResult> {
   const parsed = CheckoutMetadataSchema.safeParse(session.metadata ?? {})
   if (!parsed.success) {
     return { ok: false, error: 'Missing or invalid checkout metadata.', status: 400 }

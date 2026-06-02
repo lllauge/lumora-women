@@ -126,9 +126,14 @@ function HtmlEmbed({ url, title }: { url: string; title: string }) {
     async function loadHtml() {
       try {
         setStatus('loading')
+        const supabase = createClient()
+        const { data: { session } } = await supabase.auth.getSession()
         const response = await fetch(protectedAssetUrl(url), {
           credentials: 'same-origin',
           cache: 'no-store',
+          headers: session?.access_token
+            ? { Authorization: `Bearer ${session.access_token}` }
+            : undefined,
         })
 
         if (!response.ok) {

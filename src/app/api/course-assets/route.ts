@@ -20,9 +20,20 @@ function contentDisposition(filename: string | null, inline: boolean) {
   return `${inline ? 'inline' : 'attachment'}; filename="${safeName}"`
 }
 
-async function canAccessAsset(assetUrl: string) {
+async function canAccessAsset(req: NextRequest, assetUrl: string) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user: cookieUser } } = await supabase.auth.getUser()
+  let user = cookieUser
+
+  if (!user) {
+    const authHeader = req.headers.get('authorization')
+    const token = authHeader?.match(/^Bearer\s+(.+)$/i)?.[1]
+
+    if (token) {
+      const { data } = await supabase.auth.getUser(token)
+      user = data.user
+    }
+  }
 
   if (!user) {
     return { allowed: false, status: 401, filename: null, inline: true, isHtml: false }
@@ -114,7 +125,7 @@ export async function GET(req: NextRequest) {
     )
   }
 
-  const access = await canAccessAsset(assetUrl)
+  const access = await canAccessAsset(req, assetUrl)
   if (!access.allowed) {
     return NextResponse.json({ error: access.status === 401 ? 'Not authenticated.' : 'Asset not found.' }, { status: access.status })
   }

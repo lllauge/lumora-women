@@ -235,7 +235,12 @@ export default function BlogContent() {
                   {/* Image */}
                   <div style={{ height: '320px', background: 'var(--pale-botanical)', position: 'relative', overflow: 'hidden' }}>
                     {featured.featured_image_url ? (
-                      <img src={featured.featured_image_url} alt={`Featured image for: ${featured.title}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <img
+                        src={featured.featured_image_url}
+                        alt={`Featured image for: ${featured.title}`}
+                        className="blog-card-art"
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
                     ) : (
                       <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} aria-hidden="true">
                         <span style={{ fontFamily: 'var(--font-display)', fontSize: '3rem', color: 'var(--botanical-green)', opacity: 0.4 }} aria-hidden="true">L</span>
@@ -322,7 +327,12 @@ export default function BlogContent() {
                       {/* Image */}
                       <div style={{ height: '200px', background: 'var(--pale-botanical)', overflow: 'hidden' }}>
                         {post.featured_image_url ? (
-                          <img src={post.featured_image_url} alt={`Featured image for: ${post.title}`} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s' }} />
+                          <img
+                            src={post.featured_image_url}
+                            alt={`Featured image for: ${post.title}`}
+                            className="blog-card-art"
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s' }}
+                          />
                         ) : (
                           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} aria-hidden="true">
                             <span style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', color: 'var(--botanical-green)', opacity: 0.4 }} aria-hidden="true">L</span>

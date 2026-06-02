@@ -1289,8 +1289,22 @@ blockquote, .pull-quote {
   width: 100%;
   aspect-ratio: 16 / 7;
   object-fit: cover;
+  object-position: center;
   border-radius: 1.5rem;
   box-shadow: 0 8px 40px rgba(26, 40, 24, 0.1);
+}
+
+.blog-card-art {
+  object-position: center;
+}
+
+@media (max-width: 767px) {
+  .blog-card-art,
+  .blog-hero-image {
+    object-fit: contain !important;
+    object-position: center center !important;
+    background: var(--page-bg);
+  }
 }
 
 /* Article body wrapper */

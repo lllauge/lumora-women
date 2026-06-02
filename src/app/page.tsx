@@ -604,7 +604,7 @@ function FromTheBlog({
                 color: 'var(--text-primary)',
               }}
             >
-              The Sanctuary Journal
+              Real Talk
             </h2>
             <div
               className="w-20 h-[3px] mt-4"
@@ -644,7 +644,7 @@ function FromTheBlog({
                     <img
                       src={post.featured_image_url}
                       alt={`Featured image for: ${post.title}`}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      className="blog-card-art w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                   ) : (
                     <div aria-hidden="true" className="w-full h-full flex items-center justify-center">

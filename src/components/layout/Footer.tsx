@@ -2,7 +2,7 @@ import Link from 'next/link'
 
 const baseExploreLinks = [
   { label: 'Courses', href: '/courses' },
-  { label: 'Journal', href: '/blog' },
+  { label: 'Real Talk', href: '/blog' },
   { label: 'Start Here', href: '/start-here' },
   { label: 'Community', href: '/community' },
   { label: 'About Us', href: '/about' },

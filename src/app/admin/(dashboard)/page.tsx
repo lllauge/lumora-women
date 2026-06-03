@@ -1,9 +1,11 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import {
   Users,
   Wallet,
   Mail,
   BookOpen,
+  HeartHandshake,
   ArrowUpRight,
   ArrowDownRight,
   Minus,
@@ -460,6 +462,70 @@ export default async function AdminDashboardPage() {
             ? `${stats.courses.draft} currently in draft`
             : 'All courses published'}
         />
+      </div>
+
+      {/* ── Coaching shortcut ─────────────────────────────────────────────── */}
+      <div
+        className="admin-card p-6 flex flex-col gap-5 md:flex-row md:items-center md:justify-between"
+        style={{
+          background: 'linear-gradient(135deg, var(--admin-surface) 0%, var(--admin-sage-fixed) 100%)',
+        }}
+      >
+        <div className="flex items-start gap-4">
+          <div
+            className="w-12 h-12 rounded-full flex items-center justify-center shrink-0"
+            style={{
+              background: 'var(--admin-primary-container)',
+              color: 'var(--admin-bg)',
+            }}
+          >
+            <HeartHandshake size={22} />
+          </div>
+          <div>
+            <p
+              className="uppercase mb-1"
+              style={{
+                fontFamily: 'var(--font-hanken)',
+                fontSize: '0.6875rem',
+                fontWeight: 700,
+                letterSpacing: '0.15em',
+                color: 'var(--admin-on-surface-variant)',
+              }}
+            >
+              1:1 Coaching
+            </p>
+            <h3
+              style={{
+                fontFamily: 'var(--font-eb-garamond)',
+                fontSize: '1.75rem',
+                fontWeight: 700,
+                color: 'var(--admin-on-surface)',
+                lineHeight: 1.1,
+              }}
+            >
+              Send a paid coaching checkout link
+            </h3>
+            <p
+              className="mt-2"
+              style={{
+                fontFamily: 'var(--font-hanken)',
+                fontSize: '0.9375rem',
+                color: 'var(--admin-on-surface-variant)',
+                maxWidth: '42rem',
+              }}
+            >
+              Use this after a fit call to invite a client to pay first, then complete her private onboarding form.
+            </p>
+          </div>
+        </div>
+        <Link
+          href="/admin/coaching"
+          className="admin-btn-primary w-full md:w-auto"
+          style={{ minHeight: '44px' }}
+        >
+          Open Coaching
+          <ArrowUpRight size={16} />
+        </Link>
       </div>
 
       {/* ── Row 2: Recent Enrollments + Activity Feed ─────────────────────── */}

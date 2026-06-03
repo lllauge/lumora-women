@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient, createClient } from '@/lib/supabase/server'
 import { BookOpen, LayoutDashboard, Settings, LogOut, ChevronRight, Play } from 'lucide-react'
 
 export const metadata: Metadata = {
@@ -84,6 +84,28 @@ async function getEnrolledCourses(userId: string) {
   return results
 }
 
+async function getCoachingClient(userId: string, email: string | undefined) {
+  if (!email) return null
+  const supabase = await createAdminClient()
+  const normalized = email.toLowerCase()
+
+  const { data } = await supabase
+    .from('coaching_clients')
+    .select('id, status, onboarding_status')
+    .or(`user_id.eq.${userId},email.eq.${normalized}`)
+    .maybeSingle()
+
+  if (data && data.onboarding_status !== 'submitted') {
+    await supabase
+      .from('coaching_clients')
+      .update({ user_id: userId, updated_at: new Date().toISOString() })
+      .eq('id', data.id)
+      .is('user_id', null)
+  }
+
+  return data
+}
+
 export default async function DashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -97,6 +119,7 @@ export default async function DashboardPage() {
     .maybeSingle()
 
   const enrolledCourses = await getEnrolledCourses(user.id)
+  const coachingClient = await getCoachingClient(user.id, user.email)
   const firstName = profile?.first_name ?? user.email?.split('@')[0] ?? 'there'
 
   return (
@@ -204,6 +227,29 @@ export default async function DashboardPage() {
             </ul>
           )}
         </section>
+
+        {coachingClient && (
+          <section aria-label="My coaching" style={{ marginTop: '2rem' }}>
+            <div style={{ background: '#FFFFFF', borderRadius: '1rem', border: '1px solid rgba(200,220,192,0.35)', overflow: 'hidden' }}>
+              <div aria-hidden="true" style={{ height: '3px', background: 'linear-gradient(to right, #F0D060 0%, #C8980A 25%, #E8C040 50%, #A87808 75%, #D4AC30 100%)' }} />
+              <div style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                <div>
+                  <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                    1:1 Coaching
+                  </h2>
+                  <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                    {coachingClient.onboarding_status === 'submitted'
+                      ? 'Your onboarding has been submitted.'
+                      : 'Complete your onboarding so your plan can be created.'}
+                  </p>
+                </div>
+                <Link href="/coaching/onboarding" className="btn-primary" style={{ borderRadius: '0.5rem', padding: '0.75rem 1.25rem' }}>
+                  {coachingClient.onboarding_status === 'submitted' ? 'View Status' : 'Start Onboarding'}
+                </Link>
+              </div>
+            </div>
+          </section>
+        )}
       </main>
 
     </div>

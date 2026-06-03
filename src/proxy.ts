@@ -63,7 +63,7 @@ export async function proxy(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   // ── Student-side gates ────────────────────────────────────────────────────
-  if (path.startsWith('/dashboard') || path.startsWith('/lesson')) {
+  if (path.startsWith('/dashboard') || path.startsWith('/lesson') || path.startsWith('/coaching/onboarding')) {
     if (!user) {
       const url = request.nextUrl.clone()
       url.pathname = '/login'

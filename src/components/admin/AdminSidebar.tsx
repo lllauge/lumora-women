@@ -8,6 +8,7 @@ import {
   PenLine,
   ShoppingBag,
   Users,
+  HeartHandshake,
   Mail,
   Receipt,
   Settings,
@@ -35,6 +36,7 @@ const navSections: NavSection[] = [
     heading: 'Audience',
     items: [
       { label: 'Students',   href: '/admin/students',   icon: Users },
+      { label: 'Coaching',   href: '/admin/coaching',   icon: HeartHandshake },
       { label: 'Email List', href: '/admin/email-list', icon: Mail },
     ],
   },

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
+import { fulfillCoachingCheckout } from '@/lib/stripe-coaching-fulfillment'
 import { fulfillPaidCourseCheckout } from '@/lib/stripe-fulfillment'
 
 export async function POST(req: NextRequest) {
@@ -24,7 +25,11 @@ export async function POST(req: NextRequest) {
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session
-    const result = await fulfillPaidCourseCheckout(session)
+    const isCoaching = session.metadata?.product_type === 'coaching'
+    const result = isCoaching
+      ? await fulfillCoachingCheckout(session)
+      : await fulfillPaidCourseCheckout(session)
+
     if (!result.ok && result.status !== 409) {
       return NextResponse.json({ error: result.error }, { status: result.status ?? 500 })
     }

@@ -1,5 +1,23 @@
--- Lumora Women coaching MVP schema
--- Run this in Supabase SQL Editor after v4 security.
+-- ============================================================
+-- LUMORA WOMEN — Coaching Schema v5
+-- Run this AFTER v2/v3/v4 security in Supabase SQL Editor.
+-- Safe to re-run.
+-- ============================================================
+
+do $$
+begin
+  if to_regprocedure('public.is_admin()') is null then
+    raise exception 'Missing public.is_admin(). Run the earlier Lumora schema/security SQL before v5 coaching.';
+  end if;
+end $$;
+
+create or replace function public.set_updated_at()
+returns trigger as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$ language plpgsql;
 
 create table if not exists public.coaching_orders (
   id uuid primary key default gen_random_uuid(),
@@ -37,6 +55,70 @@ create table if not exists public.coaching_onboarding (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'coaching_orders_status_check'
+      and conrelid = 'public.coaching_orders'::regclass
+  ) then
+    alter table public.coaching_orders
+      add constraint coaching_orders_status_check
+      check (status in ('paid', 'refunded', 'disputed', 'cancelled'));
+  end if;
+
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'coaching_clients_status_check'
+      and conrelid = 'public.coaching_clients'::regclass
+  ) then
+    alter table public.coaching_clients
+      add constraint coaching_clients_status_check
+      check (status in ('needs_onboarding', 'plan_pending', 'active', 'paused', 'completed', 'cancelled'));
+  end if;
+
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'coaching_clients_onboarding_status_check'
+      and conrelid = 'public.coaching_clients'::regclass
+  ) then
+    alter table public.coaching_clients
+      add constraint coaching_clients_onboarding_status_check
+      check (onboarding_status in ('not_started', 'submitted', 'reviewed', 'needs_changes'));
+  end if;
+end $$;
+
+create unique index if not exists idx_coaching_clients_email_lower_unique
+  on public.coaching_clients (lower(email));
+
+create index if not exists idx_coaching_orders_user_id
+  on public.coaching_orders(user_id);
+
+create index if not exists idx_coaching_orders_email
+  on public.coaching_orders(email);
+
+create index if not exists idx_coaching_orders_created_at
+  on public.coaching_orders(created_at desc);
+
+create index if not exists idx_coaching_clients_user_id
+  on public.coaching_clients(user_id);
+
+create index if not exists idx_coaching_clients_status
+  on public.coaching_clients(status, onboarding_status);
+
+create index if not exists idx_coaching_onboarding_user_id
+  on public.coaching_onboarding(user_id);
+
+drop trigger if exists set_coaching_clients_updated_at on public.coaching_clients;
+create trigger set_coaching_clients_updated_at
+  before update on public.coaching_clients
+  for each row execute function public.set_updated_at();
+
+drop trigger if exists set_coaching_onboarding_updated_at on public.coaching_onboarding;
+create trigger set_coaching_onboarding_updated_at
+  before update on public.coaching_onboarding
+  for each row execute function public.set_updated_at();
 
 alter table public.coaching_orders enable row level security;
 alter table public.coaching_clients enable row level security;

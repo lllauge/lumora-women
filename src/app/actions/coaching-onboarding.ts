@@ -37,14 +37,6 @@ export async function submitCoachingOnboarding(formData: FormData) {
       phone: value(formData, 'phone'),
       timezone: value(formData, 'timezone'),
     },
-    eligibility: {
-      pregnant: value(formData, 'pregnant'),
-      breastfeeding: value(formData, 'breastfeeding'),
-      breastfeedingEnded: value(formData, 'breastfeedingEnded'),
-      postpartum: value(formData, 'postpartum'),
-      monthsPostpartum: value(formData, 'monthsPostpartum'),
-      cleared: value(formData, 'cleared'),
-    },
     goals: {
       primaryGoal: value(formData, 'primaryGoal'),
       targetWeight: value(formData, 'targetWeight'),

@@ -122,17 +122,6 @@ export default async function CoachingOnboardingPage({ searchParams }: PageProps
               </div>
             </Section>
 
-            <Section title="Eligibility">
-              <div className="grid md:grid-cols-2 gap-4">
-                <Field name="pregnant" label="Are you currently pregnant? yes/no" required />
-                <Field name="breastfeeding" label="Are you currently breastfeeding? yes/no" required />
-                <Field name="breastfeedingEnded" label="If applicable, when did breastfeeding end?" />
-                <Field name="postpartum" label="Are you postpartum? yes/no" />
-                <Field name="monthsPostpartum" label="Months postpartum" />
-                <Field name="cleared" label="Cleared for nutrition/exercise changes? yes/no" />
-              </div>
-            </Section>
-
             <Section title="Goals & Body Data">
               <div className="grid md:grid-cols-2 gap-4">
                 <Field name="height" label="Height" required />

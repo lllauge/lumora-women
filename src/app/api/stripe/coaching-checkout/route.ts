@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { z } from 'zod'
 import { getVerifiedAdminUser } from '@/lib/admin-guard'
+import { sendCoachingCheckoutEmail } from '@/lib/coaching-email'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { requireSameOrigin } from '@/lib/request-security'
 
@@ -102,5 +103,20 @@ export async function POST(req: NextRequest) {
     },
   })
 
-  return NextResponse.json({ url: session.url })
+  if (!session.url) {
+    return NextResponse.json({ error: 'Stripe did not return a checkout URL.' }, { status: 500 })
+  }
+
+  const emailResult = await sendCoachingCheckoutEmail({
+    to: email,
+    firstName: input.firstName,
+    checkoutUrl: session.url,
+    amount: input.amount,
+  })
+
+  return NextResponse.json({
+    url: session.url,
+    emailed: emailResult.ok,
+    emailError: emailResult.ok ? null : emailResult.error,
+  })
 }

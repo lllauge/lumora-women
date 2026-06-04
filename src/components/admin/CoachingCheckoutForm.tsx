@@ -8,6 +8,8 @@ export default function CoachingCheckoutForm() {
   const [lastName, setLastName] = useState('')
   const [amount, setAmount] = useState('997')
   const [checkoutUrl, setCheckoutUrl] = useState('')
+  const [emailed, setEmailed] = useState<boolean | null>(null)
+  const [emailError, setEmailError] = useState('')
   const [error, setError] = useState('')
   const [pending, setPending] = useState(false)
 
@@ -16,6 +18,8 @@ export default function CoachingCheckoutForm() {
     setPending(true)
     setError('')
     setCheckoutUrl('')
+    setEmailed(null)
+    setEmailError('')
 
     const res = await fetch('/api/stripe/coaching-checkout', {
       method: 'POST',
@@ -28,6 +32,8 @@ export default function CoachingCheckoutForm() {
       setError(data.error || 'Could not create checkout link.')
     } else {
       setCheckoutUrl(data.url)
+      setEmailed(Boolean(data.emailed))
+      setEmailError(data.emailError || '')
     }
     setPending(false)
   }
@@ -66,7 +72,7 @@ export default function CoachingCheckoutForm() {
       </div>
 
       <button type="submit" className="btn-primary" disabled={pending} style={{ borderRadius: '0.5rem' }}>
-        {pending ? 'Creating…' : 'Create Payment Link'}
+        {pending ? 'Sending…' : 'Email Payment Link'}
       </button>
 
       {error && (
@@ -75,7 +81,14 @@ export default function CoachingCheckoutForm() {
 
       {checkoutUrl && (
         <div className="rounded-lg p-4" style={{ background: 'var(--admin-surface-low)', border: '1px solid var(--admin-outline-variant)' }}>
-          <p className="admin-label" style={{ marginBottom: '0.5rem' }}>Send this link to the client</p>
+          <p className="admin-label" style={{ marginBottom: '0.5rem' }}>
+            {emailed ? 'Payment link emailed to client' : 'Payment link created'}
+          </p>
+          {emailed === false && (
+            <p role="alert" style={{ fontFamily: 'var(--font-hanken)', color: '#B42318', marginBottom: '0.75rem' }}>
+              Email did not send: {emailError || 'Unknown email error.'} Use the backup link below.
+            </p>
+          )}
           <a href={checkoutUrl} target="_blank" rel="noreferrer" style={{ wordBreak: 'break-all', color: 'var(--admin-primary-container)', fontFamily: 'var(--font-hanken)' }}>
             {checkoutUrl}
           </a>

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import AuthCard from '@/components/layout/AuthCard'
+import ResendConfirmationForm from '@/components/auth/ResendConfirmationForm'
 
 export const metadata: Metadata = {
   title: 'Verify Your Email | Lumora Women',
@@ -34,12 +35,10 @@ export default function VerifyEmailPage() {
         </p>
 
         <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', color: 'var(--on-surface-variant)', lineHeight: 1.6 }}>
-          Didn&apos;t receive it? Check your spam folder, or{' '}
-          <Link href="/login" style={{ color: 'var(--warm-terracotta)', fontWeight: 600 }}>
-            log in
-          </Link>{' '}
-          to request a new link.
+          Didn&apos;t receive it? Check your spam folder, then send yourself a new secure link below.
         </p>
+
+        <ResendConfirmationForm />
 
         <Link
           href="/"

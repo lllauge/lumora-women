@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { Resend } from 'resend'
 import { z } from 'zod'
+import { safeRedirectPath, sendAuthActionEmail } from '@/lib/auth-email'
 import { verifyHcaptcha } from '@/lib/hcaptcha'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { sanitizeField } from '@/lib/sanitize'
@@ -17,6 +17,7 @@ const SignupSchema = z.object({
     .regex(/[A-Z]/, 'Password must include one uppercase letter.')
     .regex(/[0-9]/, 'Password must include one number.'),
   captchaToken: z.string().optional().nullable(),
+  redirectTo: z.string().optional().nullable(),
 })
 
 function getAdminClient() {
@@ -46,26 +47,6 @@ function getSiteUrl(req: NextRequest) {
     : configured || requestOrigin
 
   return siteUrl.replace(/\/$/, '')
-}
-
-function confirmationEmailHtml(firstName: string, actionLink: string) {
-  return `
-    <div style="font-family: Arial, sans-serif; background:#F8F6F0; padding:32px;">
-      <div style="max-width:560px; margin:0 auto; background:#FFFFFF; border-radius:16px; padding:36px; border:1px solid #E5E0D6;">
-        <h1 style="font-family: Georgia, serif; color:#1A2818; margin:0 0 16px; font-size:32px;">Welcome to Lumora Women</h1>
-        <p style="color:#3A4A38; font-size:16px; line-height:1.7; margin:0 0 20px;">
-          Hi ${firstName || 'there'}, confirm your email address to activate your account and access your courses.
-        </p>
-        <a href="${actionLink}" style="display:inline-block; background:#4A7A40; color:#FFFFFF; text-decoration:none; padding:14px 22px; border-radius:999px; font-weight:700;">
-          Confirm My Email
-        </a>
-        <p style="color:#6B6B64; font-size:13px; line-height:1.6; margin:28px 0 0;">
-          If the button does not work, copy and paste this link into your browser:<br />
-          <span style="word-break:break-all;">${actionLink}</span>
-        </p>
-      </div>
-    </div>
-  `
 }
 
 export async function POST(req: NextRequest) {
@@ -105,6 +86,7 @@ export async function POST(req: NextRequest) {
   const lastName = sanitizeField(parsed.data.lastName, 80)
   const email = parsed.data.email.trim().toLowerCase()
   const siteUrl = getSiteUrl(req)
+  const redirectPath = safeRedirectPath(parsed.data.redirectTo)
   const supabase = getAdminClient()
 
   const { data, error } = await supabase.auth.admin.generateLink({
@@ -112,7 +94,7 @@ export async function POST(req: NextRequest) {
     email,
     password: parsed.data.password,
     options: {
-      redirectTo: `${siteUrl}/dashboard`,
+      redirectTo: `${siteUrl}${redirectPath}`,
       data: {
         first_name: firstName,
         last_name: lastName,
@@ -161,39 +143,14 @@ export async function POST(req: NextRequest) {
     console.error('[signup] subscriber upsert failed:', subscriberError.message)
   }
 
-  const resendKey = process.env.RESEND_API_KEY
-  if (!resendKey) {
-    console.error('[signup] RESEND_API_KEY is missing')
-    return NextResponse.json(
-      { error: 'Email is not configured. Please contact support.' },
-      { status: 500 }
-    )
-  }
+  const emailResult = await sendAuthActionEmail({
+    to: email,
+    firstName,
+    actionLink: data.properties.action_link,
+  })
 
-  try {
-    const resend = new Resend(resendKey)
-    const { error: emailError } = await resend.emails.send({
-      from: 'Lumora Women <hello@lumorawomen.com>',
-      to: email,
-      subject: 'Confirm your Lumora Women account',
-      html: confirmationEmailHtml(firstName, data.properties.action_link),
-      text: [
-        `Hi ${firstName || 'there'},`,
-        '',
-        'Confirm your Lumora Women account using this link:',
-        data.properties.action_link,
-      ].join('\n'),
-    })
-
-    if (emailError) {
-      console.error('[signup] Resend failed:', emailError)
-      return NextResponse.json(
-        { error: 'Your account was created, but the confirmation email could not be sent. Please contact support.' },
-        { status: 500 }
-      )
-    }
-  } catch (err) {
-    console.error('[signup] Resend exception:', err)
+  if (!emailResult.ok) {
+    console.error('[signup] confirmation email failed:', emailResult.error)
     return NextResponse.json(
       { error: 'Your account was created, but the confirmation email could not be sent. Please contact support.' },
       { status: 500 }

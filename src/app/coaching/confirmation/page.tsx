@@ -59,7 +59,7 @@ async function confirm(sessionId: string | undefined) {
     ok: true,
     title: 'Payment Confirmed',
     message: `Your coaching access is attached to ${email}. Create an account or log in with that same email to begin onboarding.`,
-    ctaHref: `/signup?email=${encodeURIComponent(email)}`,
+    ctaHref: `/signup?email=${encodeURIComponent(email)}&redirectTo=${encodeURIComponent('/coaching/onboarding')}`,
     ctaLabel: 'Create Account',
     secondaryHref: `/login?redirectTo=${encodeURIComponent('/coaching/onboarding')}`,
   }

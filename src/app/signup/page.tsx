@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import HCaptcha from '@hcaptcha/react-hcaptcha'
@@ -26,6 +26,20 @@ export default function SignUpPage() {
   const [loading, setLoading] = useState(false)
   const [serverError, setServerError] = useState('')
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const [redirectTo, setRedirectTo] = useState('/dashboard')
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const email = params.get('email')
+    const nextPath = params.get('redirectTo')
+
+    if (email) {
+      setForm((f) => ({ ...f, email }))
+    }
+    if (nextPath?.startsWith('/') && !nextPath.startsWith('//')) {
+      setRedirectTo(nextPath)
+    }
+  }, [])
 
   const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [field]: e.target.value }))
@@ -72,6 +86,7 @@ export default function SignUpPage() {
         email: form.email,
         password: form.password,
         captchaToken,
+        redirectTo,
       }),
     })
 
@@ -86,7 +101,7 @@ export default function SignUpPage() {
     }
 
     // Redirect to a "check your email" page instead of straight to dashboard
-    router.push('/verify-email')
+    router.push(`/verify-email?email=${encodeURIComponent(form.email)}&redirectTo=${encodeURIComponent(redirectTo)}`)
   }
 
   const pwStrengthIssues = passwordErrors(form.password)

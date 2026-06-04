@@ -90,17 +90,8 @@ export default async function CoachingOnboardingPage({ searchParams }: PageProps
           Lumora Women
         </Link>
 
-        <div style={{ margin: '3rem 0 2rem' }}>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(2.25rem, 6vw, 3.75rem)', color: 'var(--text-primary)', lineHeight: 1.08 }}>
-            Coaching Onboarding
-          </h1>
-          <p style={{ fontFamily: 'var(--font-sans)', color: 'var(--text-secondary)', fontSize: '1rem', lineHeight: 1.7, maxWidth: '42rem', marginTop: '1rem' }}>
-            Complete this after payment so I can build your personalized macro and nutrition plan. This is private and only visible to you and Lumora Women admin.
-          </p>
-        </div>
-
         {submitted === '1' || client.onboarding_status === 'submitted' ? (
-          <div className="rounded-2xl p-10 text-center" style={{ background: '#FFFFFF', border: '1px solid rgba(200,220,192,0.45)' }}>
+          <div className="rounded-2xl p-10 text-center" style={{ background: '#FFFFFF', border: '1px solid rgba(200,220,192,0.45)', marginTop: '3rem' }}>
             <CheckCircle className="w-14 h-14 mx-auto mb-4" style={{ color: 'var(--botanical-green)' }} />
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', color: 'var(--text-primary)', fontWeight: 700 }}>
               Your onboarding is submitted.
@@ -110,7 +101,7 @@ export default async function CoachingOnboardingPage({ searchParams }: PageProps
             </p>
           </div>
         ) : (
-          <form action={submitCoachingOnboarding} className="space-y-8 rounded-2xl p-6 md:p-8" style={{ background: '#FFFFFF', border: '1px solid rgba(200,220,192,0.45)' }}>
+          <form action={submitCoachingOnboarding} className="space-y-8 rounded-2xl p-6 md:p-8" style={{ background: '#FFFFFF', border: '1px solid rgba(200,220,192,0.45)', marginTop: '3rem' }}>
             <input type="hidden" name="email" value={user.email ?? ''} />
 
             <Section title="Personal Information">

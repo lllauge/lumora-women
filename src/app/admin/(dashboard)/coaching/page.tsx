@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/server'
 import CoachingCheckoutForm from '@/components/admin/CoachingCheckoutForm'
 import { formatCurrency, formatShortDate } from '@/utils/format'
@@ -68,12 +69,13 @@ export default async function AdminCoachingPage() {
                 <th>Onboarding</th>
                 <th>Paid</th>
                 <th>Amount</th>
+                <th className="text-right">Details</th>
               </tr>
             </thead>
             <tbody>
               {clients.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-16" style={{ color: 'var(--admin-on-surface-variant)' }}>
+                  <td colSpan={7} className="text-center py-16" style={{ color: 'var(--admin-on-surface-variant)' }}>
                     No paid coaching clients yet.
                   </td>
                 </tr>
@@ -87,6 +89,11 @@ export default async function AdminCoachingPage() {
                     <td>{statusLabel(client.onboarding_status)}</td>
                     <td>{client.paid_at ? formatShortDate(client.paid_at) : '—'}</td>
                     <td>{formatCurrency(Number(client.coaching_orders?.amount ?? 0))}</td>
+                    <td className="text-right">
+                      <Link href={`/admin/coaching/${client.id}`} className="admin-btn-secondary" style={{ padding: '0.45rem 0.85rem' }}>
+                        View Onboarding
+                      </Link>
+                    </td>
                   </tr>
                 )
               })}

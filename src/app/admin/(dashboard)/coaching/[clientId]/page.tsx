@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowLeft, CheckCircle, CircleAlert } from 'lucide-react'
+import CoachingPlanEditor from '@/components/admin/CoachingPlanEditor'
+import { parseCoachingPlan } from '@/lib/coaching-plan-schema'
 import { createAdminClient } from '@/lib/supabase/server'
 import { formatCurrency, formatShortDate } from '@/utils/format'
 
@@ -37,6 +39,17 @@ type OnboardingRow = {
   form_data: unknown
   submitted_at: string | null
   updated_at: string
+}
+
+type PlanRow = {
+  macro_targets: unknown
+  meal_plan: unknown
+  recipes: unknown
+  grocery_list: unknown
+  admin_notes: string | null
+  client_notes: string | null
+  status: string
+  generated_by_ai: boolean
 }
 
 type FormDataObject = Record<string, unknown>
@@ -134,7 +147,7 @@ async function loadClient(clientId: string) {
 
   if (!client) return null
 
-  const [orderQuery, onboardingQuery] = await Promise.all([
+  const [orderQuery, onboardingQuery, planQuery] = await Promise.all([
     client.coaching_order_id
       ? supabase
           .from('coaching_orders')
@@ -147,12 +160,18 @@ async function loadClient(clientId: string) {
       .select('form_data, submitted_at, updated_at')
       .eq('coaching_client_id', clientId)
       .maybeSingle(),
+    supabase
+      .from('coaching_plans')
+      .select('macro_targets, meal_plan, recipes, grocery_list, admin_notes, client_notes, status, generated_by_ai')
+      .eq('coaching_client_id', clientId)
+      .maybeSingle(),
   ])
 
   return {
     client: client as CoachingClient,
     order: orderQuery.data as CoachingOrder | null,
     onboarding: onboardingQuery.data as OnboardingRow | null,
+    plan: planQuery.data as PlanRow | null,
   }
 }
 
@@ -161,9 +180,21 @@ export default async function AdminCoachingClientPage({ params }: PageProps) {
   const data = await loadClient(clientId)
   if (!data) notFound()
 
-  const { client, order, onboarding } = data
+  const { client, order, onboarding, plan } = data
   const name = [client.first_name, client.last_name].filter(Boolean).join(' ').trim() || 'Coaching Client'
   const formData = asObject(onboarding?.form_data)
+  const coachingPlan = plan
+    ? parseCoachingPlan({
+        macroTargets: plan.macro_targets,
+        mealPlan: plan.meal_plan,
+        recipes: plan.recipes,
+        groceryList: plan.grocery_list,
+        adminNotes: plan.admin_notes ?? '',
+        clientNotes: plan.client_notes ?? '',
+        status: plan.status,
+        generatedByAi: plan.generated_by_ai,
+      })
+    : null
 
   return (
     <div className="space-y-6">
@@ -237,6 +268,12 @@ export default async function AdminCoachingClientPage({ params }: PageProps) {
         </div>
       ) : (
         <>
+          <CoachingPlanEditor
+            clientId={client.id}
+            initialPlan={coachingPlan}
+            canGenerateAi={Boolean(process.env.OPENAI_API_KEY)}
+          />
+
           <div className="admin-card p-5 flex items-center gap-3">
             <CheckCircle size={22} style={{ color: 'var(--admin-primary-container)' }} />
             <p style={{ fontFamily: 'var(--font-hanken)', color: 'var(--admin-on-surface)', margin: 0 }}>

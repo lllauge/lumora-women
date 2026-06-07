@@ -271,6 +271,7 @@ export default async function AdminCoachingClientPage({ params }: PageProps) {
           <CoachingPlanEditor
             clientId={client.id}
             initialPlan={coachingPlan}
+            onboardingData={formData}
             canGenerateAi={Boolean(process.env.OPENAI_API_KEY)}
           />
 
@@ -297,6 +298,7 @@ export default async function AdminCoachingClientPage({ params }: PageProps) {
             section={{ ...asObject(formData.goals), ...asObject(formData.body) }}
             fields={[
               { key: 'height', label: 'Height' },
+              { key: 'age', label: 'Age' },
               { key: 'weight', label: 'Current Weight' },
               { key: 'targetWeight', label: 'Goal Weight' },
               { key: 'waist', label: 'Waist' },

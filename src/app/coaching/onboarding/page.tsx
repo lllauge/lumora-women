@@ -115,6 +115,7 @@ export default async function CoachingOnboardingPage({ searchParams }: PageProps
 
             <Section title="Goals & Body Data">
               <div className="grid md:grid-cols-2 gap-4">
+                <Field name="age" label="Age" type="number" required />
                 <Field name="height" label="Height" required />
                 <Field name="weight" label="Current weight" required />
                 <Field name="targetWeight" label="Goal weight, if any" />

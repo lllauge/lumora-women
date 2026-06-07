@@ -1,14 +1,62 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ChevronDown, Sparkles } from 'lucide-react'
 import type { CoachingPlanDraft } from '@/lib/coaching-plan-schema'
 import { emptyCoachingPlan } from '@/lib/coaching-plan-schema'
+import {
+  calculateMacroTargets,
+  type MacroCalculationInputs,
+} from '@/lib/coaching-macro-calculator'
 
 type Props = {
   clientId: string
   initialPlan: CoachingPlanDraft | null
+  onboardingData: Record<string, unknown>
   canGenerateAi: boolean
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {}
+}
+
+function stringField(section: Record<string, unknown>, key: string) {
+  const value = section[key]
+  return value === null || value === undefined ? '' : String(value)
+}
+
+function buildPlanningInputs(onboardingData: Record<string, unknown>): MacroCalculationInputs {
+  const body = asRecord(onboardingData.body)
+  const goals = asRecord(onboardingData.goals)
+  const health = asRecord(onboardingData.health)
+  const nutrition = asRecord(onboardingData.nutrition)
+  const lifestyle = asRecord(onboardingData.lifestyle)
+
+  return {
+    age: stringField(body, 'age'),
+    height: stringField(body, 'height'),
+    weight: stringField(body, 'weight'),
+    targetWeight: stringField(goals, 'targetWeight'),
+    primaryGoal: stringField(goals, 'primaryGoal'),
+    activityLevel: 'light',
+    calorieAdjustment: 'steady_loss',
+    steps: stringField(lifestyle, 'steps'),
+    workouts: stringField(lifestyle, 'workouts'),
+    water: stringField(nutrition, 'water'),
+    medicalConditions: stringField(health, 'medicalConditions'),
+    medications: stringField(health, 'medications'),
+    injuries: stringField(health, 'injuries'),
+    currentEating: stringField(nutrition, 'currentEating'),
+    allergies: stringField(nutrition, 'allergies'),
+    restrictions: stringField(nutrition, 'restrictions'),
+    favoriteFoods: stringField(nutrition, 'favoriteFoods'),
+    dislikedFoods: stringField(nutrition, 'dislikedFoods'),
+    eatingOut: stringField(nutrition, 'eatingOut'),
+    sleep: stringField(health, 'sleep'),
+    stress: stringField(health, 'stress'),
+  }
 }
 
 function splitLines(value: string) {
@@ -58,18 +106,45 @@ function TextArea({
   )
 }
 
-export default function CoachingPlanEditor({ clientId, initialPlan, canGenerateAi }: Props) {
+export default function CoachingPlanEditor({ clientId, initialPlan, onboardingData, canGenerateAi }: Props) {
   const [plan, setPlan] = useState<CoachingPlanDraft>(initialPlan ?? emptyCoachingPlan)
+  const [planningInputs, setPlanningInputs] = useState<MacroCalculationInputs>(() => buildPlanningInputs(onboardingData))
   const [pending, setPending] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+
+  const calculatedMacros = calculateMacroTargets(planningInputs)
+  const hasSavedMacros = Object.values(plan.macroTargets).some((value) => value.trim())
+
+  useEffect(() => {
+    if (!hasSavedMacros && calculatedMacros) {
+      setPlan((current) => ({ ...current, macroTargets: calculatedMacros }))
+    }
+  }, [calculatedMacros, hasSavedMacros])
 
   function updateMacro(key: keyof CoachingPlanDraft['macroTargets'], value: string) {
     setPlan((current) => ({
       ...current,
       macroTargets: { ...current.macroTargets, [key]: value },
     }))
+  }
+
+  function updatePlanningInput(key: keyof MacroCalculationInputs, value: string) {
+    setPlanningInputs((current) => ({ ...current, [key]: value }))
+  }
+
+  function applyMacroEstimate() {
+    setError('')
+    setMessage('')
+
+    if (!calculatedMacros) {
+      setError('Add age, height, and current weight before calculating macros.')
+      return
+    }
+
+    setPlan((current) => ({ ...current, macroTargets: calculatedMacros }))
+    setMessage('Macro estimate applied. Review and override anything you want.')
   }
 
   async function savePlan(nextPlan = plan) {
@@ -101,7 +176,7 @@ export default function CoachingPlanEditor({ clientId, initialPlan, canGenerateA
     const response = await fetch('/api/admin/coaching/plan-draft', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ clientId }),
+      body: JSON.stringify({ clientId, planningInputs }),
     })
     const result = await response.json().catch(() => ({} as { error?: string; plan?: CoachingPlanDraft }))
 
@@ -145,6 +220,75 @@ export default function CoachingPlanEditor({ clientId, initialPlan, canGenerateA
 
       {message && <p role="status" style={{ fontFamily: 'var(--font-hanken)', color: 'var(--admin-primary-container)' }}>{message}</p>}
       {error && <p role="alert" style={{ fontFamily: 'var(--font-hanken)', color: '#B42318' }}>{error}</p>}
+
+      <details className="admin-card p-5" open>
+        <summary className="flex cursor-pointer items-center justify-between gap-3" style={{ fontFamily: 'var(--font-hanken)', fontWeight: 800 }}>
+          Client Inputs Used For Planning
+          <ChevronDown size={16} />
+        </summary>
+        <p className="mt-3" style={{ fontFamily: 'var(--font-hanken)', color: 'var(--admin-on-surface-variant)' }}>
+          Correct anything the client entered before calculating macros or generating the AI meal-plan draft. These edits are used for this plan workflow and do not rewrite the original onboarding submission.
+        </p>
+        <div className="mt-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          <TextInput label="Age" value={planningInputs.age} onChange={(v) => updatePlanningInput('age', v)} />
+          <TextInput label="Height" value={planningInputs.height} onChange={(v) => updatePlanningInput('height', v)} />
+          <TextInput label="Current Weight" value={planningInputs.weight} onChange={(v) => updatePlanningInput('weight', v)} />
+          <TextInput label="Goal Weight" value={planningInputs.targetWeight} onChange={(v) => updatePlanningInput('targetWeight', v)} />
+          <label className="space-y-1">
+            <span className="admin-label">Activity Level</span>
+            <select className="admin-input" value={planningInputs.activityLevel} onChange={(e) => updatePlanningInput('activityLevel', e.target.value)}>
+              <option value="sedentary">Sedentary</option>
+              <option value="light">Light</option>
+              <option value="moderate">Moderate</option>
+              <option value="active">Active</option>
+            </select>
+          </label>
+          <label className="space-y-1">
+            <span className="admin-label">Calorie Strategy</span>
+            <select className="admin-input" value={planningInputs.calorieAdjustment} onChange={(e) => updatePlanningInput('calorieAdjustment', e.target.value)}>
+              <option value="conservative_loss">Conservative Fat Loss</option>
+              <option value="steady_loss">Steady Fat Loss</option>
+              <option value="aggressive_loss">Aggressive Fat Loss</option>
+              <option value="maintenance">Maintenance</option>
+              <option value="reverse">Reverse / Build Up</option>
+            </select>
+          </label>
+          <TextInput label="Average Steps" value={planningInputs.steps} onChange={(v) => updatePlanningInput('steps', v)} />
+          <TextInput label="Water Intake" value={planningInputs.water} onChange={(v) => updatePlanningInput('water', v)} />
+        </div>
+        <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <TextArea label="Primary Goal" value={planningInputs.primaryGoal} onChange={(v) => updatePlanningInput('primaryGoal', v)} />
+          <TextArea label="Current Workouts / Equipment" value={planningInputs.workouts} onChange={(v) => updatePlanningInput('workouts', v)} />
+          <TextArea label="Food Allergies / Restrictions" value={[planningInputs.allergies, planningInputs.restrictions].filter(Boolean).join('\n')} onChange={(v) => {
+            const [allergies = '', ...restrictions] = v.split('\n')
+            setPlanningInputs((current) => ({ ...current, allergies: allergies.trim(), restrictions: restrictions.join('\n').trim() }))
+          }} />
+          <TextArea label="Foods They Like / Dislike" value={[planningInputs.favoriteFoods, planningInputs.dislikedFoods].filter(Boolean).join('\n')} onChange={(v) => {
+            const [favoriteFoods = '', ...dislikedFoods] = v.split('\n')
+            setPlanningInputs((current) => ({ ...current, favoriteFoods: favoriteFoods.trim(), dislikedFoods: dislikedFoods.join('\n').trim() }))
+          }} />
+          <TextArea label="Health Notes" value={[planningInputs.medicalConditions, planningInputs.medications, planningInputs.injuries].filter(Boolean).join('\n')} onChange={(v) => {
+            const [medicalConditions = '', medications = '', ...injuries] = v.split('\n')
+            setPlanningInputs((current) => ({
+              ...current,
+              medicalConditions: medicalConditions.trim(),
+              medications: medications.trim(),
+              injuries: injuries.join('\n').trim(),
+            }))
+          }} />
+          <TextArea label="Normal Day Of Eating" value={planningInputs.currentEating} onChange={(v) => updatePlanningInput('currentEating', v)} />
+        </div>
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+          <button type="button" className="admin-btn-secondary" onClick={applyMacroEstimate}>
+            Calculate Macro Estimate
+          </button>
+          <p style={{ fontFamily: 'var(--font-hanken)', color: 'var(--admin-on-surface-variant)', margin: 0 }}>
+            {calculatedMacros
+              ? `Estimate ready: ${calculatedMacros.calories} calories, ${calculatedMacros.protein} protein.`
+              : 'Age, height, and current weight are required for the estimate.'}
+          </p>
+        </div>
+      </details>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <TextInput label="Calories" value={plan.macroTargets.calories} onChange={(v) => updateMacro('calories', v)} />

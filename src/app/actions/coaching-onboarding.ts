@@ -44,6 +44,7 @@ export async function submitCoachingOnboarding(formData: FormData) {
       success: value(formData, 'success'),
     },
     body: {
+      age: value(formData, 'age'),
       height: value(formData, 'height'),
       weight: value(formData, 'weight'),
       waist: value(formData, 'waist'),

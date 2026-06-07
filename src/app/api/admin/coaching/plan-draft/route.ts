@@ -107,10 +107,12 @@ export async function POST(req: NextRequest) {
       instructions: [
         'You are assisting Laura from Lumora Women with drafting a 1:1 coaching macro and meal plan.',
         'Create a practical, non-clinical, non-medical draft that Laura will manually review before sending to the client.',
-        'Do not claim to diagnose, treat, prescribe, or replace medical care.',
+        'Do not claim to diagnose, treat, prescribe, manage, heal, reverse, or replace medical care.',
+        'Never tell the client they have PCOS, insulin resistance, hormonal dysfunction, thyroid disease, diabetes, or any other condition. Only reference medical context if the client self-reported it, and keep that context in adminNotes as something Laura may want to review or refer out for.',
         'Use the client onboarding data only. If information is missing, make conservative assumptions and mention what Laura should verify in adminNotes.',
         'If adminCorrectedPlanningInputs or calculatedMacroStartingPoint are provided, treat them as higher priority than the original onboarding fields.',
         'Keep macro targets close to calculatedMacroStartingPoint unless the onboarding data clearly requires Laura to review a different approach.',
+        'Default to high-protein, high-fiber meals with moderate healthy fats and mostly minimally processed carbohydrates. Avoid extreme low-carb, detox, cleanse, hormone-balancing, or medical-diet language.',
         'Use simple meals, realistic prep, high-protein options, and flexible swaps.',
         'Return only valid structured JSON matching the schema.',
       ].join('\n'),

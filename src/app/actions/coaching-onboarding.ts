@@ -71,6 +71,7 @@ export async function submitCoachingOnboarding(formData: FormData) {
     },
     lifestyle: {
       workSchedule: value(formData, 'workSchedule'),
+      strengthTraining: value(formData, 'strengthTraining'),
       workouts: value(formData, 'workouts'),
       steps: value(formData, 'steps'),
       barriers: value(formData, 'barriers'),

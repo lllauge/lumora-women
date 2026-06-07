@@ -68,6 +68,16 @@ function fieldValue(section: FormDataObject, key: string) {
   const raw = section[key]
   if (typeof raw === 'boolean') return raw ? 'Yes' : 'No'
   if (raw === null || raw === undefined || raw === '') return '—'
+  if (key === 'strengthTraining') {
+    const labels: Record<string, string> = {
+      not_sure: 'Not sure',
+      none: 'None right now',
+      '1_2_days': '1-2 days per week',
+      '3_4_days': '3-4 days per week',
+      '5_plus_days': '5+ days per week',
+    }
+    return labels[String(raw)] ?? String(raw)
+  }
   return String(raw)
 }
 
@@ -343,6 +353,7 @@ export default async function AdminCoachingClientPage({ params }: PageProps) {
             section={asObject(formData.lifestyle)}
             fields={[
               { key: 'workSchedule', label: 'Work / Family Schedule' },
+              { key: 'strengthTraining', label: 'Strength Training' },
               { key: 'workouts', label: 'Current Workouts' },
               { key: 'steps', label: 'Average Steps' },
               { key: 'barriers', label: 'Biggest Barriers' },

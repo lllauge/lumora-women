@@ -69,6 +69,33 @@ function TextArea({ name, label, required = false }: { name: string; label: stri
   )
 }
 
+function SelectField({
+  name,
+  label,
+  options,
+}: {
+  name: string
+  label: string
+  options: Array<{ value: string; label: string }>
+}) {
+  return (
+    <label style={{ display: 'block' }}>
+      <span style={{ display: 'block', fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.375rem' }}>
+        {label}
+      </span>
+      <select name={name} required style={{
+        width: '100%', minHeight: '44px', borderRadius: '0.5rem',
+        border: '1px solid rgba(200,220,192,0.55)', padding: '0.75rem 0.875rem',
+        fontFamily: 'var(--font-sans)', background: '#FFFFFF',
+      }}>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>{option.label}</option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="space-y-4" style={{ borderTop: '1px solid rgba(200,220,192,0.45)', paddingTop: '1.5rem' }}>
@@ -154,8 +181,21 @@ export default async function CoachingOnboardingPage({ searchParams }: PageProps
 
             <Section title="Schedule & Accountability">
               <TextArea name="workSchedule" label="Work/family schedule" />
+              <div className="grid md:grid-cols-2 gap-4">
+                <SelectField
+                  name="strengthTraining"
+                  label="Current strength training"
+                  options={[
+                    { value: 'not_sure', label: 'Not sure' },
+                    { value: 'none', label: 'None right now' },
+                    { value: '1_2_days', label: '1-2 days per week' },
+                    { value: '3_4_days', label: '3-4 days per week' },
+                    { value: '5_plus_days', label: '5+ days per week' },
+                  ]}
+                />
+                <Field name="steps" label="Average daily steps, if known" />
+              </div>
               <TextArea name="workouts" label="Current workouts and equipment access" />
-              <Field name="steps" label="Average daily steps, if known" />
               <TextArea name="barriers" label="Biggest barriers" />
               <TextArea name="accountability" label="What kind of accountability helps you most?" />
             </Section>

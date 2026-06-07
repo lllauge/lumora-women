@@ -40,9 +40,11 @@ function buildPlanningInputs(onboardingData: Record<string, unknown>): MacroCalc
     weight: stringField(body, 'weight'),
     targetWeight: stringField(goals, 'targetWeight'),
     primaryGoal: stringField(goals, 'primaryGoal'),
-    activityLevel: 'light',
+    activityLevel: 'light_daily_movement',
     calorieAdjustment: 'steady_loss',
     steps: stringField(lifestyle, 'steps'),
+    strengthTraining: stringField(lifestyle, 'strengthTraining') || 'not_sure',
+    strengthTrainingDetails: '',
     workouts: stringField(lifestyle, 'workouts'),
     water: stringField(nutrition, 'water'),
     medicalConditions: stringField(health, 'medicalConditions'),
@@ -237,10 +239,10 @@ export default function CoachingPlanEditor({ clientId, initialPlan, onboardingDa
           <label className="space-y-1">
             <span className="admin-label">Activity Level</span>
             <select className="admin-input" value={planningInputs.activityLevel} onChange={(e) => updatePlanningInput('activityLevel', e.target.value)}>
-              <option value="sedentary">Sedentary</option>
-              <option value="light">Light</option>
-              <option value="moderate">Moderate</option>
-              <option value="active">Active</option>
+              <option value="mostly_sedentary">Mostly Sedentary - desk job, low movement</option>
+              <option value="light_daily_movement">Light Daily Movement - errands, chores, some walking</option>
+              <option value="moderate_daily_movement">Moderate Daily Movement - on feet often or consistent walks</option>
+              <option value="very_active_lifestyle">Very Active Lifestyle - physical job or high daily movement</option>
             </select>
           </label>
           <label className="space-y-1">
@@ -255,10 +257,20 @@ export default function CoachingPlanEditor({ clientId, initialPlan, onboardingDa
           </label>
           <TextInput label="Average Steps" value={planningInputs.steps} onChange={(v) => updatePlanningInput('steps', v)} />
           <TextInput label="Water Intake" value={planningInputs.water} onChange={(v) => updatePlanningInput('water', v)} />
+          <label className="space-y-1">
+            <span className="admin-label">Strength Training</span>
+            <select className="admin-input" value={planningInputs.strengthTraining} onChange={(e) => updatePlanningInput('strengthTraining', e.target.value)}>
+              <option value="not_sure">Not Sure / Need to Ask</option>
+              <option value="none">None Right Now</option>
+              <option value="1_2_days">1-2 Days Per Week</option>
+              <option value="3_4_days">3-4 Days Per Week</option>
+              <option value="5_plus_days">5+ Days Per Week</option>
+            </select>
+          </label>
         </div>
         <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
           <TextArea label="Primary Goal" value={planningInputs.primaryGoal} onChange={(v) => updatePlanningInput('primaryGoal', v)} />
-          <TextArea label="Current Workouts / Equipment" value={planningInputs.workouts} onChange={(v) => updatePlanningInput('workouts', v)} />
+          <TextArea label="Strength Training Details / Equipment" value={planningInputs.strengthTrainingDetails || planningInputs.workouts} onChange={(v) => updatePlanningInput('strengthTrainingDetails', v)} />
           <TextArea label="Food Allergies / Restrictions" value={[planningInputs.allergies, planningInputs.restrictions].filter(Boolean).join('\n')} onChange={(v) => {
             const [allergies = '', ...restrictions] = v.split('\n')
             setPlanningInputs((current) => ({ ...current, allergies: allergies.trim(), restrictions: restrictions.join('\n').trim() }))

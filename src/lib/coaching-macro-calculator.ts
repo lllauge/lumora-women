@@ -7,6 +7,8 @@ export type MacroCalculationInputs = {
   activityLevel: string
   calorieAdjustment: string
   steps: string
+  strengthTraining: string
+  strengthTrainingDetails: string
   workouts: string
   water: string
   medicalConditions: string
@@ -34,10 +36,10 @@ export type CalculatedMacroTargets = {
 }
 
 const activityMultipliers: Record<string, number> = {
-  sedentary: 1.2,
-  light: 1.375,
-  moderate: 1.55,
-  active: 1.725,
+  mostly_sedentary: 1.2,
+  light_daily_movement: 1.3,
+  moderate_daily_movement: 1.45,
+  very_active_lifestyle: 1.6,
 }
 
 const calorieAdjustments: Record<string, number> = {
@@ -83,11 +85,16 @@ function roundToNearest(value: number, nearest = 5) {
   return Math.round(value / nearest) * nearest
 }
 
-function inferWorkoutTarget(workouts: string, activityLevel: string) {
-  if (workouts.trim()) return workouts.trim()
-  if (activityLevel === 'sedentary') return '2-3 strength sessions per week'
-  if (activityLevel === 'light') return '3 strength sessions per week'
-  return '3-4 strength sessions per week'
+function inferWorkoutTarget(inputs: MacroCalculationInputs) {
+  if (inputs.strengthTrainingDetails.trim()) return inputs.strengthTrainingDetails.trim()
+  if (inputs.workouts.trim()) return inputs.workouts.trim()
+
+  if (inputs.strengthTraining === 'none') return 'Start with 2 beginner strength sessions per week'
+  if (inputs.strengthTraining === '1_2_days') return '2 strength sessions per week'
+  if (inputs.strengthTraining === '3_4_days') return '3-4 strength sessions per week'
+  if (inputs.strengthTraining === '5_plus_days') return '4-5 strength sessions per week with recovery built in'
+
+  return '2-3 strength sessions per week'
 }
 
 export function calculateMacroTargets(inputs: MacroCalculationInputs): CalculatedMacroTargets | null {
@@ -99,7 +106,7 @@ export function calculateMacroTargets(inputs: MacroCalculationInputs): Calculate
 
   const weightKg = weightLb / 2.20462
   const bmr = 10 * weightKg + 6.25 * heightCm - 5 * age - 161
-  const activity = activityMultipliers[inputs.activityLevel] ?? activityMultipliers.light
+  const activity = activityMultipliers[inputs.activityLevel] ?? activityMultipliers.light_daily_movement
   const maintenanceCalories = bmr * activity
   const adjustment = calorieAdjustments[inputs.calorieAdjustment] ?? calorieAdjustments.steady_loss
   const calories = roundToNearest(Math.max(1200, maintenanceCalories * (1 + adjustment)), 25)
@@ -108,7 +115,7 @@ export function calculateMacroTargets(inputs: MacroCalculationInputs): Calculate
   const fats = roundToNearest(Math.max(45, (calories * 0.28) / 9), 5)
   const carbs = roundToNearest(Math.max(80, (calories - protein * 4 - fats * 9) / 4), 5)
   const fiber = Math.max(35, Math.round(calories / 100))
-  const steps = inputs.steps.trim() || (inputs.activityLevel === 'sedentary' ? '6,000-8,000/day' : '8,000-10,000/day')
+  const steps = inputs.steps.trim() || (inputs.activityLevel === 'mostly_sedentary' ? '6,000-8,000/day' : '8,000-10,000/day')
 
   return {
     calories: `${calories}`,
@@ -118,6 +125,6 @@ export function calculateMacroTargets(inputs: MacroCalculationInputs): Calculate
     fiber: `${fiber}g`,
     water: inputs.water.trim() || '80-100 oz/day',
     steps,
-    workoutTarget: inferWorkoutTarget(inputs.workouts, inputs.activityLevel),
+    workoutTarget: inferWorkoutTarget(inputs),
   }
 }

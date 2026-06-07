@@ -104,10 +104,10 @@ export function calculateMacroTargets(inputs: MacroCalculationInputs): Calculate
   const adjustment = calorieAdjustments[inputs.calorieAdjustment] ?? calorieAdjustments.steady_loss
   const calories = roundToNearest(Math.max(1200, maintenanceCalories * (1 + adjustment)), 25)
 
-  const protein = roundToNearest(weightLb * 0.85, 5)
+  const protein = roundToNearest(weightLb, 5)
   const fats = roundToNearest(Math.max(45, (calories * 0.28) / 9), 5)
   const carbs = roundToNearest(Math.max(80, (calories - protein * 4 - fats * 9) / 4), 5)
-  const fiber = Math.max(25, Math.min(35, Math.round(calories / 100)))
+  const fiber = Math.max(35, Math.round(calories / 100))
   const steps = inputs.steps.trim() || (inputs.activityLevel === 'sedentary' ? '6,000-8,000/day' : '8,000-10,000/day')
 
   return {

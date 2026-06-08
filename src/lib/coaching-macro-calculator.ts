@@ -55,6 +55,13 @@ function firstNumber(value: string) {
   return match ? Number(match[0]) : null
 }
 
+function parseStepCount(value: string) {
+  const normalized = value.toLowerCase().replace(/,/g, '')
+  const amount = firstNumber(normalized)
+  if (!amount) return null
+  return normalized.includes('k') ? amount * 1000 : amount
+}
+
 export function parseWeightPounds(value: string) {
   const normalized = value.toLowerCase()
   const amount = firstNumber(normalized)
@@ -95,6 +102,21 @@ function inferWorkoutTarget(inputs: MacroCalculationInputs) {
   return '2-3 strength sessions per week'
 }
 
+function inferActivityMultiplier(inputs: MacroCalculationInputs) {
+  let multiplier = activityMultipliers[inputs.activityLevel] ?? activityMultipliers.light_daily_movement
+  const steps = parseStepCount(inputs.steps)
+
+  if (steps && steps >= 10000) multiplier = Math.max(multiplier, 1.5)
+  else if (steps && steps >= 8000) multiplier = Math.max(multiplier, 1.42)
+  else if (steps && steps >= 6000) multiplier = Math.max(multiplier, 1.35)
+
+  if (inputs.strengthTraining === '1_2_days') multiplier = Math.max(multiplier, 1.35)
+  if (inputs.strengthTraining === '3_4_days') multiplier = Math.max(multiplier, 1.45)
+  if (inputs.strengthTraining === '5_plus_days') multiplier = Math.max(multiplier, 1.55)
+
+  return multiplier
+}
+
 export function calculateMacroTargets(inputs: MacroCalculationInputs): CalculatedMacroTargets | null {
   const age = firstNumber(inputs.age)
   const heightCm = parseHeightCentimeters(inputs.height)
@@ -104,9 +126,9 @@ export function calculateMacroTargets(inputs: MacroCalculationInputs): Calculate
 
   const weightKg = weightLb / 2.20462
   const bmr = 10 * weightKg + 6.25 * heightCm - 5 * age - 161
-  const activity = activityMultipliers[inputs.activityLevel] ?? activityMultipliers.light_daily_movement
+  const activity = inferActivityMultiplier(inputs)
   const maintenanceCalories = bmr * activity
-  const adjustment = calorieAdjustments[inputs.calorieAdjustment] ?? calorieAdjustments.steady_loss
+  const adjustment = calorieAdjustments[inputs.calorieAdjustment] ?? calorieAdjustments.conservative_loss
   const calories = roundToNearest(Math.max(1200, maintenanceCalories * (1 + adjustment)), 25)
 
   const protein = roundToNearest(weightLb, 5)

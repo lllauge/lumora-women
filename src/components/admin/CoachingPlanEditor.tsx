@@ -1,5 +1,6 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { ChevronDown, Sparkles } from 'lucide-react'
 import type { CoachingPlanDraft } from '@/lib/coaching-plan-schema'
@@ -41,7 +42,7 @@ function buildPlanningInputs(onboardingData: Record<string, unknown>): MacroCalc
     targetWeight: stringField(goals, 'targetWeight'),
     primaryGoal: stringField(goals, 'primaryGoal'),
     activityLevel: 'light_daily_movement',
-    calorieAdjustment: 'steady_loss',
+    calorieAdjustment: 'conservative_loss',
     steps: stringField(lifestyle, 'steps'),
     strengthTraining: stringField(lifestyle, 'strengthTraining') || 'not_sure',
     strengthTrainingDetails: '',
@@ -109,6 +110,7 @@ function TextArea({
 }
 
 export default function CoachingPlanEditor({ clientId, initialPlan, onboardingData, canGenerateAi }: Props) {
+  const router = useRouter()
   const [plan, setPlan] = useState<CoachingPlanDraft>(initialPlan ?? emptyCoachingPlan)
   const [planningInputs, setPlanningInputs] = useState<MacroCalculationInputs>(() => buildPlanningInputs(onboardingData))
   const [pending, setPending] = useState(false)
@@ -159,12 +161,14 @@ export default function CoachingPlanEditor({ clientId, initialPlan, onboardingDa
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ clientId, plan: nextPlan }),
     })
-    const result = await response.json().catch(() => ({} as { error?: string }))
+    const result = await response.json().catch(() => ({} as { error?: string; plan?: CoachingPlanDraft }))
 
     if (!response.ok) {
       setError(result.error || 'Could not save the plan.')
     } else {
+      if (result.plan) setPlan(result.plan)
       setMessage('Plan saved.')
+      router.refresh()
     }
 
     setPending(false)

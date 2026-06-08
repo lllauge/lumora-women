@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getVerifiedAdminUser } from '@/lib/admin-guard'
-import { CoachingPlanSchema } from '@/lib/coaching-plan-schema'
+import { CoachingPlanSchema, parseCoachingPlan } from '@/lib/coaching-plan-schema'
 import { requireSameOrigin } from '@/lib/request-security'
 import { createAdminClient } from '@/lib/supabase/server'
 
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
   const { clientId, plan } = parsed.data
   const supabase = await createAdminClient()
 
-  const { error } = await supabase
+  const { data: savedPlan, error } = await supabase
     .from('coaching_plans')
     .upsert(
       {
@@ -52,6 +52,8 @@ export async function POST(req: NextRequest) {
       },
       { onConflict: 'coaching_client_id' }
     )
+    .select('macro_targets, meal_plan, recipes, grocery_list, admin_notes, client_notes, status, generated_by_ai')
+    .single()
 
   if (error) {
     console.error('[coaching plan save] failed:', error.message)
@@ -65,5 +67,17 @@ export async function POST(req: NextRequest) {
       .eq('id', clientId)
   }
 
-  return NextResponse.json({ success: true })
+  return NextResponse.json({
+    success: true,
+    plan: parseCoachingPlan({
+      macroTargets: savedPlan?.macro_targets,
+      mealPlan: savedPlan?.meal_plan,
+      recipes: savedPlan?.recipes,
+      groceryList: savedPlan?.grocery_list,
+      adminNotes: savedPlan?.admin_notes ?? '',
+      clientNotes: savedPlan?.client_notes ?? '',
+      status: savedPlan?.status,
+      generatedByAi: savedPlan?.generated_by_ai,
+    }),
+  })
 }

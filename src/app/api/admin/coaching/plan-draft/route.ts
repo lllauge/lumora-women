@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
         targetWeight: parsed.data.planningInputs.targetWeight ?? '',
         primaryGoal: parsed.data.planningInputs.primaryGoal ?? '',
         activityLevel: parsed.data.planningInputs.activityLevel ?? 'light_daily_movement',
-        calorieAdjustment: parsed.data.planningInputs.calorieAdjustment ?? 'steady_loss',
+        calorieAdjustment: parsed.data.planningInputs.calorieAdjustment ?? 'conservative_loss',
         steps: parsed.data.planningInputs.steps ?? '',
         strengthTraining: parsed.data.planningInputs.strengthTraining ?? 'not_sure',
         strengthTrainingDetails: parsed.data.planningInputs.strengthTrainingDetails ?? '',

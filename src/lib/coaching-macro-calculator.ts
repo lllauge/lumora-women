@@ -86,13 +86,11 @@ function roundToNearest(value: number, nearest = 5) {
 }
 
 function inferWorkoutTarget(inputs: MacroCalculationInputs) {
-  if (inputs.strengthTrainingDetails.trim()) return inputs.strengthTrainingDetails.trim()
-  if (inputs.workouts.trim()) return inputs.workouts.trim()
-
   if (inputs.strengthTraining === 'none') return 'Start with 2 beginner strength sessions per week'
   if (inputs.strengthTraining === '1_2_days') return '2 strength sessions per week'
   if (inputs.strengthTraining === '3_4_days') return '3-4 strength sessions per week'
   if (inputs.strengthTraining === '5_plus_days') return '4-5 strength sessions per week with recovery built in'
+  if (inputs.workouts.trim()) return inputs.workouts.trim()
 
   return '2-3 strength sessions per week'
 }

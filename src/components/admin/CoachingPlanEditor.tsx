@@ -270,7 +270,7 @@ export default function CoachingPlanEditor({ clientId, initialPlan, onboardingDa
         </div>
         <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
           <TextArea label="Primary Goal" value={planningInputs.primaryGoal} onChange={(v) => updatePlanningInput('primaryGoal', v)} />
-          <TextArea label="Strength Training Details / Equipment" value={planningInputs.strengthTrainingDetails || planningInputs.workouts} onChange={(v) => updatePlanningInput('strengthTrainingDetails', v)} />
+          <TextArea label="Strength Details For AI / Equipment" value={planningInputs.strengthTrainingDetails || planningInputs.workouts} onChange={(v) => updatePlanningInput('strengthTrainingDetails', v)} />
           <TextArea label="Food Allergies / Restrictions" value={[planningInputs.allergies, planningInputs.restrictions].filter(Boolean).join('\n')} onChange={(v) => {
             const [allergies = '', ...restrictions] = v.split('\n')
             setPlanningInputs((current) => ({ ...current, allergies: allergies.trim(), restrictions: restrictions.join('\n').trim() }))

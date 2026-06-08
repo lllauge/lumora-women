@@ -14,6 +14,7 @@ type Props = {
   clientId: string
   initialPlan: CoachingPlanDraft | null
   onboardingData: Record<string, unknown>
+  initialPlanningInputs: Record<string, unknown>
   canGenerateAi: boolean
 }
 
@@ -63,6 +64,20 @@ function buildPlanningInputs(onboardingData: Record<string, unknown>): MacroCalc
   }
 }
 
+function mergePlanningInputs(onboardingData: Record<string, unknown>, savedInputs: Record<string, unknown>): MacroCalculationInputs {
+  const defaults = buildPlanningInputs(onboardingData)
+  const merged = { ...defaults }
+
+  for (const key of Object.keys(defaults) as Array<keyof MacroCalculationInputs>) {
+    const value = savedInputs[key]
+    if (value !== null && value !== undefined) {
+      merged[key] = String(value)
+    }
+  }
+
+  return merged
+}
+
 function splitLines(value: string) {
   return value
     .split('\n')
@@ -110,10 +125,18 @@ function TextArea({
   )
 }
 
-export default function CoachingPlanEditor({ clientId, initialPlan, onboardingData, canGenerateAi }: Props) {
+export default function CoachingPlanEditor({
+  clientId,
+  initialPlan,
+  onboardingData,
+  initialPlanningInputs,
+  canGenerateAi,
+}: Props) {
   const router = useRouter()
   const [plan, setPlan] = useState<CoachingPlanDraft>(initialPlan ?? emptyCoachingPlan)
-  const [planningInputs, setPlanningInputs] = useState<MacroCalculationInputs>(() => buildPlanningInputs(onboardingData))
+  const [planningInputs, setPlanningInputs] = useState<MacroCalculationInputs>(() => (
+    mergePlanningInputs(onboardingData, initialPlanningInputs)
+  ))
   const [pending, setPending] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [message, setMessage] = useState('')
@@ -160,14 +183,19 @@ export default function CoachingPlanEditor({ clientId, initialPlan, onboardingDa
     const response = await fetch('/api/admin/coaching/plans', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ clientId, plan: nextPlan }),
+      body: JSON.stringify({ clientId, plan: nextPlan, planningInputs }),
     })
-    const result = await response.json().catch(() => ({} as { error?: string; plan?: CoachingPlanDraft }))
+    const result = await response.json().catch(() => ({} as {
+      error?: string
+      plan?: CoachingPlanDraft
+      planningInputs?: MacroCalculationInputs
+    }))
 
     if (!response.ok) {
       setError(result.error || 'Could not save the plan.')
     } else {
       if (result.plan) setPlan(result.plan)
+      if (result.planningInputs) setPlanningInputs(result.planningInputs)
       setMessage('Plan saved.')
       router.refresh()
     }

@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowLeft, CheckCircle, CircleAlert } from 'lucide-react'
 import CoachingPlanEditor from '@/components/admin/CoachingPlanEditor'
+import CoachingProgressTracker from '@/components/admin/CoachingProgressTracker'
 import { parseCoachingPlan } from '@/lib/coaching-plan-schema'
 import { createAdminClient } from '@/lib/supabase/server'
 import { formatCurrency, formatShortDate } from '@/utils/format'
@@ -42,6 +43,7 @@ type OnboardingRow = {
 }
 
 type PlanRow = {
+  planning_inputs: unknown
   macro_targets: unknown
   meal_plan: unknown
   recipes: unknown
@@ -50,6 +52,16 @@ type PlanRow = {
   client_notes: string | null
   status: string
   generated_by_ai: boolean
+}
+
+type ProgressLogRow = {
+  id: string
+  logged_at: string
+  weight: string | null
+  body_fat: string | null
+  waist: string | null
+  hips: string | null
+  notes: string | null
 }
 
 type FormDataObject = Record<string, unknown>
@@ -157,7 +169,7 @@ async function loadClient(clientId: string) {
 
   if (!client) return null
 
-  const [orderQuery, onboardingQuery, planQuery] = await Promise.all([
+  const [orderQuery, onboardingQuery, planQuery, progressQuery] = await Promise.all([
     client.coaching_order_id
       ? supabase
           .from('coaching_orders')
@@ -172,9 +184,15 @@ async function loadClient(clientId: string) {
       .maybeSingle(),
     supabase
       .from('coaching_plans')
-      .select('macro_targets, meal_plan, recipes, grocery_list, admin_notes, client_notes, status, generated_by_ai')
+      .select('planning_inputs, macro_targets, meal_plan, recipes, grocery_list, admin_notes, client_notes, status, generated_by_ai')
       .eq('coaching_client_id', clientId)
       .maybeSingle(),
+    supabase
+      .from('coaching_progress_logs')
+      .select('id, logged_at, weight, body_fat, waist, hips, notes')
+      .eq('coaching_client_id', clientId)
+      .order('logged_at', { ascending: false })
+      .order('created_at', { ascending: false }),
   ])
 
   return {
@@ -182,6 +200,7 @@ async function loadClient(clientId: string) {
     order: orderQuery.data as CoachingOrder | null,
     onboarding: onboardingQuery.data as OnboardingRow | null,
     plan: planQuery.data as PlanRow | null,
+    progressLogs: (progressQuery.data ?? []) as ProgressLogRow[],
   }
 }
 
@@ -190,7 +209,7 @@ export default async function AdminCoachingClientPage({ params }: PageProps) {
   const data = await loadClient(clientId)
   if (!data) notFound()
 
-  const { client, order, onboarding, plan } = data
+  const { client, order, onboarding, plan, progressLogs } = data
   const name = [client.first_name, client.last_name].filter(Boolean).join(' ').trim() || 'Coaching Client'
   const formData = asObject(onboarding?.form_data)
   const coachingPlan = plan
@@ -282,8 +301,11 @@ export default async function AdminCoachingClientPage({ params }: PageProps) {
             clientId={client.id}
             initialPlan={coachingPlan}
             onboardingData={formData}
+            initialPlanningInputs={asObject(plan?.planning_inputs)}
             canGenerateAi={Boolean(process.env.OPENAI_API_KEY)}
           />
+
+          <CoachingProgressTracker clientId={client.id} initialLogs={progressLogs} />
 
           <div className="admin-card p-5 flex items-center gap-3">
             <CheckCircle size={22} style={{ color: 'var(--admin-primary-container)' }} />

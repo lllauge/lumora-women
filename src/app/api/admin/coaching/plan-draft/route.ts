@@ -22,6 +22,17 @@ function extractOutputText(response: unknown) {
     ?.text
 }
 
+function openAiErrorMessage(errorText: string) {
+  try {
+    const parsed = JSON.parse(errorText) as { error?: { message?: string; type?: string; code?: string } }
+    const message = parsed.error?.message
+    const code = parsed.error?.code || parsed.error?.type
+    return [message, code ? `(${code})` : ''].filter(Boolean).join(' ')
+  } catch {
+    return errorText.slice(0, 400)
+  }
+}
+
 export async function POST(req: NextRequest) {
   const originError = requireSameOrigin(req)
   if (originError) return originError
@@ -117,6 +128,7 @@ export async function POST(req: NextRequest) {
         'Keep macro targets close to calculatedMacroStartingPoint unless the onboarding data clearly requires Laura to review a different approach.',
         'Use the admin-selected planGoal. Recomposition should be near maintenance with a small deficit, not an aggressive cut.',
         'If mealPlanStyle is family_dinners, include family-friendly dinners that can be cooked once, with a clear client serving size and approximate macros for her serving. If mealPlanStyle is individual_only, make meals only for the client.',
+        'Do not add fields outside the schema. Put family serving details inside meal descriptions, recipe notes, instructions, adminNotes, or clientNotes.',
         'Default to high-protein, high-fiber meals with moderate healthy fats and mostly minimally processed carbohydrates. Avoid extreme low-carb, detox, cleanse, hormone-balancing, or medical-diet language.',
         'Use simple meals, realistic prep, high-protein options, and flexible swaps.',
         'Return only valid structured JSON matching the schema.',
@@ -150,14 +162,14 @@ export async function POST(req: NextRequest) {
           schema: CoachingPlanAiJsonSchema,
         },
       },
-      max_output_tokens: 6000,
+      max_output_tokens: 9000,
     }),
   })
 
   if (!response.ok) {
     const errorText = await response.text()
     console.error('[coaching plan ai] OpenAI error:', errorText)
-    return NextResponse.json({ error: 'AI draft failed. Please try again.' }, { status: 502 })
+    return NextResponse.json({ error: `AI draft failed: ${openAiErrorMessage(errorText)}` }, { status: 502 })
   }
 
   const data = await response.json()
@@ -180,7 +192,11 @@ export async function POST(req: NextRequest) {
   const plan = CoachingPlanSchema.safeParse({ ...draft, generatedByAi: true, status: 'draft' })
   if (!plan.success) {
     console.error('[coaching plan ai] schema mismatch:', plan.error.issues)
-    return NextResponse.json({ error: 'AI draft did not match the plan format.' }, { status: 502 })
+    const issues = plan.error.issues
+      .slice(0, 3)
+      .map((issue) => `${issue.path.join('.') || 'draft'}: ${issue.message}`)
+      .join('; ')
+    return NextResponse.json({ error: `AI draft did not match the plan format: ${issues}` }, { status: 502 })
   }
 
   return NextResponse.json({ plan: plan.data })

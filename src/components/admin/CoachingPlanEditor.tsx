@@ -41,8 +41,9 @@ function buildPlanningInputs(onboardingData: Record<string, unknown>): MacroCalc
     weight: stringField(body, 'weight'),
     targetWeight: stringField(goals, 'targetWeight'),
     primaryGoal: stringField(goals, 'primaryGoal'),
+    planGoal: 'recomposition',
+    mealPlanStyle: 'family_dinners',
     activityLevel: 'light_daily_movement',
-    calorieAdjustment: 'conservative_loss',
     steps: stringField(lifestyle, 'steps'),
     strengthTraining: stringField(lifestyle, 'strengthTraining') || 'not_sure',
     strengthTrainingDetails: '',
@@ -241,22 +242,29 @@ export default function CoachingPlanEditor({ clientId, initialPlan, onboardingDa
           <TextInput label="Current Weight" value={planningInputs.weight} onChange={(v) => updatePlanningInput('weight', v)} />
           <TextInput label="Goal Weight" value={planningInputs.targetWeight} onChange={(v) => updatePlanningInput('targetWeight', v)} />
           <label className="space-y-1">
-            <span className="admin-label">Activity Level</span>
+            <span className="admin-label">Plan Goal</span>
+            <select className="admin-input" value={planningInputs.planGoal} onChange={(e) => updatePlanningInput('planGoal', e.target.value)}>
+              <option value="recomposition">Body Recomposition</option>
+              <option value="fat_loss">Fat Loss</option>
+              <option value="build_muscle">Build Muscle</option>
+              <option value="maintenance">Maintenance</option>
+              <option value="performance">Performance Support</option>
+            </select>
+          </label>
+          <label className="space-y-1">
+            <span className="admin-label">Meal Plan Style</span>
+            <select className="admin-input" value={planningInputs.mealPlanStyle} onChange={(e) => updatePlanningInput('mealPlanStyle', e.target.value)}>
+              <option value="family_dinners">Family Dinners + Her Servings</option>
+              <option value="individual_only">Individual Plan Only</option>
+            </select>
+          </label>
+          <label className="space-y-1">
+            <span className="admin-label">Daily Activity</span>
             <select className="admin-input" value={planningInputs.activityLevel} onChange={(e) => updatePlanningInput('activityLevel', e.target.value)}>
               <option value="mostly_sedentary">Mostly Sedentary - desk job, low movement</option>
               <option value="light_daily_movement">Light Daily Movement - errands, chores, some walking</option>
               <option value="moderate_daily_movement">Moderate Daily Movement - on feet often or consistent walks</option>
               <option value="very_active_lifestyle">Very Active Lifestyle - physical job or high daily movement</option>
-            </select>
-          </label>
-          <label className="space-y-1">
-            <span className="admin-label">Calorie Strategy</span>
-            <select className="admin-input" value={planningInputs.calorieAdjustment} onChange={(e) => updatePlanningInput('calorieAdjustment', e.target.value)}>
-              <option value="conservative_loss">Conservative Fat Loss</option>
-              <option value="steady_loss">Steady Fat Loss</option>
-              <option value="aggressive_loss">Aggressive Fat Loss</option>
-              <option value="maintenance">Maintenance</option>
-              <option value="reverse">Reverse / Build Up</option>
             </select>
           </label>
           <TextInput label="Average Steps" value={planningInputs.steps} onChange={(v) => updatePlanningInput('steps', v)} />

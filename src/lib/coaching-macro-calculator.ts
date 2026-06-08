@@ -4,8 +4,9 @@ export type MacroCalculationInputs = {
   weight: string
   targetWeight: string
   primaryGoal: string
+  planGoal: string
+  mealPlanStyle: string
   activityLevel: string
-  calorieAdjustment: string
   steps: string
   strengthTraining: string
   strengthTrainingDetails: string
@@ -42,12 +43,12 @@ const activityMultipliers: Record<string, number> = {
   very_active_lifestyle: 1.6,
 }
 
-const calorieAdjustments: Record<string, number> = {
-  conservative_loss: -0.12,
-  steady_loss: -0.18,
-  aggressive_loss: -0.25,
+const goalCalorieAdjustments: Record<string, number> = {
+  fat_loss: -0.12,
+  recomposition: -0.05,
+  build_muscle: 0.08,
   maintenance: 0,
-  reverse: 0.08,
+  performance: 0.1,
 }
 
 function firstNumber(value: string) {
@@ -128,7 +129,7 @@ export function calculateMacroTargets(inputs: MacroCalculationInputs): Calculate
   const bmr = 10 * weightKg + 6.25 * heightCm - 5 * age - 161
   const activity = inferActivityMultiplier(inputs)
   const maintenanceCalories = bmr * activity
-  const adjustment = calorieAdjustments[inputs.calorieAdjustment] ?? calorieAdjustments.conservative_loss
+  const adjustment = goalCalorieAdjustments[inputs.planGoal] ?? goalCalorieAdjustments.recomposition
   const calories = roundToNearest(Math.max(1200, maintenanceCalories * (1 + adjustment)), 25)
 
   const protein = roundToNearest(weightLb, 5)

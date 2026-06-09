@@ -455,6 +455,8 @@ export default function CoachingPlanEditor({
                 name: '',
                 mealType: '',
                 servings: '',
+                familyServings: '',
+                clientServing: '',
                 prepTime: '',
                 cookTime: '',
                 calories: '',
@@ -488,12 +490,22 @@ export default function CoachingPlanEditor({
                 recipes[index] = { ...recipe, mealType: v }
                 setPlan((current) => ({ ...current, recipes }))
               }} />
-              <TextInput label="Calories" value={recipe.calories} onChange={(v) => {
+              <TextInput label="Family Yield" value={recipe.familyServings || recipe.servings} onChange={(v) => {
+                const recipes = [...plan.recipes]
+                recipes[index] = { ...recipe, familyServings: v, servings: v }
+                setPlan((current) => ({ ...current, recipes }))
+              }} />
+              <TextInput label="Client Serving Size" value={recipe.clientServing} onChange={(v) => {
+                const recipes = [...plan.recipes]
+                recipes[index] = { ...recipe, clientServing: v }
+                setPlan((current) => ({ ...current, recipes }))
+              }} />
+              <TextInput label="Client Serving Calories" value={recipe.calories} onChange={(v) => {
                 const recipes = [...plan.recipes]
                 recipes[index] = { ...recipe, calories: v }
                 setPlan((current) => ({ ...current, recipes }))
               }} />
-              <TextInput label="Protein / Carbs / Fats" value={`${recipe.protein} / ${recipe.carbs} / ${recipe.fats}`} onChange={(v) => {
+              <TextInput label="Client Serving Protein / Carbs / Fats" value={`${recipe.protein} / ${recipe.carbs} / ${recipe.fats}`} onChange={(v) => {
                 const [protein = '', carbs = '', fats = ''] = v.split('/').map((item) => item.trim())
                 const recipes = [...plan.recipes]
                 recipes[index] = { ...recipe, protein, carbs, fats }

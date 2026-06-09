@@ -180,10 +180,8 @@ async function searchFood(query: string, apiKey: string) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       query,
-      pageSize: 5,
+      pageSize: 10,
       dataType: ['Foundation', 'SR Legacy', 'Survey (FNDDS)'],
-      sortBy: 'dataType.keyword',
-      sortOrder: 'asc',
     }),
   })
 
@@ -201,18 +199,30 @@ async function searchFood(query: string, apiKey: string) {
     .split(/\s+/)
     .map((token) => token.replace(/[^a-z0-9]/g, ''))
     .filter((token) => token.length > 2 && !['and', 'the', 'with'].includes(token))
-  const wantsCooked = queryTokens.includes('cooked')
+
+  const cookWords = ['cooked', 'baked', 'grilled', 'roasted', 'boiled', 'steamed', 'broiled', 'sauteed']
+  const wantsCooked = cookWords.some((w) => queryTokens.includes(w))
   const wantsRaw = queryTokens.includes('raw')
 
   return foods
     .map((food) => {
       const description = food.description.toLowerCase()
       const tokenScore = queryTokens.reduce((score, token) => score + (description.includes(token) ? 4 : 0), 0)
-      const cookedScore = wantsCooked && description.includes('cooked') ? 10 : 0
+
+      const isCookedInDescription = cookWords.some((w) => description.includes(w))
+      const cookedScore = wantsCooked && isCookedInDescription ? 10 : 0
+      // Penalize when user wants cooked but the food is not described as cooked/prepared
+      const notCookedPenalty = wantsCooked && !isCookedInDescription && !description.includes('prepared') ? -12 : 0
+
       const rawScore = wantsRaw && description.includes('raw') ? 10 : 0
-      const rawPenalty = wantsCooked && /\b(raw|uncooked|dry|unenriched)\b/.test(description) ? -20 : 0
+      // Penalize clearly uncooked/concentrated forms
+      const rawPenalty = wantsCooked && /\b(raw|uncooked|dehydrated)\b/.test(description) ? -20 : 0
+      const dryPenalty = wantsCooked && /\bdry\b/.test(description) ? -20 : 0
+      // Penalize processed/concentrated forms that are never what someone means by "cooked chicken" or "cooked rice"
+      const processedPenalty = /\b(flour|powder|flakes?|mix|concentrate|instant|freeze.dried)\b/.test(description) ? -20 : 0
+
       const dataTypeScore = food.dataType === 'Foundation' ? 3 : food.dataType === 'SR Legacy' ? 2 : 1
-      return { food, score: tokenScore + cookedScore + rawScore + rawPenalty + dataTypeScore }
+      return { food, score: tokenScore + cookedScore + notCookedPenalty + rawScore + rawPenalty + dryPenalty + processedPenalty + dataTypeScore }
     })
     .sort((a, b) => b.score - a.score)[0]?.food ?? foods[0]
 }

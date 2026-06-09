@@ -229,13 +229,26 @@ function parseServingMultiplier(value: string | undefined) {
   return Number.isFinite(number) && number > 0 ? number : 1
 }
 
+function parseServingCount(value: string | undefined): number | null {
+  const normalized = String(value ?? '').trim().toLowerCase()
+  if (!normalized) return null
+  const match = normalized.match(/(\d+(?:\.\d+)?)/)
+  const count = match ? Number(match[1]) : null
+  return count && count > 1 ? count : null
+}
+
 export function estimateServingMultiplier({
   manualMultiplier,
+  familyServings,
 }: {
   manualMultiplier?: string
+  familyServings?: string
 }) {
   const manual = String(manualMultiplier ?? '').trim()
   if (manual) return parseServingMultiplier(manual)
+
+  const servings = parseServingCount(familyServings)
+  if (servings) return 1 / servings
 
   return 1
 }
@@ -314,9 +327,19 @@ export async function calculateRecipeNutritionFromUsda({
     fats: total.fats + ingredient.fats,
   }), { calories: 0, protein: 0, carbs: 0, fats: 0 })
   const totalRecipeGrams = results.reduce((total, ingredient) => total + ingredient.grams, 0)
-  const multiplier = estimateServingMultiplier({
-    manualMultiplier: clientServingMultiplier,
-  })
+
+  const manualMult = String(clientServingMultiplier ?? '').trim()
+  const servingCount = parseServingCount(familyServings)
+  let multiplier: number
+  if (manualMult) {
+    multiplier = parseServingMultiplier(manualMult)
+  } else if (servingCount) {
+    multiplier = 1 / servingCount
+  } else if (targetCalories && totalRecipe.calories > 0) {
+    multiplier = Math.min(1, targetCalories / totalRecipe.calories)
+  } else {
+    multiplier = 1
+  }
   const clientServingGrams = Math.round(totalRecipeGrams * multiplier)
   const clientServingIngredients = results.map((ingredient) => ({
     input: ingredient.input,

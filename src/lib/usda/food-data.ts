@@ -101,8 +101,16 @@ function normalizeAmount(value: string) {
   return Number(value)
 }
 
-function parseIngredientLine(raw: string): ParsedIngredient {
+function parseIngredientLine(raw: string): ParsedIngredient & { fdcId?: number } {
   const line = raw.trim()
+  const fdcMatch = line.match(/^\[fdc:(\d+)\]\s*/)
+  const fdcId = fdcMatch ? parseInt(fdcMatch[1]) : undefined
+  const lineWithoutFdc = fdcId ? line.slice(fdcMatch![0].length) : line
+  const parsed = parseIngredientLineInner(lineWithoutFdc, raw)
+  return fdcId ? { ...parsed, fdcId } : parsed
+}
+
+function parseIngredientLineInner(line: string, raw: string): ParsedIngredient {
   const match = line.match(/^(\d+(?:\.\d+)?(?:\s+\d+\/\d+)?|\d+\/\d+)\s*([a-zA-Z]+)\b\s*(.+)$/)
 
   if (!match) {
@@ -227,6 +235,97 @@ async function searchFood(query: string, apiKey: string) {
     .sort((a, b) => b.score - a.score)[0]?.food ?? foods[0]
 }
 
+export type UsdaFoodOption = {
+  fdcId: number
+  description: string
+  dataType: string
+  calories: number
+  protein: number
+  carbs: number
+  fats: number
+}
+
+export async function searchFoodsForPicker(query: string, apiKey: string): Promise<UsdaFoodOption[]> {
+  const url = new URL(USDA_SEARCH_URL)
+  url.searchParams.set('api_key', apiKey)
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      query,
+      pageSize: 10,
+      dataType: ['Foundation', 'SR Legacy', 'Survey (FNDDS)'],
+    }),
+  })
+
+  if (!response.ok) return []
+
+  const data = await response.json() as FoodSearchResponse
+  const foods = data.foods ?? []
+
+  const queryTokens = query
+    .toLowerCase()
+    .split(/\s+/)
+    .map((t) => t.replace(/[^a-z0-9]/g, ''))
+    .filter((t) => t.length > 2 && !['and', 'the', 'with'].includes(t))
+
+  const cookWords = ['cooked', 'baked', 'grilled', 'roasted', 'boiled', 'steamed', 'broiled', 'sauteed']
+  const wantsCooked = cookWords.some((w) => queryTokens.includes(w))
+
+  return foods
+    .map((food) => {
+      const description = food.description.toLowerCase()
+      const tokenScore = queryTokens.reduce((s, t) => s + (description.includes(t) ? 4 : 0), 0)
+      const isCookedInDescription = cookWords.some((w) => description.includes(w))
+      const cookedScore = wantsCooked && isCookedInDescription ? 10 : 0
+      const notCookedPenalty = wantsCooked && !isCookedInDescription && !description.includes('prepared') ? -12 : 0
+      const rawPenalty = wantsCooked && /\b(raw|uncooked|dehydrated)\b/.test(description) ? -20 : 0
+      const dryPenalty = wantsCooked && /\bdry\b/.test(description) ? -20 : 0
+      const processedPenalty = /\b(flour|powder|flakes?|mix|concentrate|instant|freeze.dried)\b/.test(description) ? -20 : 0
+      const dataTypeScore = food.dataType === 'Foundation' ? 3 : food.dataType === 'SR Legacy' ? 2 : 1
+      const score = tokenScore + cookedScore + notCookedPenalty + rawPenalty + dryPenalty + processedPenalty + dataTypeScore
+      const macros = macrosPer100g(food)
+      return { food, score, macros }
+    })
+    .filter(({ score }) => score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 8)
+    .map(({ food, macros }) => ({
+      fdcId: food.fdcId,
+      description: food.description,
+      dataType: food.dataType ?? '',
+      calories: Math.round(macros.calories),
+      protein: Math.round(macros.protein * 10) / 10,
+      carbs: Math.round(macros.carbs * 10) / 10,
+      fats: Math.round(macros.fats * 10) / 10,
+    }))
+}
+
+async function fetchFoodById(fdcId: number, apiKey: string): Promise<FoodSearchResult | null> {
+  const url = `https://api.nal.usda.gov/fdc/v1/food/${fdcId}?api_key=${apiKey}`
+  const response = await fetch(url)
+  if (!response.ok) return null
+  const data = await response.json() as Record<string, unknown>
+
+  // The detail endpoint returns nutrients as { nutrient: { id, name }, amount } — normalize to search format
+  type DetailNutrient = { nutrient?: { id?: number; name?: string }; amount?: number; nutrientId?: number; nutrientName?: string; value?: number; unitName?: string }
+  const rawNutrients = (data.foodNutrients ?? []) as DetailNutrient[]
+  const foodNutrients = rawNutrients.map((n) => ({
+    nutrientId: n.nutrient?.id ?? n.nutrientId,
+    nutrientName: n.nutrient?.name ?? n.nutrientName,
+    value: n.amount ?? n.value,
+    unitName: n.unitName,
+  }))
+
+  return {
+    fdcId: data.fdcId as number,
+    description: data.description as string,
+    dataType: data.dataType as string | undefined,
+    foodNutrients,
+  }
+}
+
 function parseServingMultiplier(value: string | undefined) {
   const normalized = String(value ?? '').trim()
   if (!normalized) return 1
@@ -311,7 +410,9 @@ export async function calculateRecipeNutritionFromUsda({
     if (parsed.warning) warnings.push(`${raw}: ${parsed.warning}`)
     if (!parsed.grams) continue
 
-    const food = await searchFood(parsed.query, apiKey)
+    const food = parsed.fdcId
+      ? await fetchFoodById(parsed.fdcId, apiKey)
+      : await searchFood(parsed.query, apiKey)
     if (!food) {
       warnings.push(`${raw}: No USDA match found.`)
       continue

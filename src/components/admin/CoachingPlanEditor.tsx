@@ -6,6 +6,7 @@ import { ChevronDown, Sparkles, Trash2 } from 'lucide-react'
 import type { CoachingPlanDraft } from '@/lib/coaching-plan-schema'
 import { emptyCoachingPlan } from '@/lib/coaching-plan-schema'
 import RecipePortionCard from './RecipePortionCard'
+import IngredientPicker from './IngredientPicker'
 import {
   calculateMacroTargets,
   type MacroCalculationInputs,
@@ -1024,11 +1025,56 @@ export default function CoachingPlanEditor({
                 recipes[index] = { ...recipe, protein, carbs, fats }
                 setPlan((current) => ({ ...current, recipes }))
               }} />
-              <TextArea label="Ingredients, one per line" value={joinLines(recipe.ingredients)} onChange={(v) => {
-                const recipes = [...plan.recipes]
-                recipes[index] = { ...recipe, ingredients: splitLines(v) }
-                setPlan((current) => ({ ...current, recipes }))
-              }} />
+              <div className="space-y-2">
+                <span className="admin-label">Ingredients</span>
+                <IngredientPicker
+                  onAdd={(ingredient) => {
+                    const recipes = [...plan.recipes]
+                    recipes[index] = { ...recipe, ingredients: [...recipe.ingredients, ingredient] }
+                    setPlan((current) => ({ ...current, recipes }))
+                  }}
+                />
+                {recipe.ingredients.length > 0 && (
+                  <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {recipe.ingredients.map((ing, ingIndex) => {
+                      const display = ing.replace(/^\[fdc:\d+\]\s*/, '')
+                      return (
+                        <li key={ingIndex} style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'var(--font-hanken)', fontSize: '0.88rem' }}>
+                          <span style={{ flex: 1, color: 'var(--admin-on-surface)' }}>{display}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const recipes = [...plan.recipes]
+                              recipes[index] = { ...recipe, ingredients: recipe.ingredients.filter((_, i) => i !== ingIndex) }
+                              setPlan((current) => ({ ...current, recipes }))
+                            }}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--admin-on-surface-variant)', padding: '0 4px', fontSize: '1rem', lineHeight: 1 }}
+                            aria-label="Remove ingredient"
+                          >
+                            ×
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+                <details style={{ marginTop: 4 }}>
+                  <summary style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.78rem', color: 'var(--admin-on-surface-variant)', cursor: 'pointer' }}>
+                    Or paste ingredients as text (one per line, e.g. 150g chicken breast cooked)
+                  </summary>
+                  <textarea
+                    className="admin-input"
+                    style={{ marginTop: 6 }}
+                    rows={4}
+                    value={joinLines(recipe.ingredients.map((i) => i.replace(/^\[fdc:\d+\]\s*/, '')))}
+                    onChange={(v) => {
+                      const recipes = [...plan.recipes]
+                      recipes[index] = { ...recipe, ingredients: splitLines(v.target.value) }
+                      setPlan((current) => ({ ...current, recipes }))
+                    }}
+                  />
+                </details>
+              </div>
               <div className="space-y-2">
                 <button
                   type="button"

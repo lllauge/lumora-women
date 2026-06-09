@@ -40,10 +40,6 @@ function firstNumber(value: string | undefined) {
   return match ? Number(match[0]) : 0
 }
 
-function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value))
-}
-
 function mealCalorieTarget(mealType: string, dailyCalories: number) {
   const type = mealType.toLowerCase()
   if (type.includes('breakfast')) return dailyCalories * 0.25
@@ -75,36 +71,34 @@ async function addUsdaServingMathToDraft(plan: CoachingPlanDraft) {
     if (recipe.ingredients.length === 0) return recipe
 
     try {
-      const fullRecipe = await calculateRecipeNutritionFromUsda({
+      const nutrition = await calculateRecipeNutritionFromUsda({
         ingredients: recipe.ingredients,
-        clientServingMultiplier: '1',
+        clientServingMultiplier: recipe.clientServingMultiplier,
+        targetCalories: mealCalorieTarget(recipe.mealType, dailyCalories),
+        familyServings: recipe.familyServings || recipe.servings,
         apiKey,
       })
 
-      if (!fullRecipe.totalRecipe.calories) return recipe
+      if (!nutrition.totalRecipe.calories) return recipe
 
-      const targetCalories = mealCalorieTarget(recipe.mealType, dailyCalories)
-      const multiplier = clamp(targetCalories / fullRecipe.totalRecipe.calories, 0.08, 1)
-      const clientServing = {
-        calories: Math.round(fullRecipe.totalRecipe.calories * multiplier),
-        protein: Math.round(fullRecipe.totalRecipe.protein * multiplier),
-        carbs: Math.round(fullRecipe.totalRecipe.carbs * multiplier),
-        fats: Math.round(fullRecipe.totalRecipe.fats * multiplier),
-      }
       const sourceNote = [
-        `USDA auto-scaled client serving to about ${Math.round(targetCalories)} calories for ${recipe.mealType || 'this meal'}.`,
-        `Client serving share: ${multiplier.toFixed(2)} of the full recipe.`,
-        `Full recipe USDA total: ${fullRecipe.totalRecipe.calories} cal, ${fullRecipe.totalRecipe.protein}g protein, ${fullRecipe.totalRecipe.carbs}g carbs, ${fullRecipe.totalRecipe.fats}g fats.`,
-        fullRecipe.warnings.length ? `Review USDA warnings: ${fullRecipe.warnings.join(' ')}` : '',
+        `USDA auto-scaled client serving for ${recipe.mealType || 'this meal'}.`,
+        `Client portion: ${nutrition.clientServingGrams}g. ${nutrition.clientServingMeasure}`,
+        `Client serving share: ${nutrition.clientServingMultiplier.toFixed(2)} of the full recipe.`,
+        `Full recipe USDA total: ${nutrition.totalRecipe.calories} cal, ${nutrition.totalRecipe.protein}g protein, ${nutrition.totalRecipe.carbs}g carbs, ${nutrition.totalRecipe.fats}g fats.`,
+        nutrition.warnings.length ? `Review USDA warnings: ${nutrition.warnings.join(' ')}` : '',
       ].filter(Boolean).join(' ')
 
       return {
         ...recipe,
-        clientServingMultiplier: multiplier.toFixed(2),
-        calories: `${clientServing.calories}`,
-        protein: `${clientServing.protein}g`,
-        carbs: `${clientServing.carbs}g`,
-        fats: `${clientServing.fats}g`,
+        clientServingMultiplier: nutrition.clientServingMultiplier.toFixed(2),
+        clientServingGrams: `${nutrition.clientServingGrams}g`,
+        clientServingMeasure: nutrition.clientServingMeasure,
+        clientServing: recipe.clientServing || `${nutrition.clientServingGrams}g (${nutrition.clientServingMeasure})`,
+        calories: `${nutrition.clientServing.calories}`,
+        protein: `${nutrition.clientServing.protein}g`,
+        carbs: `${nutrition.clientServing.carbs}g`,
+        fats: `${nutrition.clientServing.fats}g`,
         notes: [recipe.notes, sourceNote].filter(Boolean).join('\n\n'),
       }
     } catch (error) {
@@ -229,7 +223,7 @@ export async function POST(req: NextRequest) {
         'Keep macro targets close to calculatedMacroStartingPoint unless the onboarding data clearly requires Laura to review a different approach.',
         'Use the admin-selected planGoal. Recomposition should be near maintenance with a small deficit, not an aggressive cut.',
         'Recipes are AI-generated drafts from the client onboarding data, admin-corrected inputs, and macro target. They are not pulled from a recipe database. Laura must review them before publishing.',
-        'If mealPlanStyle is family_dinners, every dinner recipe must be written as a full family recipe first. Set familyServings to the total family yield, such as "serves 4" or "serves 2 adults + 2 kids". Set clientServing to the exact client portion, such as "5 oz chicken + 1 cup rice + 1.5 cups vegetables". Set clientServingMultiplier to the client portion of the full recipe as a decimal or fraction, such as "0.25" or "1/4". Set calories, protein, carbs, and fats for the client serving only. Use notes for family plating instructions, leftovers, kid-friendly swaps, and how Laura should adjust the client portion.',
+        'If mealPlanStyle is family_dinners, every dinner recipe must be written as a full family recipe first. Set familyServings to the total family yield, such as "serves 4" or "serves 2 adults + 2 kids". Leave clientServingMultiplier blank unless Laura provided a manual override. USDA post-processing will calculate clientServing, clientServingGrams, clientServingMeasure, calories, protein, carbs, and fats from the client macro target.',
         'If mealPlanStyle is individual_only, set familyServings to "not applicable", clientServing to the full individual serving, and clientServingMultiplier to "1".',
         'Do not add fields outside the schema. Keep family-serving details in familyServings, clientServing, instructions, swaps, notes, adminNotes, or clientNotes.',
         'For every recipe, write ingredient lines with measurable weights whenever practical, such as "150g cooked chicken breast", "200g cooked rice", "2 oz cheddar cheese", or "100g avocado". Avoid vague amounts like "1 bowl" or "to taste".',
@@ -253,7 +247,7 @@ export async function POST(req: NextRequest) {
                 onboarding: onboarding.form_data,
                 adminCorrectedPlanningInputs: parsed.data.planningInputs ?? null,
                 calculatedMacroStartingPoint: calculatedMacros,
-                request: 'Draft macro targets, a 3-day meal plan, 6-8 recipes with cooking instructions, a grocery list, admin review notes, and client-facing notes. For family_dinners, dinners must include a full family recipe plus the client serving size and client-serving macros.',
+                request: 'Draft macro targets, a 3-day meal plan, 6-8 recipes with cooking instructions, a grocery list, admin review notes, and client-facing notes. For family_dinners, dinners must include a full family recipe. USDA post-processing will calculate the client serving size and client-serving macros.',
               }),
             },
           ],

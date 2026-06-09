@@ -14,6 +14,8 @@ type UsdaNutritionResponse = {
   error?: string
   nutrition?: {
     clientServingMultiplier: number
+    clientServingGrams: number
+    clientServingMeasure: string
     clientServing: {
       calories: number
       protein: number
@@ -121,6 +123,15 @@ function joinLines(value: string[]) {
 function firstNumber(value: string) {
   const match = value.match(/-?\d+(\.\d+)?/)
   return match ? Number(match[0]) : 0
+}
+
+function mealCalorieTarget(mealType: string, dailyCalories: number) {
+  const type = mealType.toLowerCase()
+  if (type.includes('breakfast')) return dailyCalories * 0.25
+  if (type.includes('lunch')) return dailyCalories * 0.3
+  if (type.includes('dinner')) return dailyCalories * 0.35
+  if (type.includes('snack')) return dailyCalories * 0.1
+  return dailyCalories * 0.3
 }
 
 function macroPart(value: string, label: string) {
@@ -245,6 +256,7 @@ export default function CoachingPlanEditor({
   const [pending, setPending] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [calculatingRecipeIndex, setCalculatingRecipeIndex] = useState<number | null>(null)
+  const [calculatingAllServings, setCalculatingAllServings] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
@@ -288,6 +300,7 @@ export default function CoachingPlanEditor({
       recipeName: recipe.name,
       description: [
         recipe.clientServing ? `Client serving: ${recipe.clientServing}.` : '',
+        recipe.clientServingMeasure ? `Portion guide: ${recipe.clientServingMeasure}.` : '',
         recipe.familyServings ? `Family yield: ${recipe.familyServings}.` : '',
         recipe.notes,
       ].filter(Boolean).join(' '),
@@ -360,6 +373,7 @@ export default function CoachingPlanEditor({
 
   async function calculateRecipeWithUsda(index: number) {
     const recipe = plan.recipes[index]
+    const dailyCalories = firstNumber(plan.macroTargets.calories)
     setCalculatingRecipeIndex(index)
     setError('')
     setMessage('')
@@ -370,6 +384,8 @@ export default function CoachingPlanEditor({
       body: JSON.stringify({
         ingredients: recipe.ingredients,
         clientServingMultiplier: recipe.clientServingMultiplier,
+        targetCalories: dailyCalories ? mealCalorieTarget(recipe.mealType, dailyCalories) : undefined,
+        familyServings: recipe.familyServings || recipe.servings,
       }),
     })
     const result = await response.json().catch(() => ({} as UsdaNutritionResponse)) as UsdaNutritionResponse
@@ -383,6 +399,7 @@ export default function CoachingPlanEditor({
     const { nutrition } = result
     const sourceNote = [
       `USDA calculated ${nutrition.ingredients.length} ingredients.`,
+      `Client portion: ${nutrition.clientServingGrams}g. ${nutrition.clientServingMeasure}`,
       `Full recipe: ${nutrition.totalRecipe.calories} cal, ${nutrition.totalRecipe.protein}g protein, ${nutrition.totalRecipe.carbs}g carbs, ${nutrition.totalRecipe.fats}g fats.`,
       nutrition.warnings.length ? `Review warnings: ${nutrition.warnings.join(' ')}` : '',
     ].filter(Boolean).join(' ')
@@ -392,6 +409,10 @@ export default function CoachingPlanEditor({
       const currentRecipe = recipes[index]
       recipes[index] = {
         ...currentRecipe,
+        clientServingMultiplier: nutrition.clientServingMultiplier.toFixed(2),
+        clientServingGrams: `${nutrition.clientServingGrams}g`,
+        clientServingMeasure: nutrition.clientServingMeasure,
+        clientServing: currentRecipe.clientServing || `${nutrition.clientServingGrams}g (${nutrition.clientServingMeasure})`,
         calories: `${nutrition.clientServing.calories}`,
         protein: `${nutrition.clientServing.protein}g`,
         carbs: `${nutrition.clientServing.carbs}g`,
@@ -407,6 +428,108 @@ export default function CoachingPlanEditor({
         : 'USDA macros applied to the client serving.'
     )
     setCalculatingRecipeIndex(null)
+  }
+
+  async function calculateAllServingsWithUsda() {
+    const dailyCalories = firstNumber(plan.macroTargets.calories)
+    if (!dailyCalories) {
+      setError('Add or calculate daily calories before auto-calculating recipe serving sizes.')
+      return
+    }
+
+    const recipesToCalculate = plan.recipes
+      .map((recipe, index) => ({ recipe, index }))
+      .filter(({ recipe }) => recipe.ingredients.length > 0)
+
+    if (recipesToCalculate.length === 0) {
+      setError('Add recipe ingredients before auto-calculating client servings.')
+      return
+    }
+
+    setCalculatingAllServings(true)
+    setError('')
+    setMessage('')
+
+    try {
+      const calculated = await Promise.all(recipesToCalculate.map(async ({ recipe, index }) => {
+        const response = await fetch('/api/admin/coaching/nutrition', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ingredients: recipe.ingredients,
+            clientServingMultiplier: recipe.clientServingMultiplier,
+            targetCalories: mealCalorieTarget(recipe.mealType, dailyCalories),
+            familyServings: recipe.familyServings || recipe.servings,
+          }),
+        })
+        const result = await response.json().catch(() => ({} as UsdaNutritionResponse)) as UsdaNutritionResponse
+        if (!response.ok || !result.nutrition) {
+          throw new Error(result.error || `USDA could not calculate ${recipe.name || `Recipe ${index + 1}`}.`)
+        }
+
+        return { index, nutrition: result.nutrition }
+      }))
+
+      setPlan((current) => {
+        const recipes = current.recipes.map((recipe, index) => {
+          const item = calculated.find((result) => result.index === index)
+          if (!item) return recipe
+
+          const { nutrition } = item
+          const sourceNote = [
+            `USDA auto-calculated client serving from ${nutrition.ingredients.length} ingredients.`,
+            `Client portion: ${nutrition.clientServingGrams}g. ${nutrition.clientServingMeasure}`,
+            `Full recipe: ${nutrition.totalRecipe.calories} cal, ${nutrition.totalRecipe.protein}g protein, ${nutrition.totalRecipe.carbs}g carbs, ${nutrition.totalRecipe.fats}g fats.`,
+            nutrition.warnings.length ? `Review warnings: ${nutrition.warnings.join(' ')}` : '',
+          ].filter(Boolean).join(' ')
+
+          return {
+            ...recipe,
+            clientServingMultiplier: nutrition.clientServingMultiplier.toFixed(2),
+            clientServingGrams: `${nutrition.clientServingGrams}g`,
+            clientServingMeasure: nutrition.clientServingMeasure,
+            clientServing: recipe.clientServing || `${nutrition.clientServingGrams}g (${nutrition.clientServingMeasure})`,
+            calories: `${nutrition.clientServing.calories}`,
+            protein: `${nutrition.clientServing.protein}g`,
+            carbs: `${nutrition.clientServing.carbs}g`,
+            fats: `${nutrition.clientServing.fats}g`,
+            notes: [recipe.notes, sourceNote].filter(Boolean).join('\n\n'),
+          }
+        })
+
+        const updateMeal = (meal: CoachingPlanDraft['mealPlan'][number]['breakfast']) => {
+          const recipe = recipes.find((item) => item.name && item.name === meal.recipeName)
+          if (!recipe) return meal
+          return {
+            ...meal,
+            description: [
+              recipe.clientServing ? `Client serving: ${recipe.clientServing}.` : '',
+              recipe.clientServingMeasure ? `Portion guide: ${recipe.clientServingMeasure}.` : '',
+              recipe.familyServings ? `Family yield: ${recipe.familyServings}.` : '',
+            ].filter(Boolean).join(' '),
+            macros: recipeMacroLabel(recipe),
+          }
+        }
+
+        return {
+          ...current,
+          recipes,
+          mealPlan: current.mealPlan.map((day) => ({
+            ...day,
+            breakfast: updateMeal(day.breakfast),
+            lunch: updateMeal(day.lunch),
+            dinner: updateMeal(day.dinner),
+            snacks: day.snacks.map(updateMeal),
+          })),
+        }
+      })
+
+      setMessage('Client serving sizes calculated. Review the grams, easy portion guide, and any USDA warnings before saving.')
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'USDA could not calculate recipe serving sizes.')
+    } finally {
+      setCalculatingAllServings(false)
+    }
   }
 
   return (
@@ -676,6 +799,14 @@ export default function CoachingPlanEditor({
           <button
             type="button"
             className="admin-btn-secondary"
+            disabled={calculatingAllServings || plan.recipes.length === 0}
+            onClick={calculateAllServingsWithUsda}
+          >
+            {calculatingAllServings ? 'Calculating Servings...' : 'Auto-Calculate Client Servings'}
+          </button>
+          <button
+            type="button"
+            className="admin-btn-secondary"
             onClick={() => setPlan((current) => ({
               ...current,
               recipes: [...current.recipes, {
@@ -685,6 +816,8 @@ export default function CoachingPlanEditor({
                 familyServings: '',
                 clientServing: '',
                 clientServingMultiplier: '',
+                clientServingGrams: '',
+                clientServingMeasure: '',
                 prepTime: '',
                 cookTime: '',
                 calories: '',
@@ -756,6 +889,16 @@ export default function CoachingPlanEditor({
                 recipes[index] = { ...recipe, clientServingMultiplier: v }
                 setPlan((current) => ({ ...current, recipes }))
               }} />
+              <TextInput label="Client Serving Grams" value={recipe.clientServingGrams} onChange={(v) => {
+                const recipes = [...plan.recipes]
+                recipes[index] = { ...recipe, clientServingGrams: v }
+                setPlan((current) => ({ ...current, recipes }))
+              }} />
+              <TextInput label="Easy Portion Guide" value={recipe.clientServingMeasure} onChange={(v) => {
+                const recipes = [...plan.recipes]
+                recipes[index] = { ...recipe, clientServingMeasure: v }
+                setPlan((current) => ({ ...current, recipes }))
+              }} />
               <TextInput label="Client Serving Calories" value={recipe.calories} onChange={(v) => {
                 const recipes = [...plan.recipes]
                 recipes[index] = { ...recipe, calories: v }
@@ -782,7 +925,7 @@ export default function CoachingPlanEditor({
                   {calculatingRecipeIndex === index ? 'Calculating USDA...' : 'Calculate Macros With USDA'}
                 </button>
                 <p style={{ fontFamily: 'var(--font-hanken)', color: 'var(--admin-on-surface-variant)', fontSize: '0.9rem', lineHeight: 1.5 }}>
-                  Best accuracy: use ingredient weights like 150g chicken breast, 2 oz cheddar, 200g cooked rice. Client Serving Share can be 1, 1/2, 1/4, or 0.25.
+                  Best accuracy: use ingredient weights like 150g chicken breast, 2 oz cheddar, 200g cooked rice. Leave Client Serving Share blank to auto-calculate from her macros, or type 1/2, 1/4, or 0.25 to override.
                 </p>
               </div>
               <TextArea label="Cooking Instructions, one per line" value={joinLines(recipe.instructions)} onChange={(v) => {

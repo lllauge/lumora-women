@@ -7,6 +7,8 @@ import { calculateRecipeNutritionFromUsda } from '@/lib/usda/food-data'
 const NutritionRequestSchema = z.object({
   ingredients: z.array(z.string().trim().min(1)).min(1).max(40),
   clientServingMultiplier: z.string().trim().max(20).optional(),
+  targetCalories: z.number().positive().optional(),
+  familyServings: z.string().trim().max(120).optional(),
 })
 
 export async function POST(req: NextRequest) {
@@ -39,6 +41,8 @@ export async function POST(req: NextRequest) {
     const nutrition = await calculateRecipeNutritionFromUsda({
       ingredients: parsed.data.ingredients,
       clientServingMultiplier: parsed.data.clientServingMultiplier,
+      targetCalories: parsed.data.targetCalories,
+      familyServings: parsed.data.familyServings,
       apiKey,
     })
 

@@ -231,24 +231,13 @@ function parseServingMultiplier(value: string | undefined) {
 
 export function estimateServingMultiplier({
   manualMultiplier,
-  familyServings,
 }: {
   manualMultiplier?: string
-  familyServings?: string
 }) {
   const manual = String(manualMultiplier ?? '').trim()
   if (manual) return parseServingMultiplier(manual)
 
-  const familyServingCount = parseFamilyServingCount(familyServings)
-  if (familyServingCount && familyServingCount > 0) return 1 / familyServingCount
-
   return 1
-}
-
-function parseFamilyServingCount(value: string | undefined) {
-  const match = String(value ?? '').match(/(?:serves|servings?|portion[s]?)\s*(\d+(\.\d+)?)/i)
-    ?? String(value ?? '').match(/(\d+(\.\d+)?)\s*(?:serves|servings?|portion[s]?)/i)
-  return match ? Number(match[1]) : null
 }
 
 function practicalServingMeasure({
@@ -266,6 +255,14 @@ function clientServingBreakdown(ingredients: UsdaClientServingIngredient[]) {
   return ingredients
     .map((ingredient) => `${ingredient.grams}g ${ingredient.label}`)
     .join(' + ')
+}
+
+function clientServingMacroBreakdown(ingredients: UsdaClientServingIngredient[]) {
+  return ingredients
+    .map((ingredient) => (
+      `${ingredient.grams}g ${ingredient.label}: ${ingredient.calories} cal, ${ingredient.protein}g protein, ${ingredient.carbs}g carbs, ${ingredient.fats}g fats`
+    ))
+    .join(' | ')
 }
 
 export async function calculateRecipeNutritionFromUsda({
@@ -319,7 +316,6 @@ export async function calculateRecipeNutritionFromUsda({
   const totalRecipeGrams = results.reduce((total, ingredient) => total + ingredient.grams, 0)
   const multiplier = estimateServingMultiplier({
     manualMultiplier: clientServingMultiplier,
-    familyServings,
   })
   const clientServingGrams = Math.round(totalRecipeGrams * multiplier)
   const clientServingIngredients = results.map((ingredient) => ({
@@ -332,6 +328,7 @@ export async function calculateRecipeNutritionFromUsda({
     fats: round(ingredient.fats * multiplier),
   }))
   const breakdown = clientServingBreakdown(clientServingIngredients)
+  const macroBreakdown = clientServingMacroBreakdown(clientServingIngredients)
 
   return {
     source: 'USDA FoodData Central',
@@ -341,7 +338,7 @@ export async function calculateRecipeNutritionFromUsda({
       multiplier,
       clientServingGrams,
     }),
-    clientServingBreakdown: breakdown,
+    clientServingBreakdown: [breakdown, macroBreakdown ? `Details: ${macroBreakdown}` : ''].filter(Boolean).join('\n'),
     totalRecipe: {
       calories: round(totalRecipe.calories),
       protein: round(totalRecipe.protein),

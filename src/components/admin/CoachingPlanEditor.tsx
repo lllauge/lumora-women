@@ -402,6 +402,7 @@ export default function CoachingPlanEditor({
       `USDA calculated ${nutrition.ingredients.length} ingredients.`,
       `Client portion: ${nutrition.clientServingGrams}g. ${nutrition.clientServingMeasure}`,
       nutrition.clientServingBreakdown ? `Ingredient breakdown: ${nutrition.clientServingBreakdown}.` : '',
+      nutrition.ingredients.length ? `USDA matches: ${nutrition.ingredients.map((ingredient) => `${ingredient.input} -> ${ingredient.matchedFood}`).join(' | ')}.` : '',
       `Full recipe: ${nutrition.totalRecipe.calories} cal, ${nutrition.totalRecipe.protein}g protein, ${nutrition.totalRecipe.carbs}g carbs, ${nutrition.totalRecipe.fats}g fats.`,
       nutrition.warnings.length ? `Review warnings: ${nutrition.warnings.join(' ')}` : '',
     ].filter(Boolean).join(' ')
@@ -498,6 +499,7 @@ export default function CoachingPlanEditor({
             `USDA auto-calculated client serving from ${nutrition.ingredients.length} ingredients.`,
             `Client portion: ${nutrition.clientServingGrams}g. ${nutrition.clientServingMeasure}`,
             nutrition.clientServingBreakdown ? `Ingredient breakdown: ${nutrition.clientServingBreakdown}.` : '',
+            nutrition.ingredients.length ? `USDA matches: ${nutrition.ingredients.map((ingredient) => `${ingredient.input} -> ${ingredient.matchedFood}`).join(' | ')}.` : '',
             `Full recipe: ${nutrition.totalRecipe.calories} cal, ${nutrition.totalRecipe.protein}g protein, ${nutrition.totalRecipe.carbs}g carbs, ${nutrition.totalRecipe.fats}g fats.`,
             nutrition.warnings.length ? `Review warnings: ${nutrition.warnings.join(' ')}` : '',
           ].filter(Boolean).join(' ')
@@ -955,7 +957,7 @@ export default function CoachingPlanEditor({
                   {calculatingRecipeIndex === index ? 'Calculating USDA...' : 'Calculate Macros With USDA'}
                 </button>
                 <p style={{ fontFamily: 'var(--font-hanken)', color: 'var(--admin-on-surface-variant)', fontSize: '0.9rem', lineHeight: 1.5 }}>
-                  Best accuracy: use ingredient weights like 150g chicken breast, 2 oz cheddar, 200g cooked rice. Leave Client Serving Share blank to auto-calculate from her macros, or type 1/2, 1/4, or 0.25 to override.
+                  Best accuracy: enter the cooked client-plate weights, like 150g cooked chicken breast and 200g cooked rice. Leave Client Serving Share blank to use the amounts exactly as entered. Type 1/2, 1/4, or 0.25 only when the ingredients represent a larger family recipe.
                 </p>
               </div>
               <TextArea label="Cooking Instructions, one per line" value={joinLines(recipe.instructions)} onChange={(v) => {

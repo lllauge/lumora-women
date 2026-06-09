@@ -287,8 +287,8 @@ export async function POST(req: NextRequest) {
                   notes: r.notes,
                 })) : undefined,
                 request: hasLibrary
-                  ? 'Draft macro targets and a 3-day meal plan using only the recipes from recipeLibrary. Select the most appropriate recipes for each meal slot based on the client profile. Build a grocery list from the selected recipes. Add admin review notes and client-facing notes.'
-                  : 'Draft macro targets, a 3-day meal plan, 6-8 recipes with cooking instructions, a grocery list, admin review notes, and client-facing notes. For family_dinners, dinners must include a full family recipe. USDA post-processing will calculate the client serving size and client-serving macros.',
+                  ? 'Draft macro targets and a full 7-day meal plan (Day 1 through Day 7) using only the recipes from recipeLibrary. Each day must have breakfast, lunch, dinner, and optionally a snack. Rotate recipes across days so the client is not eating the same meal every day — aim for variety while staying within the library. Build a consolidated grocery list from all selected recipes. Add admin review notes and client-facing notes.'
+                  : 'Draft macro targets, a full 7-day meal plan (Day 1 through Day 7), at least 10 recipes with cooking instructions, a grocery list, admin review notes, and client-facing notes. Each day must have breakfast, lunch, dinner, and a snack. For family_dinners, dinners must include a full family recipe. USDA post-processing will calculate the client serving size and client-serving macros.',
               }),
             },
           ],

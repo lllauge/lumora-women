@@ -191,7 +191,28 @@ async function searchFood(query: string, apiKey: string) {
   }
 
   const data = await response.json() as FoodSearchResponse
-  return data.foods?.[0] ?? null
+  const foods = data.foods ?? []
+  if (foods.length === 0) return null
+
+  const queryTokens = query
+    .toLowerCase()
+    .split(/\s+/)
+    .map((token) => token.replace(/[^a-z0-9]/g, ''))
+    .filter((token) => token.length > 2 && !['and', 'the', 'with'].includes(token))
+  const wantsCooked = queryTokens.includes('cooked')
+  const wantsRaw = queryTokens.includes('raw')
+
+  return foods
+    .map((food) => {
+      const description = food.description.toLowerCase()
+      const tokenScore = queryTokens.reduce((score, token) => score + (description.includes(token) ? 4 : 0), 0)
+      const cookedScore = wantsCooked && description.includes('cooked') ? 10 : 0
+      const rawScore = wantsRaw && description.includes('raw') ? 10 : 0
+      const rawPenalty = wantsCooked && /\b(raw|uncooked|dry|unenriched)\b/.test(description) ? -20 : 0
+      const dataTypeScore = food.dataType === 'Foundation' ? 3 : food.dataType === 'SR Legacy' ? 2 : 1
+      return { food, score: tokenScore + cookedScore + rawScore + rawPenalty + dataTypeScore }
+    })
+    .sort((a, b) => b.score - a.score)[0]?.food ?? foods[0]
 }
 
 function parseServingMultiplier(value: string | undefined) {
@@ -209,18 +230,25 @@ function parseServingMultiplier(value: string | undefined) {
 }
 
 export function estimateServingMultiplier({
-  fullRecipeCalories,
-  targetCalories,
   manualMultiplier,
+  familyServings,
 }: {
-  fullRecipeCalories: number
-  targetCalories?: number
   manualMultiplier?: string
+  familyServings?: string
 }) {
   const manual = String(manualMultiplier ?? '').trim()
   if (manual) return parseServingMultiplier(manual)
-  if (!targetCalories || !fullRecipeCalories) return 1
-  return Math.min(1, Math.max(0.08, targetCalories / fullRecipeCalories))
+
+  const familyServingCount = parseFamilyServingCount(familyServings)
+  if (familyServingCount && familyServingCount > 0) return 1 / familyServingCount
+
+  return 1
+}
+
+function parseFamilyServingCount(value: string | undefined) {
+  const match = String(value ?? '').match(/(?:serves|servings?|portion[s]?)\s*(\d+(\.\d+)?)/i)
+    ?? String(value ?? '').match(/(\d+(\.\d+)?)\s*(?:serves|servings?|portion[s]?)/i)
+  return match ? Number(match[1]) : null
 }
 
 function practicalServingMeasure({
@@ -290,9 +318,8 @@ export async function calculateRecipeNutritionFromUsda({
   }), { calories: 0, protein: 0, carbs: 0, fats: 0 })
   const totalRecipeGrams = results.reduce((total, ingredient) => total + ingredient.grams, 0)
   const multiplier = estimateServingMultiplier({
-    fullRecipeCalories: totalRecipe.calories,
-    targetCalories,
     manualMultiplier: clientServingMultiplier,
+    familyServings,
   })
   const clientServingGrams = Math.round(totalRecipeGrams * multiplier)
   const clientServingIngredients = results.map((ingredient) => ({

@@ -16,6 +16,7 @@ type UsdaNutritionResponse = {
     clientServingMultiplier: number
     clientServingGrams: number
     clientServingMeasure: string
+    clientServingBreakdown: string
     clientServing: {
       calories: number
       protein: number
@@ -400,6 +401,7 @@ export default function CoachingPlanEditor({
     const sourceNote = [
       `USDA calculated ${nutrition.ingredients.length} ingredients.`,
       `Client portion: ${nutrition.clientServingGrams}g. ${nutrition.clientServingMeasure}`,
+      nutrition.clientServingBreakdown ? `Ingredient breakdown: ${nutrition.clientServingBreakdown}.` : '',
       `Full recipe: ${nutrition.totalRecipe.calories} cal, ${nutrition.totalRecipe.protein}g protein, ${nutrition.totalRecipe.carbs}g carbs, ${nutrition.totalRecipe.fats}g fats.`,
       nutrition.warnings.length ? `Review warnings: ${nutrition.warnings.join(' ')}` : '',
     ].filter(Boolean).join(' ')
@@ -412,7 +414,8 @@ export default function CoachingPlanEditor({
         clientServingMultiplier: nutrition.clientServingMultiplier.toFixed(2),
         clientServingGrams: `${nutrition.clientServingGrams}g`,
         clientServingMeasure: nutrition.clientServingMeasure,
-        clientServing: currentRecipe.clientServing || `${nutrition.clientServingGrams}g (${nutrition.clientServingMeasure})`,
+        clientServingBreakdown: nutrition.clientServingBreakdown,
+        clientServing: nutrition.clientServingBreakdown || `${nutrition.clientServingGrams}g`,
         calories: `${nutrition.clientServing.calories}`,
         protein: `${nutrition.clientServing.protein}g`,
         carbs: `${nutrition.clientServing.carbs}g`,
@@ -494,6 +497,7 @@ export default function CoachingPlanEditor({
           const sourceNote = [
             `USDA auto-calculated client serving from ${nutrition.ingredients.length} ingredients.`,
             `Client portion: ${nutrition.clientServingGrams}g. ${nutrition.clientServingMeasure}`,
+            nutrition.clientServingBreakdown ? `Ingredient breakdown: ${nutrition.clientServingBreakdown}.` : '',
             `Full recipe: ${nutrition.totalRecipe.calories} cal, ${nutrition.totalRecipe.protein}g protein, ${nutrition.totalRecipe.carbs}g carbs, ${nutrition.totalRecipe.fats}g fats.`,
             nutrition.warnings.length ? `Review warnings: ${nutrition.warnings.join(' ')}` : '',
           ].filter(Boolean).join(' ')
@@ -503,7 +507,8 @@ export default function CoachingPlanEditor({
             clientServingMultiplier: nutrition.clientServingMultiplier.toFixed(2),
             clientServingGrams: `${nutrition.clientServingGrams}g`,
             clientServingMeasure: nutrition.clientServingMeasure,
-            clientServing: recipe.clientServing || `${nutrition.clientServingGrams}g (${nutrition.clientServingMeasure})`,
+            clientServingBreakdown: nutrition.clientServingBreakdown,
+            clientServing: nutrition.clientServingBreakdown || `${nutrition.clientServingGrams}g`,
             calories: `${nutrition.clientServing.calories}`,
             protein: `${nutrition.clientServing.protein}g`,
             carbs: `${nutrition.clientServing.carbs}g`,
@@ -837,6 +842,7 @@ export default function CoachingPlanEditor({
                 clientServingMultiplier: '',
                 clientServingGrams: '',
                 clientServingMeasure: '',
+                clientServingBreakdown: '',
                 prepTime: '',
                 cookTime: '',
                 calories: '',
@@ -916,6 +922,11 @@ export default function CoachingPlanEditor({
               <TextInput label="Easy Portion Guide" value={recipe.clientServingMeasure} onChange={(v) => {
                 const recipes = [...plan.recipes]
                 recipes[index] = { ...recipe, clientServingMeasure: v }
+                setPlan((current) => ({ ...current, recipes }))
+              }} />
+              <TextArea label="Client Serving Ingredient Breakdown" value={recipe.clientServingBreakdown} rows={2} onChange={(v) => {
+                const recipes = [...plan.recipes]
+                recipes[index] = { ...recipe, clientServingBreakdown: v }
                 setPlan((current) => ({ ...current, recipes }))
               }} />
               <TextInput label="Client Serving Calories" value={recipe.calories} onChange={(v) => {

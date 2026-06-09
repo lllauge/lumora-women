@@ -40,13 +40,25 @@ export type UsdaIngredientResult = {
   warning?: string
 }
 
+export type UsdaClientServingIngredient = {
+  input: string
+  label: string
+  grams: number
+  calories: number
+  protein: number
+  carbs: number
+  fats: number
+}
+
 export type UsdaRecipeNutrition = {
   source: 'USDA FoodData Central'
   clientServingMultiplier: number
   clientServingGrams: number
   clientServingMeasure: string
+  clientServingBreakdown: string
   totalRecipe: NutritionTotals
   clientServing: NutritionTotals
+  clientServingIngredients: UsdaClientServingIngredient[]
   ingredients: UsdaIngredientResult[]
   warnings: string[]
 }
@@ -128,6 +140,13 @@ function parseIngredientLine(raw: string): ParsedIngredient {
   }
 }
 
+function ingredientLabelFromInput(input: string) {
+  return input
+    .trim()
+    .replace(/^(\d+(?:\.\d+)?(?:\s+\d+\/\d+)?|\d+\/\d+)\s*([a-zA-Z]+)\b\s*/i, '')
+    .trim()
+}
+
 function nutrientValue(food: FoodSearchResult, nutrientIds: number[], nutrientNames: string[]) {
   const nutrients = food.foodNutrients ?? []
   const byId = nutrients.find((nutrient) => nutrient.nutrientId && nutrientIds.includes(nutrient.nutrientId))
@@ -204,31 +223,21 @@ export function estimateServingMultiplier({
   return Math.min(1, Math.max(0.08, targetCalories / fullRecipeCalories))
 }
 
-function parseFamilyServingCount(value: string | undefined) {
-  const match = String(value ?? '').match(/(?:serves|servings?|portion[s]?)\s*(\d+(\.\d+)?)/i)
-    ?? String(value ?? '').match(/(\d+(\.\d+)?)\s*(?:serves|servings?|portion[s]?)/i)
-  return match ? Number(match[1]) : null
-}
-
 function practicalServingMeasure({
   multiplier,
-  familyServings,
   clientServingGrams,
 }: {
   multiplier: number
-  familyServings?: string
   clientServingGrams: number
 }) {
-  const servingCount = parseFamilyServingCount(familyServings)
-  const recipeShare = multiplier >= 1 ? 'the full recipe' : `${Math.round(multiplier * 100)}% of the finished recipe`
+  const recipeShare = multiplier >= 1 ? 'the full recipe' : `${Math.round(multiplier * 100)}% of the full recipe`
+  return `Plate by the ingredient weights below. Total client serving is about ${clientServingGrams}g (${recipeShare}).`
+}
 
-  if (servingCount) {
-    const clientPortions = multiplier * servingCount
-    const rounded = Math.round(clientPortions * 4) / 4
-    return `about ${clientServingGrams}g, or ${rounded || 0.25} of ${servingCount} equal family portions`
-  }
-
-  return `about ${clientServingGrams}g, or ${recipeShare}. For easiest portioning, weigh the finished recipe once and divide into equal containers.`
+function clientServingBreakdown(ingredients: UsdaClientServingIngredient[]) {
+  return ingredients
+    .map((ingredient) => `${ingredient.grams}g ${ingredient.label}`)
+    .join(' + ')
 }
 
 export async function calculateRecipeNutritionFromUsda({
@@ -286,6 +295,16 @@ export async function calculateRecipeNutritionFromUsda({
     manualMultiplier: clientServingMultiplier,
   })
   const clientServingGrams = Math.round(totalRecipeGrams * multiplier)
+  const clientServingIngredients = results.map((ingredient) => ({
+    input: ingredient.input,
+    label: ingredientLabelFromInput(ingredient.input) || ingredient.matchedFood.toLowerCase(),
+    grams: Math.round(ingredient.grams * multiplier),
+    calories: Math.round(ingredient.calories * multiplier),
+    protein: round(ingredient.protein * multiplier),
+    carbs: round(ingredient.carbs * multiplier),
+    fats: round(ingredient.fats * multiplier),
+  }))
+  const breakdown = clientServingBreakdown(clientServingIngredients)
 
   return {
     source: 'USDA FoodData Central',
@@ -293,9 +312,9 @@ export async function calculateRecipeNutritionFromUsda({
     clientServingGrams,
     clientServingMeasure: practicalServingMeasure({
       multiplier,
-      familyServings,
       clientServingGrams,
     }),
+    clientServingBreakdown: breakdown,
     totalRecipe: {
       calories: round(totalRecipe.calories),
       protein: round(totalRecipe.protein),
@@ -308,6 +327,7 @@ export async function calculateRecipeNutritionFromUsda({
       carbs: round(totalRecipe.carbs * multiplier),
       fats: round(totalRecipe.fats * multiplier),
     },
+    clientServingIngredients,
     ingredients: results,
     warnings,
   }

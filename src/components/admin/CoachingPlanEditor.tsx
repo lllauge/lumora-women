@@ -185,7 +185,7 @@ function parseMealMacroLine(value: string) {
 
 function dayMacroTotal(day: CoachingPlanDraft['mealPlan'][number]) {
   const meals = [day.breakfast, day.lunch, day.dinner, ...day.snacks]
-  return meals.reduce((total, meal) => {
+  const raw = meals.reduce((total, meal) => {
     const parsed = parseMealMacroLine(meal.macros)
     return {
       calories: total.calories + parsed.calories,
@@ -194,6 +194,12 @@ function dayMacroTotal(day: CoachingPlanDraft['mealPlan'][number]) {
       fats: total.fats + parsed.fats,
     }
   }, { calories: 0, protein: 0, carbs: 0, fats: 0 })
+  return {
+    calories: Math.round(raw.calories),
+    protein: Math.round(raw.protein * 10) / 10,
+    carbs: Math.round(raw.carbs * 10) / 10,
+    fats: Math.round(raw.fats * 10) / 10,
+  }
 }
 
 function recipeMacroBudget(recipes: CoachingPlanDraft['recipes'], macroTargets: CoachingPlanDraft['macroTargets']) {
@@ -359,9 +365,9 @@ export default function CoachingPlanEditor({
       name: recipe.name,
       recipeName: recipe.name,
       description: [
-        recipe.clientServing ? `Client serving: ${recipe.clientServing}.` : '',
-        recipe.clientServingMeasure ? `Portion guide: ${recipe.clientServingMeasure}.` : '',
-        recipe.familyServings ? `Family yield: ${recipe.familyServings}.` : '',
+        recipe.clientServingGrams ? `Client portion: ${recipe.clientServingGrams}.` : '',
+        recipe.clientServingMeasure ? `${recipe.clientServingMeasure}.` : '',
+        recipe.familyServings ? `Serves ${recipe.familyServings}.` : '',
         recipe.notes,
       ].filter(Boolean).join(' '),
       macros: recipeMacroLabel(recipe),
@@ -432,9 +438,9 @@ export default function CoachingPlanEditor({
         return {
           ...meal,
           description: [
-            recipe.clientServing ? `Client serving: ${recipe.clientServing}.` : '',
-            recipe.clientServingMeasure ? `Portion guide: ${recipe.clientServingMeasure}.` : '',
-            recipe.familyServings ? `Family yield: ${recipe.familyServings}.` : '',
+            recipe.clientServingGrams ? `Client portion: ${recipe.clientServingGrams}.` : '',
+            recipe.clientServingMeasure ? `${recipe.clientServingMeasure}.` : '',
+            recipe.familyServings ? `Serves ${recipe.familyServings}.` : '',
           ].filter(Boolean).join(' '),
           macros: recipeMacroLabel(recipe),
         }
@@ -818,7 +824,7 @@ export default function CoachingPlanEditor({
         <div style={sHeader}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <SectionNum n={4} done={plan.mealPlan.length > 0} />
-            <SectionTitle title="Meal Plan" subtitle="Day-by-day schedule — auto-fills macros from your recipes when saved" />
+            <SectionTitle title="Meal Plan" subtitle="Which recipe goes on which day — built from your recipes below" />
           </div>
           <button
             type="button"
@@ -928,7 +934,7 @@ export default function CoachingPlanEditor({
         <div style={sHeader}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <SectionNum n={5} done={plan.recipes.some((r) => !!r.calories)} />
-            <SectionTitle title="Recipes" subtitle="Enter full family amounts — client portions calculate automatically on save" />
+            <SectionTitle title="Recipes" subtitle="Build each recipe with USDA ingredients for the whole family — client's exact portion is calculated on save" />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
             <span style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.75rem', color: 'var(--admin-on-surface-variant)' }}>All amounts = whole family recipe</span>

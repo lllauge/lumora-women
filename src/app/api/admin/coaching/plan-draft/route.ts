@@ -12,9 +12,19 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { getUsdaApiKey } from '@/lib/usda/api-key'
 import { calculateRecipeNutritionFromUsda } from '@/lib/usda/food-data'
 
+const LibraryRecipeSchema = z.object({
+  name: z.string(),
+  meal_type: z.string(),
+  family_servings: z.string(),
+  ingredients: z.array(z.string()),
+  instructions: z.array(z.string()),
+  notes: z.string(),
+})
+
 const DraftRequestSchema = z.object({
   clientId: z.string().uuid(),
   planningInputs: z.record(z.string(), z.string()).optional(),
+  libraryRecipes: z.array(LibraryRecipeSchema).optional(),
 })
 
 function extractOutputText(response: unknown) {
@@ -212,6 +222,22 @@ export async function POST(req: NextRequest) {
       })
     : null
 
+  const libraryRecipes = parsed.data.libraryRecipes ?? []
+  const hasLibrary = libraryRecipes.length > 0
+
+  const libraryInstructions = hasLibrary ? [
+    `Laura has a recipe library with ${libraryRecipes.length} recipes. You MUST use only recipes from this library — do not invent new ones.`,
+    'Select the best recipes from the library for each meal slot based on the client\'s allergies, food preferences, disliked foods, and macro targets.',
+    'For each recipe you select, copy its name, ingredients, instructions, and notes exactly as provided — do not modify them.',
+    'Set familyServings from the library recipe\'s family_servings field.',
+    'If a recipe in the library has no ingredients, still use it — USDA post-processing will be skipped for that recipe.',
+    'Fill all 3 days of the meal plan. Vary the recipes across days so the client is not eating the same thing every day.',
+    'If the library does not have enough recipes for a meal type (e.g. no breakfast recipes), leave that slot empty rather than inventing a recipe.',
+  ] : [
+    'No recipe library was provided. Generate practical draft recipes from the client onboarding data and macro targets. Laura must review them before publishing.',
+    'For every recipe, write ingredient lines with measurable weights whenever practical, such as "150g cooked chicken breast", "200g cooked rice", "2 oz cheddar cheese", or "100g avocado". Avoid vague amounts like "1 bowl" or "to taste".',
+  ]
+
   const response = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
     headers: {
@@ -229,14 +255,12 @@ export async function POST(req: NextRequest) {
         'If adminCorrectedPlanningInputs or calculatedMacroStartingPoint are provided, treat them as higher priority than the original onboarding fields.',
         'Keep macro targets close to calculatedMacroStartingPoint unless the onboarding data clearly requires Laura to review a different approach.',
         'Use the admin-selected planGoal. Recomposition should be near maintenance with a small deficit, not an aggressive cut.',
-        'Recipes are AI-generated drafts from the client onboarding data, admin-corrected inputs, and macro target. They are not pulled from a recipe database. Laura must review them before publishing.',
-        'If mealPlanStyle is family_dinners, every dinner recipe must be written as a full family recipe first. Set familyServings to the total family yield, such as "serves 4" or "serves 2 adults + 2 kids". Leave clientServingMultiplier and clientServingBreakdown blank unless Laura provided a manual override. USDA post-processing will calculate clientServing, clientServingGrams, clientServingMeasure, clientServingBreakdown, calories, protein, carbs, and fats from the client macro target.',
+        ...libraryInstructions,
+        'If mealPlanStyle is family_dinners, dinners are full family recipes. Set familyServings to the total family yield. Leave clientServingMultiplier and clientServingBreakdown blank — USDA post-processing will calculate them.',
         'If mealPlanStyle is individual_only, set familyServings to "not applicable", clientServing to the full individual serving, and clientServingMultiplier to "1".',
-        'Do not add fields outside the schema. Keep family-serving details in familyServings, clientServing, instructions, swaps, notes, adminNotes, or clientNotes.',
-        'For every recipe, write ingredient lines with measurable weights whenever practical, such as "150g cooked chicken breast", "200g cooked rice", "2 oz cheddar cheese", or "100g avocado". Avoid vague amounts like "1 bowl" or "to taste".',
-        'When a meal in mealPlan uses a recipe from recipes, set recipeName exactly equal to that recipe name so USDA-calculated recipe macros can flow back into the meal macro line.',
-        'Default to high-protein, high-fiber meals with moderate healthy fats and mostly minimally processed carbohydrates. Avoid extreme low-carb, detox, cleanse, hormone-balancing, or medical-diet language.',
-        'Use simple meals, realistic prep, high-protein options, and flexible swaps.',
+        'Do not add fields outside the schema.',
+        'When a meal in mealPlan uses a recipe, set recipeName exactly equal to that recipe\'s name so USDA-calculated macros flow back into the meal.',
+        'Default to high-protein, high-fiber meals with moderate healthy fats and mostly minimally processed carbohydrates.',
         'Return only valid structured JSON matching the schema.',
       ].join('\n'),
       input: [
@@ -254,7 +278,17 @@ export async function POST(req: NextRequest) {
                 onboarding: onboarding.form_data,
                 adminCorrectedPlanningInputs: parsed.data.planningInputs ?? null,
                 calculatedMacroStartingPoint: calculatedMacros,
-                request: 'Draft macro targets, a 3-day meal plan, 6-8 recipes with cooking instructions, a grocery list, admin review notes, and client-facing notes. For family_dinners, dinners must include a full family recipe. USDA post-processing will calculate the client serving size and client-serving macros.',
+                recipeLibrary: hasLibrary ? libraryRecipes.map(r => ({
+                  name: r.name,
+                  mealType: r.meal_type,
+                  familyServings: r.family_servings,
+                  ingredients: r.ingredients,
+                  instructions: r.instructions,
+                  notes: r.notes,
+                })) : undefined,
+                request: hasLibrary
+                  ? 'Draft macro targets and a 3-day meal plan using only the recipes from recipeLibrary. Select the most appropriate recipes for each meal slot based on the client profile. Build a grocery list from the selected recipes. Add admin review notes and client-facing notes.'
+                  : 'Draft macro targets, a 3-day meal plan, 6-8 recipes with cooking instructions, a grocery list, admin review notes, and client-facing notes. For family_dinners, dinners must include a full family recipe. USDA post-processing will calculate the client serving size and client-serving macros.',
               }),
             },
           ],

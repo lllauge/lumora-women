@@ -525,7 +525,7 @@ export default function CoachingPlanEditor({
     const response = await fetch('/api/admin/coaching/plan-draft', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ clientId, planningInputs }),
+      body: JSON.stringify({ clientId, planningInputs, libraryRecipes }),
     })
     const result = await response.json().catch(() => ({} as { error?: string; plan?: CoachingPlanDraft }))
 

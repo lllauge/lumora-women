@@ -195,6 +195,57 @@ function dayMacroTotal(day: CoachingPlanDraft['mealPlan'][number]) {
   }, { calories: 0, protein: 0, carbs: 0, fats: 0 })
 }
 
+function recipeMacroBudget(recipes: CoachingPlanDraft['recipes'], macroTargets: CoachingPlanDraft['macroTargets']) {
+  const targetCal = firstNumber(macroTargets.calories)
+  const targetProtein = firstNumber(macroTargets.protein)
+  const targetCarbs = firstNumber(macroTargets.carbs)
+  const targetFats = firstNumber(macroTargets.fats)
+  if (!targetCal && !targetProtein) return null
+
+  const withMacros = recipes.filter((r) => r.calories || r.protein || r.carbs || r.fats)
+  const used = withMacros.reduce((sum, r) => ({
+    calories: sum.calories + firstNumber(r.calories),
+    protein: sum.protein + firstNumber(r.protein),
+    carbs: sum.carbs + firstNumber(r.carbs),
+    fats: sum.fats + firstNumber(r.fats),
+  }), { calories: 0, protein: 0, carbs: 0, fats: 0 })
+
+  return {
+    recipeCount: withMacros.length,
+    used,
+    target: { calories: targetCal, protein: targetProtein, carbs: targetCarbs, fats: targetFats },
+    remaining: {
+      calories: targetCal - used.calories,
+      protein: targetProtein - used.protein,
+      carbs: targetCarbs - used.carbs,
+      fats: targetFats - used.fats,
+    },
+  }
+}
+
+function MacroBudgetBar({ label, used, target, unit }: { label: string; used: number; target: number; unit: string }) {
+  if (!target) return null
+  const pct = Math.min(100, Math.round((used / target) * 100))
+  const remaining = Math.round(target - used)
+  const over = remaining < 0
+  return (
+    <div style={{ minWidth: 0 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-hanken)', fontSize: '0.78rem', marginBottom: 3 }}>
+        <span style={{ fontWeight: 700, color: 'var(--admin-on-surface)' }}>{label}</span>
+        <span style={{ color: over ? '#B42318' : 'var(--admin-on-surface-variant)' }}>
+          {over ? `+${Math.abs(remaining)}${unit} over` : `${remaining}${unit} left`}
+        </span>
+      </div>
+      <div style={{ height: 6, borderRadius: 4, backgroundColor: 'var(--admin-outline-variant)', overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${pct}%`, borderRadius: 4, backgroundColor: over ? '#B42318' : '#C9A84C', transition: 'width 0.2s' }} />
+      </div>
+      <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.75rem', color: 'var(--admin-on-surface-variant)', margin: '3px 0 0' }}>
+        {Math.round(used)}{unit} used / {Math.round(target)}{unit} target
+      </p>
+    </div>
+  )
+}
+
 function recipeMacroAverage(recipes: CoachingPlanDraft['recipes']) {
   const withMacros = recipes.filter((recipe) => recipe.calories || recipe.protein || recipe.carbs || recipe.fats)
   if (withMacros.length === 0) return null
@@ -840,14 +891,7 @@ export default function CoachingPlanEditor({
 
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-3">
-          <div>
-            <h3 style={{ fontFamily: 'var(--font-eb-garamond)', fontSize: '1.375rem', fontWeight: 700 }}>Recipes</h3>
-            {recipeAverage && (
-              <p style={{ fontFamily: 'var(--font-hanken)', color: 'var(--admin-on-surface-variant)', margin: 0 }}>
-                {recipeAverage.count} recipes with macros. Average client serving: {recipeAverage.calories} cal, {recipeAverage.protein}g protein, {recipeAverage.carbs}g carbs, {recipeAverage.fats}g fats.
-              </p>
-            )}
-          </div>
+          <h3 style={{ fontFamily: 'var(--font-eb-garamond)', fontSize: '1.375rem', fontWeight: 700 }}>Recipes</h3>
           <button
             type="button"
             className="admin-btn-secondary"
@@ -887,6 +931,18 @@ export default function CoachingPlanEditor({
             Add Recipe
           </button>
         </div>
+        {(() => {
+          const budget = recipeMacroBudget(plan.recipes, plan.macroTargets)
+          if (!budget) return null
+          return (
+            <div className="admin-card p-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem' }}>
+              <MacroBudgetBar label="Calories" used={budget.used.calories} target={budget.target.calories} unit=" cal" />
+              <MacroBudgetBar label="Protein" used={budget.used.protein} target={budget.target.protein} unit="g" />
+              <MacroBudgetBar label="Carbs" used={budget.used.carbs} target={budget.target.carbs} unit="g" />
+              <MacroBudgetBar label="Fat" used={budget.used.fats} target={budget.target.fats} unit="g" />
+            </div>
+          )
+        })()}
         {plan.recipes.map((recipe, index) => (
           <details key={index} className="admin-card p-4">
             <summary className="flex items-center justify-between cursor-pointer" style={{ fontFamily: 'var(--font-hanken)', fontWeight: 800 }}>

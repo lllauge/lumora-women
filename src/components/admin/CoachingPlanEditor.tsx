@@ -963,11 +963,6 @@ export default function CoachingPlanEditor({
                               ))}
                               <option value="__custom__">✏ Custom ingredients…</option>
                             </select>
-                            {meal.macros && meal.recipeName !== '' && (
-                              <div style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.74rem', color: '#2d4a2b', background: '#EBF5EA', border: '1px solid #C5D9C3', borderRadius: 6, padding: '5px 8px', lineHeight: 1.5 }}>
-                                {meal.macros}
-                              </div>
-                            )}
                           </>
                         ) : (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -1038,11 +1033,6 @@ export default function CoachingPlanEditor({
                               ))}
                               <option value="__custom__">✏ Custom ingredients…</option>
                             </select>
-                            {snack.macros && snack.recipeName !== '' && (
-                              <div style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.74rem', color: '#2d4a2b', background: '#EBF5EA', border: '1px solid #C5D9C3', borderRadius: 6, padding: '5px 8px', lineHeight: 1.5 }}>
-                                {snack.macros}
-                              </div>
-                            )}
                           </>
                         ) : (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

@@ -10,6 +10,35 @@ import {
   type MacroCalculationInputs,
 } from '@/lib/coaching-macro-calculator'
 
+type UsdaNutritionResponse = {
+  error?: string
+  nutrition?: {
+    clientServingMultiplier: number
+    clientServing: {
+      calories: number
+      protein: number
+      carbs: number
+      fats: number
+    }
+    totalRecipe: {
+      calories: number
+      protein: number
+      carbs: number
+      fats: number
+    }
+    ingredients: Array<{
+      input: string
+      matchedFood: string
+      grams: number
+      calories: number
+      protein: number
+      carbs: number
+      fats: number
+    }>
+    warnings: string[]
+  }
+}
+
 type Props = {
   clientId: string
   initialPlan: CoachingPlanDraft | null
@@ -215,6 +244,7 @@ export default function CoachingPlanEditor({
   ))
   const [pending, setPending] = useState(false)
   const [generating, setGenerating] = useState(false)
+  const [calculatingRecipeIndex, setCalculatingRecipeIndex] = useState<number | null>(null)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
@@ -326,6 +356,57 @@ export default function CoachingPlanEditor({
     }
 
     setGenerating(false)
+  }
+
+  async function calculateRecipeWithUsda(index: number) {
+    const recipe = plan.recipes[index]
+    setCalculatingRecipeIndex(index)
+    setError('')
+    setMessage('')
+
+    const response = await fetch('/api/admin/coaching/nutrition', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ingredients: recipe.ingredients,
+        clientServingMultiplier: recipe.clientServingMultiplier,
+      }),
+    })
+    const result = await response.json().catch(() => ({} as UsdaNutritionResponse)) as UsdaNutritionResponse
+
+    if (!response.ok || !result.nutrition) {
+      setError(result.error || 'USDA could not calculate this recipe.')
+      setCalculatingRecipeIndex(null)
+      return
+    }
+
+    const { nutrition } = result
+    const sourceNote = [
+      `USDA calculated ${nutrition.ingredients.length} ingredients.`,
+      `Full recipe: ${nutrition.totalRecipe.calories} cal, ${nutrition.totalRecipe.protein}g protein, ${nutrition.totalRecipe.carbs}g carbs, ${nutrition.totalRecipe.fats}g fats.`,
+      nutrition.warnings.length ? `Review warnings: ${nutrition.warnings.join(' ')}` : '',
+    ].filter(Boolean).join(' ')
+
+    setPlan((current) => {
+      const recipes = [...current.recipes]
+      const currentRecipe = recipes[index]
+      recipes[index] = {
+        ...currentRecipe,
+        calories: `${nutrition.clientServing.calories}`,
+        protein: `${nutrition.clientServing.protein}g`,
+        carbs: `${nutrition.clientServing.carbs}g`,
+        fats: `${nutrition.clientServing.fats}g`,
+        notes: [currentRecipe.notes, sourceNote].filter(Boolean).join('\n\n'),
+      }
+      return { ...current, recipes }
+    })
+
+    setMessage(
+      nutrition.warnings.length
+        ? 'USDA macros applied with warnings. Review the recipe notes before publishing.'
+        : 'USDA macros applied to the client serving.'
+    )
+    setCalculatingRecipeIndex(null)
   }
 
   return (
@@ -603,6 +684,7 @@ export default function CoachingPlanEditor({
                 servings: '',
                 familyServings: '',
                 clientServing: '',
+                clientServingMultiplier: '',
                 prepTime: '',
                 cookTime: '',
                 calories: '',
@@ -669,6 +751,11 @@ export default function CoachingPlanEditor({
                 recipes[index] = { ...recipe, clientServing: v }
                 setPlan((current) => ({ ...current, recipes }))
               }} />
+              <TextInput label="Client Serving Share" value={recipe.clientServingMultiplier} onChange={(v) => {
+                const recipes = [...plan.recipes]
+                recipes[index] = { ...recipe, clientServingMultiplier: v }
+                setPlan((current) => ({ ...current, recipes }))
+              }} />
               <TextInput label="Client Serving Calories" value={recipe.calories} onChange={(v) => {
                 const recipes = [...plan.recipes]
                 recipes[index] = { ...recipe, calories: v }
@@ -685,9 +772,27 @@ export default function CoachingPlanEditor({
                 recipes[index] = { ...recipe, ingredients: splitLines(v) }
                 setPlan((current) => ({ ...current, recipes }))
               }} />
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  className="admin-btn-secondary"
+                  disabled={calculatingRecipeIndex === index || recipe.ingredients.length === 0}
+                  onClick={() => calculateRecipeWithUsda(index)}
+                >
+                  {calculatingRecipeIndex === index ? 'Calculating USDA...' : 'Calculate Macros With USDA'}
+                </button>
+                <p style={{ fontFamily: 'var(--font-hanken)', color: 'var(--admin-on-surface-variant)', fontSize: '0.9rem', lineHeight: 1.5 }}>
+                  Best accuracy: use ingredient weights like 150g chicken breast, 2 oz cheddar, 200g cooked rice. Client Serving Share can be 1, 1/2, 1/4, or 0.25.
+                </p>
+              </div>
               <TextArea label="Cooking Instructions, one per line" value={joinLines(recipe.instructions)} onChange={(v) => {
                 const recipes = [...plan.recipes]
                 recipes[index] = { ...recipe, instructions: splitLines(v) }
+                setPlan((current) => ({ ...current, recipes }))
+              }} />
+              <TextArea label="Recipe Notes" value={recipe.notes} onChange={(v) => {
+                const recipes = [...plan.recipes]
+                recipes[index] = { ...recipe, notes: v }
                 setPlan((current) => ({ ...current, recipes }))
               }} />
             </div>

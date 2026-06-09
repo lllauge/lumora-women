@@ -33,20 +33,20 @@ function parseMultiplierAsFraction(multiplier: string): CleanFraction | null {
 
 function visualSplitText(multiplier: string, clientServingGrams: string): string {
   const fraction = parseMultiplierAsFraction(multiplier)
+  const grams = clientServingGrams || ''
+
   if (!fraction) {
-    const num = parseFloat(multiplier)
-    if (!Number.isFinite(num) || num <= 0) return clientServingGrams ? `Your serving is about ${clientServingGrams}.` : ''
-    return `Your serving is about ${Math.round(num * 100)}% of the total recipe — roughly ${clientServingGrams}.`
+    return grams ? `Weigh out ${grams} of this dish and plate it.` : ''
   }
 
   const { numerator, denominator } = fraction
-  if (numerator === denominator) return 'This whole recipe is your serving.'
-  if (denominator === 2) return 'Divide the dish in half. One half is yours.'
-  if (denominator === 3 && numerator === 1) return 'Divide the dish into 3 equal portions. Take 1. That\'s yours.'
-  if (denominator === 3 && numerator === 2) return 'Divide the dish into 3 equal portions. Take 2. That\'s yours.'
-  if (denominator === 4 && numerator === 1) return 'Divide the dish into 4 equal portions. Take 1. That\'s yours.'
-  if (denominator === 4 && numerator === 3) return 'Divide the dish into 4 equal portions. Take 3. That\'s yours.'
-  return `Your serving is ${numerator} out of every ${denominator} equal portions of this recipe.`
+  if (numerator === denominator) return grams ? `The whole recipe is your serving (${grams}).` : 'The whole recipe is your serving.'
+  if (denominator === 2) return `Divide the dish in half. Your half is ${grams}.`
+  if (denominator === 3 && numerator === 1) return `Divide the dish into 3 equal portions. Take 1 — that's ${grams}.`
+  if (denominator === 3 && numerator === 2) return `Divide the dish into 3 equal portions. Take 2 — that's ${grams}.`
+  if (denominator === 4 && numerator === 1) return `Divide the dish into 4 equal portions. Take 1 — that's ${grams}.`
+  if (denominator === 4 && numerator === 3) return `Divide the dish into 4 equal portions. Take 3 — that's ${grams}.`
+  return grams ? `Weigh out ${grams} of this dish and plate it.` : ''
 }
 
 function ServingDiagram({ multiplier }: { multiplier: string }) {

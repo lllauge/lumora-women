@@ -147,13 +147,14 @@ function ingredientLabelFromInput(input: string) {
     .trim()
 }
 
-function nutrientValue(food: FoodSearchResult, nutrientIds: number[], nutrientNames: string[]) {
+function nutrientValue(food: FoodSearchResult, nutrientIds: number[], nutrientNames: string[], excludeNames: string[] = []) {
   const nutrients = food.foodNutrients ?? []
   const byId = nutrients.find((nutrient) => nutrient.nutrientId && nutrientIds.includes(nutrient.nutrientId))
   if (typeof byId?.value === 'number') return byId.value
 
   const byName = nutrients.find((nutrient) => {
     const name = nutrient.nutrientName?.toLowerCase() ?? ''
+    if (excludeNames.some((ex) => name.includes(ex))) return false
     return nutrientNames.some((expected) => name.includes(expected))
   })
 
@@ -162,7 +163,8 @@ function nutrientValue(food: FoodSearchResult, nutrientIds: number[], nutrientNa
 
 function macrosPer100g(food: FoodSearchResult) {
   return {
-    calories: nutrientValue(food, [1008], ['energy']),
+    // IDs 1008, 2047, 2048 are all kcal variants. Exclude kJ from name fallback — kJ values are ~4x higher and would massively inflate calorie counts.
+    calories: nutrientValue(food, [1008, 2047, 2048], ['energy'], ['kj', 'kilojoule']),
     protein: nutrientValue(food, [1003], ['protein']),
     carbs: nutrientValue(food, [1005], ['carbohydrate']),
     fats: nutrientValue(food, [1004], ['total lipid', 'fat']),

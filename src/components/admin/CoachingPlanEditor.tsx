@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { ChevronDown, Sparkles, Trash2 } from 'lucide-react'
 import type { CoachingPlanDraft } from '@/lib/coaching-plan-schema'
 import { emptyCoachingPlan } from '@/lib/coaching-plan-schema'
+import RecipePortionCard from './RecipePortionCard'
 import {
   calculateMacroTargets,
   type MacroCalculationInputs,
@@ -971,6 +972,7 @@ export default function CoachingPlanEditor({
                 setPlan((current) => ({ ...current, recipes }))
               }} />
             </div>
+            <RecipePortionCard recipe={recipe} />
           </details>
         ))}
       </div>

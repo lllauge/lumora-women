@@ -151,11 +151,13 @@ function macrosPer100g(food: FoodSearchResult) {
 }
 
 async function searchFood(query: string, apiKey: string) {
-  const response = await fetch(USDA_SEARCH_URL, {
+  const url = new URL(USDA_SEARCH_URL)
+  url.searchParams.set('api_key', apiKey)
+
+  const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      api_key: apiKey,
       query,
       pageSize: 5,
       dataType: ['Foundation', 'SR Legacy', 'Survey (FNDDS)'],

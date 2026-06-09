@@ -391,7 +391,7 @@ export default function CoachingPlanEditor({
     const result = await response.json().catch(() => ({} as UsdaNutritionResponse)) as UsdaNutritionResponse
 
     if (!response.ok || !result.nutrition) {
-      setError(result.error || 'USDA could not calculate this recipe.')
+      setError(result.error || `USDA could not calculate this recipe. Response status: ${response.status}.`)
       setCalculatingRecipeIndex(null)
       return
     }
@@ -464,15 +464,30 @@ export default function CoachingPlanEditor({
         })
         const result = await response.json().catch(() => ({} as UsdaNutritionResponse)) as UsdaNutritionResponse
         if (!response.ok || !result.nutrition) {
-          throw new Error(result.error || `USDA could not calculate ${recipe.name || `Recipe ${index + 1}`}.`)
+          return {
+            index,
+            error: result.error || `USDA could not calculate ${recipe.name || `Recipe ${index + 1}`}. Response status: ${response.status}.`,
+          }
         }
 
         return { index, nutrition: result.nutrition }
       }))
 
+      const successful = calculated.filter((item): item is { index: number; nutrition: NonNullable<UsdaNutritionResponse['nutrition']> } => (
+        'nutrition' in item && Boolean(item.nutrition)
+      ))
+      const failed = calculated.filter((item): item is { index: number; error: string } => (
+        'error' in item && Boolean(item.error)
+      ))
+
+      if (successful.length === 0) {
+        setError(failed.map((item) => item.error).join(' '))
+        return
+      }
+
       setPlan((current) => {
         const recipes = current.recipes.map((recipe, index) => {
-          const item = calculated.find((result) => result.index === index)
+          const item = successful.find((result) => result.index === index)
           if (!item) return recipe
 
           const { nutrition } = item
@@ -524,7 +539,11 @@ export default function CoachingPlanEditor({
         }
       })
 
-      setMessage('Client serving sizes calculated. Review the grams, easy portion guide, and any USDA warnings before saving.')
+      setMessage(
+        failed.length
+          ? `Calculated ${successful.length} recipe(s). ${failed.length} recipe(s) need review: ${failed.map((item) => item.error).join(' ')}`
+          : 'Client serving sizes calculated. Review the grams, easy portion guide, and any USDA warnings before saving.'
+      )
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'USDA could not calculate recipe serving sizes.')
     } finally {

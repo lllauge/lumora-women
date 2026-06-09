@@ -5,7 +5,6 @@ import { useEffect, useState } from 'react'
 import { ChevronDown, Sparkles, Trash2 } from 'lucide-react'
 import type { CoachingPlanDraft } from '@/lib/coaching-plan-schema'
 import { emptyCoachingPlan } from '@/lib/coaching-plan-schema'
-import RecipePortionCard from './RecipePortionCard'
 import IngredientPicker from './IngredientPicker'
 import {
   calculateMacroTargets,
@@ -42,6 +41,16 @@ type UsdaNutritionResponse = {
     }>
     warnings: string[]
   }
+}
+
+type LibraryRecipe = {
+  id: string
+  name: string
+  meal_type: string
+  family_servings: string
+  ingredients: string[]
+  instructions: string[]
+  notes: string
 }
 
 type Props = {
@@ -202,76 +211,6 @@ function dayMacroTotal(day: CoachingPlanDraft['mealPlan'][number]) {
   }
 }
 
-function recipeMacroBudget(recipes: CoachingPlanDraft['recipes'], macroTargets: CoachingPlanDraft['macroTargets']) {
-  const targetCal = firstNumber(macroTargets.calories)
-  const targetProtein = firstNumber(macroTargets.protein)
-  const targetCarbs = firstNumber(macroTargets.carbs)
-  const targetFats = firstNumber(macroTargets.fats)
-  if (!targetCal && !targetProtein) return null
-
-  const withMacros = recipes.filter((r) => r.calories || r.protein || r.carbs || r.fats)
-  const used = withMacros.reduce((sum, r) => ({
-    calories: sum.calories + firstNumber(r.calories),
-    protein: sum.protein + firstNumber(r.protein),
-    carbs: sum.carbs + firstNumber(r.carbs),
-    fats: sum.fats + firstNumber(r.fats),
-  }), { calories: 0, protein: 0, carbs: 0, fats: 0 })
-
-  return {
-    recipeCount: withMacros.length,
-    used,
-    target: { calories: targetCal, protein: targetProtein, carbs: targetCarbs, fats: targetFats },
-    remaining: {
-      calories: targetCal - used.calories,
-      protein: targetProtein - used.protein,
-      carbs: targetCarbs - used.carbs,
-      fats: targetFats - used.fats,
-    },
-  }
-}
-
-function MacroBudgetBar({ label, used, target, unit }: { label: string; used: number; target: number; unit: string }) {
-  if (!target) return null
-  const pct = Math.min(100, Math.round((used / target) * 100))
-  const remaining = Math.round(target - used)
-  const over = remaining < 0
-  return (
-    <div style={{ minWidth: 0 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-hanken)', fontSize: '0.78rem', marginBottom: 3 }}>
-        <span style={{ fontWeight: 700, color: 'var(--admin-on-surface)' }}>{label}</span>
-        <span style={{ color: over ? '#B42318' : 'var(--admin-on-surface-variant)' }}>
-          {over ? `+${Math.abs(remaining)}${unit} over` : `${remaining}${unit} left`}
-        </span>
-      </div>
-      <div style={{ height: 6, borderRadius: 4, backgroundColor: 'var(--admin-outline-variant)', overflow: 'hidden' }}>
-        <div style={{ height: '100%', width: `${pct}%`, borderRadius: 4, backgroundColor: over ? '#B42318' : '#C9A84C', transition: 'width 0.2s' }} />
-      </div>
-      <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.75rem', color: 'var(--admin-on-surface-variant)', margin: '3px 0 0' }}>
-        {Math.round(used)}{unit} used / {Math.round(target)}{unit} target
-      </p>
-    </div>
-  )
-}
-
-function recipeMacroAverage(recipes: CoachingPlanDraft['recipes']) {
-  const withMacros = recipes.filter((recipe) => recipe.calories || recipe.protein || recipe.carbs || recipe.fats)
-  if (withMacros.length === 0) return null
-
-  const total = withMacros.reduce((sum, recipe) => ({
-    calories: sum.calories + firstNumber(recipe.calories),
-    protein: sum.protein + firstNumber(recipe.protein),
-    carbs: sum.carbs + firstNumber(recipe.carbs),
-    fats: sum.fats + firstNumber(recipe.fats),
-  }), { calories: 0, protein: 0, carbs: 0, fats: 0 })
-
-  return {
-    count: withMacros.length,
-    calories: Math.round(total.calories / withMacros.length),
-    protein: Math.round(total.protein / withMacros.length),
-    carbs: Math.round(total.carbs / withMacros.length),
-    fats: Math.round(total.fats / withMacros.length),
-  }
-}
 
 function TextInput({
   label,
@@ -325,11 +264,18 @@ export default function CoachingPlanEditor({
   const [generating, setGenerating] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [libraryRecipes, setLibraryRecipes] = useState<LibraryRecipe[]>([])
+  const [customSlots, setCustomSlots] = useState<Record<string, { name: string; ingredients: string[] }>>({})
+
+  useEffect(() => {
+    fetch('/api/admin/recipes')
+      .then(r => r.json())
+      .then(d => setLibraryRecipes(d.recipes ?? []))
+      .catch(() => {})
+  }, [])
 
   const calculatedMacros = calculateMacroTargets(planningInputs)
   const hasSavedMacros = Object.values(plan.macroTargets).some((value) => value.trim())
-  const recipeAverage = recipeMacroAverage(plan.recipes)
-
   useEffect(() => {
     if (!hasSavedMacros && calculatedMacros) {
       setPlan((current) => ({ ...current, macroTargets: calculatedMacros }))
@@ -372,6 +318,94 @@ export default function CoachingPlanEditor({
       ].filter(Boolean).join(' '),
       macros: recipeMacroLabel(recipe),
     })
+  }
+
+  function applyLibraryRecipeToMeal(dayIndex: number, mealKey: 'breakfast' | 'lunch' | 'dinner', libRecipeName: string) {
+    const libRecipe = libraryRecipes.find(r => r.name === libRecipeName)
+    setPlan(current => {
+      let newRecipes = current.recipes
+      if (libRecipe && !current.recipes.some(r => r.name === libRecipeName)) {
+        newRecipes = [...current.recipes, {
+          name: libRecipe.name, mealType: libRecipe.meal_type,
+          servings: libRecipe.family_servings, familyServings: libRecipe.family_servings,
+          clientServing: '', clientServingMultiplier: '', clientServingGrams: '',
+          clientServingMeasure: '', clientServingBreakdown: '',
+          prepTime: '', cookTime: '', calories: '', protein: '', carbs: '', fats: '',
+          ingredients: libRecipe.ingredients, instructions: libRecipe.instructions,
+          swaps: [], notes: libRecipe.notes,
+        }]
+      }
+      const recipe = newRecipes.find(r => r.name === libRecipeName)
+      const mealPlan = [...current.mealPlan]
+      const day = mealPlan[dayIndex]
+      mealPlan[dayIndex] = {
+        ...day,
+        [mealKey]: {
+          name: libRecipeName || '',
+          recipeName: libRecipeName || '',
+          description: '',
+          macros: recipe ? recipeMacroLabel(recipe) : '',
+        },
+      }
+      return { ...current, recipes: newRecipes, mealPlan }
+    })
+  }
+
+  function applyLibraryRecipeToSnack(dayIndex: number, libRecipeName: string) {
+    const libRecipe = libraryRecipes.find(r => r.name === libRecipeName)
+    setPlan(current => {
+      let newRecipes = current.recipes
+      if (libRecipe && !current.recipes.some(r => r.name === libRecipeName)) {
+        newRecipes = [...current.recipes, {
+          name: libRecipe.name, mealType: libRecipe.meal_type,
+          servings: libRecipe.family_servings, familyServings: libRecipe.family_servings,
+          clientServing: '', clientServingMultiplier: '', clientServingGrams: '',
+          clientServingMeasure: '', clientServingBreakdown: '',
+          prepTime: '', cookTime: '', calories: '', protein: '', carbs: '', fats: '',
+          ingredients: libRecipe.ingredients, instructions: libRecipe.instructions,
+          swaps: [], notes: libRecipe.notes,
+        }]
+      }
+      const recipe = newRecipes.find(r => r.name === libRecipeName)
+      const mealPlan = [...current.mealPlan]
+      const day = mealPlan[dayIndex]
+      mealPlan[dayIndex] = {
+        ...day,
+        snacks: libRecipeName
+          ? [{ name: libRecipeName, recipeName: libRecipeName, description: '', macros: recipe ? recipeMacroLabel(recipe) : '' }]
+          : [],
+      }
+      return { ...current, recipes: newRecipes, mealPlan }
+    })
+  }
+
+  function applyCustomMealToSlot(dayIndex: number, mealKey: 'breakfast' | 'lunch' | 'dinner' | 'snack', slotKey: string) {
+    const slot = customSlots[slotKey]
+    if (!slot || !slot.name.trim() || slot.ingredients.length === 0) return
+    const recipeName = slot.name.trim()
+    setPlan(current => {
+      let newRecipes = current.recipes
+      if (!current.recipes.some(r => r.name === recipeName)) {
+        newRecipes = [...current.recipes, {
+          name: recipeName, mealType: mealKey === 'snack' ? 'snack' : mealKey,
+          servings: '1', familyServings: '1',
+          clientServing: '', clientServingMultiplier: '', clientServingGrams: '',
+          clientServingMeasure: '', clientServingBreakdown: '',
+          prepTime: '', cookTime: '', calories: '', protein: '', carbs: '', fats: '',
+          ingredients: slot.ingredients, instructions: [], swaps: [], notes: '',
+        }]
+      }
+      const mealPlan = [...current.mealPlan]
+      const day = mealPlan[dayIndex]
+      const meal = { name: recipeName, recipeName, description: '', macros: '' }
+      if (mealKey === 'snack') {
+        mealPlan[dayIndex] = { ...day, snacks: [meal] }
+      } else {
+        mealPlan[dayIndex] = { ...day, [mealKey]: meal }
+      }
+      return { ...current, recipes: newRecipes, mealPlan }
+    })
+    setCustomSlots(prev => { const n = { ...prev }; delete n[slotKey]; return n })
   }
 
   function applyMacroEstimate() {
@@ -819,250 +853,37 @@ export default function CoachingPlanEditor({
         </div>
       </div>
 
-      {/* ── Section 4: Meal Plan & Recipes ── */}
+      {/* ── Section 4: Meal Plan ── */}
       <div style={sCard}>
         <div style={sHeader}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <SectionNum n={4} done={plan.recipes.some((r) => !!r.calories) && plan.mealPlan.length > 0} />
-            <SectionTitle title="Meal Plan & Recipes" subtitle="Build recipes with USDA ingredients, then assign them to each day" />
+            <SectionNum n={4} done={plan.mealPlan.length > 0} />
+            <SectionTitle title="Meal Plan" subtitle="Pick meals from your Recipe Library or add custom ingredients per slot" />
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-            <button
-              type="button"
-              className="admin-btn-secondary"
-              onClick={() => setPlan((current) => ({
-                ...current,
-                recipes: [...current.recipes, {
-                  name: '',
-                  mealType: 'dinner',
-                  servings: '',
-                  familyServings: '',
-                  clientServing: '',
-                  clientServingMultiplier: '',
-                  clientServingGrams: '',
-                  clientServingMeasure: '',
-                  clientServingBreakdown: '',
-                  prepTime: '',
-                  cookTime: '',
-                  calories: '',
-                  protein: '',
-                  carbs: '',
-                  fats: '',
-                  ingredients: [],
-                  instructions: [],
-                  swaps: [],
-                  notes: '',
-                }],
-              }))}
-            >
-              + Add Recipe
-            </button>
-            <button
-              type="button"
-              className="admin-btn-secondary"
-              onClick={() => setPlan((current) => ({
-                ...current,
-                mealPlan: [...current.mealPlan, {
-                  day: `Day ${current.mealPlan.length + 1}`,
-                  breakfast: { name: '', description: '', macros: '', recipeName: '' },
-                  lunch: { name: '', description: '', macros: '', recipeName: '' },
-                  dinner: { name: '', description: '', macros: '', recipeName: '' },
-                  snacks: [],
-                  notes: '',
-                }],
-              }))}
-            >
-              + Add Day
-            </button>
-          </div>
+          <button
+            type="button"
+            className="admin-btn-secondary"
+            style={{ flexShrink: 0 }}
+            onClick={() => setPlan((current) => ({
+              ...current,
+              mealPlan: [...current.mealPlan, {
+                day: `Day ${current.mealPlan.length + 1}`,
+                breakfast: { name: '', description: '', macros: '', recipeName: '' },
+                lunch: { name: '', description: '', macros: '', recipeName: '' },
+                dinner: { name: '', description: '', macros: '', recipeName: '' },
+                snacks: [],
+                notes: '',
+              }],
+            }))}
+          >
+            + Add Day
+          </button>
         </div>
-        <div style={{ ...sBody, display: 'flex', flexDirection: 'column', gap: 14 }}>
-
-          {/* ── Recipe Bank ── */}
-          <details open={plan.recipes.length === 0 || plan.recipes.some((r) => !r.calories)}>
-            <summary style={{ listStyle: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none', padding: '10px 14px', background: 'var(--admin-surface-low)', borderRadius: 9, border: '1px solid var(--admin-outline-variant)' }}>
-              <span style={{ fontFamily: 'var(--font-hanken)', fontWeight: 700, fontSize: '0.88rem', color: 'var(--admin-on-surface)' }}>
-                Recipe Bank {plan.recipes.length > 0 ? `(${plan.recipes.length})` : ''}
-              </span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.72rem', color: 'var(--admin-on-surface-variant)' }}>All amounts = whole family recipe</span>
-                <ChevronDown size={14} style={{ color: 'var(--admin-on-surface-variant)' }} />
-              </div>
-            </summary>
-            <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {/* Macro budget tracker */}
-              {(() => {
-                const budget = recipeMacroBudget(plan.recipes, plan.macroTargets)
-                if (!budget) return null
-                return (
-                  <div style={{ background: 'var(--admin-surface-low)', border: '1px solid var(--admin-outline-variant)', borderRadius: 10, padding: '14px 16px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
-                    <MacroBudgetBar label="Calories" used={budget.used.calories} target={budget.target.calories} unit=" cal" />
-                    <MacroBudgetBar label="Protein" used={budget.used.protein} target={budget.target.protein} unit="g" />
-                    <MacroBudgetBar label="Carbs" used={budget.used.carbs} target={budget.target.carbs} unit="g" />
-                    <MacroBudgetBar label="Fat" used={budget.used.fats} target={budget.target.fats} unit="g" />
-                  </div>
-                )
-              })()}
-
-              {plan.recipes.length === 0 && (
-                <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.85rem', color: 'var(--admin-on-surface-variant)', textAlign: 'center', padding: '16px 0' }}>
-                  No recipes yet. Click &quot;+ Add Recipe&quot; to build your first one with USDA ingredients.
-                </p>
-              )}
-
-              {plan.recipes.map((recipe, index) => {
-                const isCalculated = !!recipe.calories
-                return (
-                  <details key={index} style={{ border: `1px solid ${isCalculated ? 'var(--admin-outline-variant)' : '#C9A84C'}`, borderRadius: 10, overflow: 'hidden' }} open={!recipe.calories}>
-                    <summary style={{ listStyle: 'none', display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', cursor: 'pointer', background: isCalculated ? 'var(--admin-surface-low)' : '#FFFEF9' }}>
-                      <div style={{ width: 22, height: 22, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 700, ...(isCalculated ? { background: '#e8f5e9', color: '#2e7d32', border: '1.5px solid #a5d6a7' } : { background: '#FEF9EE', color: '#92400e', border: '1.5px solid #E9C46A' }) }}>
-                        {isCalculated ? '✓' : '!'}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontFamily: 'var(--font-hanken)', fontWeight: 700, fontSize: '0.95rem', color: 'var(--admin-on-surface)' }}>
-                          {recipe.name || `Recipe ${index + 1}`}
-                        </div>
-                        <div style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.75rem', color: 'var(--admin-on-surface-variant)', marginTop: 2 }}>
-                          {recipe.mealType && <span style={{ textTransform: 'capitalize' }}>{recipe.mealType}</span>}
-                          {(recipe.familyServings || recipe.servings) && <span> · Serves {recipe.familyServings || recipe.servings}</span>}
-                          {!isCalculated && <span style={{ color: '#d97706', fontStyle: 'italic' }}> · needs save to calculate</span>}
-                        </div>
-                      </div>
-                      {recipeMacroLabel(recipe) && (
-                        <div style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.78rem', color: 'var(--admin-on-surface-variant)', textAlign: 'right', flexShrink: 0 }}>
-                          {recipeMacroLabel(recipe)}
-                          {recipe.clientServingGrams && <> · <strong style={{ color: 'var(--admin-on-surface)' }}>client gets {recipe.clientServingGrams}</strong></>}
-                        </div>
-                      )}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                        <button
-                          type="button"
-                          className="admin-btn-ghost"
-                          style={{ color: 'var(--admin-error)', fontSize: '0.75rem', padding: '4px 8px' }}
-                          onClick={(event) => {
-                            event.preventDefault()
-                            event.stopPropagation()
-                            setPlan((current) => ({
-                              ...current,
-                              recipes: current.recipes.filter((_, recipeIndex) => recipeIndex !== index),
-                            }))
-                          }}
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                        <ChevronDown size={15} style={{ color: 'var(--admin-on-surface-variant)' }} />
-                      </div>
-                    </summary>
-
-                    <div style={{ padding: '16px', borderTop: `1px solid ${isCalculated ? 'var(--admin-outline-variant)' : '#F0E4C0'}`, background: isCalculated ? 'var(--admin-surface)' : '#FFFEF9' }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
-                        <TextInput label="Recipe Name" value={recipe.name} onChange={(v) => {
-                          const recipes = [...plan.recipes]
-                          recipes[index] = { ...recipe, name: v }
-                          setPlan((current) => ({ ...current, recipes }))
-                        }} />
-                        <label className="space-y-1">
-                          <span className="admin-label">Meal</span>
-                          <select
-                            className="admin-input"
-                            value={recipe.mealType}
-                            onChange={(e) => {
-                              const recipes = [...plan.recipes]
-                              recipes[index] = { ...recipe, mealType: e.target.value }
-                            setPlan((current) => ({ ...current, recipes }))
-                          }}
-                        >
-                          <option value="breakfast">Breakfast</option>
-                          <option value="lunch">Lunch</option>
-                          <option value="dinner">Dinner</option>
-                          <option value="snack">Snack</option>
-                        </select>
-                      </label>
-                      <label className="space-y-1">
-                        <span className="admin-label">Serves how many?</span>
-                        <input
-                          className="admin-input"
-                          type="number"
-                          min="1"
-                          placeholder="e.g. 4"
-                          value={recipe.familyServings || recipe.servings}
-                          onChange={(e) => {
-                            const recipes = [...plan.recipes]
-                            recipes[index] = { ...recipe, familyServings: e.target.value, servings: e.target.value }
-                            setPlan((current) => ({ ...current, recipes }))
-                          }}
-                        />
-                      </label>
-                    </div>
-
-                    <div style={{ marginBottom: 12 }}>
-                      <span className="admin-label">Ingredients — full recipe amounts</span>
-                      <div style={{ marginTop: 6 }}>
-                        <IngredientPicker
-                          onAdd={(ingredient) => {
-                            const recipes = [...plan.recipes]
-                            recipes[index] = { ...recipe, ingredients: [...recipe.ingredients, ingredient] }
-                            setPlan((current) => ({ ...current, recipes }))
-                          }}
-                        />
-                      </div>
-                      {recipe.ingredients.length > 0 && (
-                        <ul style={{ margin: '8px 0 0', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          {recipe.ingredients.map((ing, ingIndex) => {
-                            const display = ing.replace(/^\[fdc:\d+\]\s*/, '')
-                            return (
-                              <li key={ingIndex} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: 'var(--admin-surface-low)', borderRadius: 7, fontFamily: 'var(--font-hanken)', fontSize: '0.84rem' }}>
-                                <span style={{ color: '#2e7d32', fontSize: '0.7rem', marginRight: 2 }}>✓</span>
-                                <span style={{ flex: 1, color: 'var(--admin-on-surface-variant)' }}>{display}</span>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const recipes = [...plan.recipes]
-                                    recipes[index] = { ...recipe, ingredients: recipe.ingredients.filter((_, i) => i !== ingIndex) }
-                                    setPlan((current) => ({ ...current, recipes }))
-                                  }}
-                                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--admin-on-surface-variant)', padding: '0 4px', fontSize: '1rem', lineHeight: 1 }}
-                                  aria-label="Remove ingredient"
-                                >
-                                  ×
-                                </button>
-                              </li>
-                            )
-                          })}
-                        </ul>
-                      )}
-                    </div>
-
-                    <details>
-                      <summary style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.78rem', color: 'var(--admin-on-surface-variant)', cursor: 'pointer', userSelect: 'none', marginBottom: 8 }}>
-                        ▶ Instructions &amp; Notes (optional)
-                      </summary>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 10 }}>
-                        <TextArea label="Cooking Instructions, one per line" value={joinLines(recipe.instructions)} onChange={(v) => {
-                          const recipes = [...plan.recipes]
-                          recipes[index] = { ...recipe, instructions: splitLines(v) }
-                          setPlan((current) => ({ ...current, recipes }))
-                        }} />
-                        <TextArea label="Recipe Notes" value={recipe.notes} onChange={(v) => {
-                          const recipes = [...plan.recipes]
-                          recipes[index] = { ...recipe, notes: v }
-                          setPlan((current) => ({ ...current, recipes }))
-                        }} />
-                      </div>
-                    </details>
-
-                    <RecipePortionCard recipe={recipe} />
-                  </div>
-                </details>
-              )
-            })}
-            </div>
-          </details>
-
-          {/* ── Day Accordions ── */}
+        <div style={{ ...sBody, display: 'flex', flexDirection: 'column', gap: 10 }}>
           {plan.mealPlan.length === 0 && (
             <p style={{ fontFamily: 'var(--font-hanken)', color: 'var(--admin-on-surface-variant)', fontSize: '0.85rem', textAlign: 'center', padding: '20px 0' }}>
-              No days added yet. Click &quot;+ Add Day&quot; above to start building the week.
+              No days added yet. Click &quot;+ Add Day&quot; to start building the week. Add recipes first at{' '}
+              <a href="/admin/recipes" style={{ color: 'var(--admin-primary)', fontWeight: 600 }}>Recipe Library</a>.
             </p>
           )}
           {plan.mealPlan.map((day, dayIndex) => (
@@ -1115,23 +936,71 @@ export default function CoachingPlanEditor({
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
                   {(['breakfast', 'lunch', 'dinner'] as const).map((mealKey) => {
                     const meal = day[mealKey]
+                    const slotKey = `${dayIndex}-${mealKey}`
+                    const custom = customSlots[slotKey]
+                    const isCustomMode = meal.recipeName === '__custom__' || !!custom
                     return (
                       <div key={mealKey} style={{ background: 'var(--admin-surface-low)', border: '1px solid var(--admin-outline-variant)', borderRadius: 9, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
                         <div style={{ fontFamily: 'var(--font-hanken)', fontWeight: 800, fontSize: '0.8rem', textTransform: 'capitalize', color: 'var(--admin-on-surface)' }}>{mealKey}</div>
-                        <select
-                          className="admin-input"
-                          style={{ fontSize: '0.83rem' }}
-                          value={meal.recipeName}
-                          onChange={(e) => applyRecipeToMeal(dayIndex, mealKey, e.target.value)}
-                        >
-                          <option value="">— no recipe —</option>
-                          {plan.recipes.filter((r) => r.name.trim()).map((r) => (
-                            <option key={r.name} value={r.name}>{r.name}</option>
-                          ))}
-                        </select>
-                        {meal.macros && (
-                          <div style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.74rem', color: '#2d4a2b', background: '#EBF5EA', border: '1px solid #C5D9C3', borderRadius: 6, padding: '5px 8px', lineHeight: 1.5 }}>
-                            {meal.macros}
+                        {!isCustomMode ? (
+                          <>
+                            <select
+                              className="admin-input"
+                              style={{ fontSize: '0.83rem' }}
+                              value={meal.recipeName}
+                              onChange={(e) => {
+                                if (e.target.value === '__custom__') {
+                                  setCustomSlots(prev => ({ ...prev, [slotKey]: { name: '', ingredients: [] } }))
+                                  updateMeal(dayIndex, mealKey, { recipeName: '__custom__', name: '', macros: '', description: '' })
+                                } else {
+                                  applyLibraryRecipeToMeal(dayIndex, mealKey, e.target.value)
+                                }
+                              }}
+                            >
+                              <option value="">— no meal —</option>
+                              {libraryRecipes.map((r) => (
+                                <option key={r.id} value={r.name}>{r.name}</option>
+                              ))}
+                              <option value="__custom__">✏ Custom ingredients…</option>
+                            </select>
+                            {meal.macros && meal.recipeName !== '' && (
+                              <div style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.74rem', color: '#2d4a2b', background: '#EBF5EA', border: '1px solid #C5D9C3', borderRadius: 6, padding: '5px 8px', lineHeight: 1.5 }}>
+                                {meal.macros}
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <input
+                              className="admin-input"
+                              placeholder="Meal name"
+                              style={{ fontSize: '0.83rem' }}
+                              value={custom?.name ?? ''}
+                              onChange={(e) => setCustomSlots(prev => ({ ...prev, [slotKey]: { ...(prev[slotKey] ?? { ingredients: [] }), name: e.target.value } }))}
+                            />
+                            <IngredientPicker
+                              onAdd={(ing) => setCustomSlots(prev => ({
+                                ...prev,
+                                [slotKey]: { ...(prev[slotKey] ?? { name: '' }), ingredients: [...(prev[slotKey]?.ingredients ?? []), ing] },
+                              }))}
+                            />
+                            {(custom?.ingredients ?? []).map((ing, i) => (
+                              <div key={i} style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.73rem', color: 'var(--admin-on-surface-variant)', background: 'var(--admin-surface)', border: '1px solid var(--admin-outline-variant)', borderRadius: 5, padding: '3px 7px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <span>{ing.replace(/^\[fdc:\d+\]\s*/, '')}</span>
+                                <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--admin-on-surface-variant)', fontSize: '0.9rem', padding: '0 2px' }}
+                                  onClick={() => setCustomSlots(prev => ({ ...prev, [slotKey]: { ...(prev[slotKey] ?? { name: '' }), ingredients: (prev[slotKey]?.ingredients ?? []).filter((_, j) => j !== i) } }))}>×</button>
+                              </div>
+                            ))}
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              <button type="button" className="admin-btn-primary" style={{ fontSize: '0.75rem', padding: '5px 10px', background: '#C9A84C', color: '#162814', border: 'none', fontWeight: 700, flex: 1 }}
+                                onClick={() => applyCustomMealToSlot(dayIndex, mealKey, slotKey)}>
+                                Apply
+                              </button>
+                              <button type="button" className="admin-btn-ghost" style={{ fontSize: '0.75rem', padding: '5px 8px' }}
+                                onClick={() => { setCustomSlots(prev => { const n = { ...prev }; delete n[slotKey]; return n }); updateMeal(dayIndex, mealKey, { recipeName: '', name: '', macros: '', description: '' }) }}>
+                                Cancel
+                              </button>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -1140,32 +1009,73 @@ export default function CoachingPlanEditor({
                   {/* Snack slot */}
                   {(() => {
                     const snack = day.snacks[0] ?? { name: '', description: '', macros: '', recipeName: '' }
+                    const slotKey = `${dayIndex}-snack`
+                    const custom = customSlots[slotKey]
+                    const isCustomMode = snack.recipeName === '__custom__' || !!custom
                     return (
                       <div style={{ background: 'var(--admin-surface-low)', border: '1px solid var(--admin-outline-variant)', borderRadius: 9, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
                         <div style={{ fontFamily: 'var(--font-hanken)', fontWeight: 800, fontSize: '0.8rem', color: 'var(--admin-on-surface)' }}>Snack</div>
-                        <select
-                          className="admin-input"
-                          style={{ fontSize: '0.83rem' }}
-                          value={snack.recipeName}
-                          onChange={(e) => {
-                            const recipeName = e.target.value
-                            const recipe = plan.recipes.find((r) => r.name === recipeName)
-                            const updated = recipe
-                              ? { name: recipe.name, recipeName: recipe.name, macros: recipeMacroLabel(recipe), description: '' }
-                              : { ...snack, recipeName }
-                            const mealPlan = [...plan.mealPlan]
-                            mealPlan[dayIndex] = { ...day, snacks: recipeName ? [updated] : [] }
-                            setPlan((current) => ({ ...current, mealPlan }))
-                          }}
-                        >
-                          <option value="">— no snack —</option>
-                          {plan.recipes.filter((r) => r.name.trim()).map((r) => (
-                            <option key={r.name} value={r.name}>{r.name}</option>
-                          ))}
-                        </select>
-                        {snack.macros && (
-                          <div style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.74rem', color: '#2d4a2b', background: '#EBF5EA', border: '1px solid #C5D9C3', borderRadius: 6, padding: '5px 8px', lineHeight: 1.5 }}>
-                            {snack.macros}
+                        {!isCustomMode ? (
+                          <>
+                            <select
+                              className="admin-input"
+                              style={{ fontSize: '0.83rem' }}
+                              value={snack.recipeName}
+                              onChange={(e) => {
+                                if (e.target.value === '__custom__') {
+                                  setCustomSlots(prev => ({ ...prev, [slotKey]: { name: '', ingredients: [] } }))
+                                  const mealPlan = [...plan.mealPlan]
+                                  mealPlan[dayIndex] = { ...day, snacks: [{ name: '', recipeName: '__custom__', description: '', macros: '' }] }
+                                  setPlan(current => ({ ...current, mealPlan }))
+                                } else {
+                                  applyLibraryRecipeToSnack(dayIndex, e.target.value)
+                                }
+                              }}
+                            >
+                              <option value="">— no snack —</option>
+                              {libraryRecipes.map((r) => (
+                                <option key={r.id} value={r.name}>{r.name}</option>
+                              ))}
+                              <option value="__custom__">✏ Custom ingredients…</option>
+                            </select>
+                            {snack.macros && snack.recipeName !== '' && (
+                              <div style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.74rem', color: '#2d4a2b', background: '#EBF5EA', border: '1px solid #C5D9C3', borderRadius: 6, padding: '5px 8px', lineHeight: 1.5 }}>
+                                {snack.macros}
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <input
+                              className="admin-input"
+                              placeholder="Snack name"
+                              style={{ fontSize: '0.83rem' }}
+                              value={custom?.name ?? ''}
+                              onChange={(e) => setCustomSlots(prev => ({ ...prev, [slotKey]: { ...(prev[slotKey] ?? { ingredients: [] }), name: e.target.value } }))}
+                            />
+                            <IngredientPicker
+                              onAdd={(ing) => setCustomSlots(prev => ({
+                                ...prev,
+                                [slotKey]: { ...(prev[slotKey] ?? { name: '' }), ingredients: [...(prev[slotKey]?.ingredients ?? []), ing] },
+                              }))}
+                            />
+                            {(custom?.ingredients ?? []).map((ing, i) => (
+                              <div key={i} style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.73rem', color: 'var(--admin-on-surface-variant)', background: 'var(--admin-surface)', border: '1px solid var(--admin-outline-variant)', borderRadius: 5, padding: '3px 7px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <span>{ing.replace(/^\[fdc:\d+\]\s*/, '')}</span>
+                                <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--admin-on-surface-variant)', fontSize: '0.9rem', padding: '0 2px' }}
+                                  onClick={() => setCustomSlots(prev => ({ ...prev, [slotKey]: { ...(prev[slotKey] ?? { name: '' }), ingredients: (prev[slotKey]?.ingredients ?? []).filter((_, j) => j !== i) } }))}>×</button>
+                              </div>
+                            ))}
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              <button type="button" className="admin-btn-primary" style={{ fontSize: '0.75rem', padding: '5px 10px', background: '#C9A84C', color: '#162814', border: 'none', fontWeight: 700, flex: 1 }}
+                                onClick={() => applyCustomMealToSlot(dayIndex, 'snack', slotKey)}>
+                                Apply
+                              </button>
+                              <button type="button" className="admin-btn-ghost" style={{ fontSize: '0.75rem', padding: '5px 8px' }}
+                                onClick={() => { setCustomSlots(prev => { const n = { ...prev }; delete n[slotKey]; return n }); const mp = [...plan.mealPlan]; mp[dayIndex] = { ...day, snacks: [] }; setPlan(c => ({ ...c, mealPlan: mp })) }}>
+                                Cancel
+                              </button>
+                            </div>
                           </div>
                         )}
                       </div>

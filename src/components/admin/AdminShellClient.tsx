@@ -6,7 +6,7 @@ import Link from 'next/link'
 import {
   LayoutDashboard, GraduationCap, PenLine, ShoppingBag,
   Users, HeartHandshake, Mail, Receipt, Settings, LogOut, Bell, HelpCircle,
-  Menu, X, type LucideIcon,
+  Menu, X, BookOpen, type LucideIcon,
 } from 'lucide-react'
 import { signOutAdmin } from '@/app/actions/admin-auth'
 
@@ -26,9 +26,10 @@ const navSections: NavSection[] = [
   {
     heading: 'Audience',
     items: [
-      { label: 'Students',   href: '/admin/students',   icon: Users },
-      { label: 'Coaching',   href: '/admin/coaching',   icon: HeartHandshake },
-      { label: 'Email List', href: '/admin/email-list', icon: Mail },
+      { label: 'Students',       href: '/admin/students',   icon: Users },
+      { label: 'Coaching',       href: '/admin/coaching',   icon: HeartHandshake },
+      { label: 'Recipe Library', href: '/admin/recipes',    icon: BookOpen },
+      { label: 'Email List',     href: '/admin/email-list', icon: Mail },
     ],
   },
   { heading: 'Revenue', items: [{ label: 'Orders', href: '/admin/orders', icon: Receipt }] },
@@ -40,6 +41,7 @@ const SEGMENT_TITLES: Record<string, string> = {
   'courses':    'Course Manager',
   'blog':       'Blog Manager',
   'coaching':   'Coaching',
+  'recipes':    'Recipe Library',
   'students':   'Student Manager',
   'email-list': 'Email List',
   'orders':     'Orders',

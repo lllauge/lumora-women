@@ -4,10 +4,12 @@ import { getVerifiedAdminUser } from '@/lib/admin-guard'
 import {
   CoachingPlanAiJsonSchema,
   CoachingPlanSchema,
+  type CoachingPlanDraft,
 } from '@/lib/coaching-plan-schema'
 import { calculateMacroTargets } from '@/lib/coaching-macro-calculator'
 import { requireSameOrigin } from '@/lib/request-security'
 import { createAdminClient } from '@/lib/supabase/server'
+import { calculateRecipeNutritionFromUsda } from '@/lib/usda/food-data'
 
 const DraftRequestSchema = z.object({
   clientId: z.string().uuid(),
@@ -31,6 +33,105 @@ function openAiErrorMessage(errorText: string) {
   } catch {
     return errorText.slice(0, 400)
   }
+}
+
+function firstNumber(value: string | undefined) {
+  const match = String(value ?? '').match(/-?\d+(\.\d+)?/)
+  return match ? Number(match[0]) : 0
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value))
+}
+
+function mealCalorieTarget(mealType: string, dailyCalories: number) {
+  const type = mealType.toLowerCase()
+  if (type.includes('breakfast')) return dailyCalories * 0.25
+  if (type.includes('lunch')) return dailyCalories * 0.3
+  if (type.includes('dinner')) return dailyCalories * 0.35
+  if (type.includes('snack')) return dailyCalories * 0.1
+  return dailyCalories * 0.3
+}
+
+function recipeMacroLabel(recipe: CoachingPlanDraft['recipes'][number]) {
+  return [
+    recipe.calories ? `${recipe.calories} cal` : '',
+    recipe.protein ? `${recipe.protein} protein` : '',
+    recipe.carbs ? `${recipe.carbs} carbs` : '',
+    recipe.fats ? `${recipe.fats} fats` : '',
+  ].filter(Boolean).join(', ')
+}
+
+async function addUsdaServingMathToDraft(plan: CoachingPlanDraft) {
+  const apiKey = process.env.USDA_FDC_API_KEY || process.env.USDA_API_KEY
+  if (!apiKey) {
+    return plan
+  }
+
+  const dailyCalories = firstNumber(plan.macroTargets.calories)
+  if (!dailyCalories) return plan
+
+  const recipes = await Promise.all(plan.recipes.map(async (recipe) => {
+    if (recipe.ingredients.length === 0) return recipe
+
+    try {
+      const fullRecipe = await calculateRecipeNutritionFromUsda({
+        ingredients: recipe.ingredients,
+        clientServingMultiplier: '1',
+        apiKey,
+      })
+
+      if (!fullRecipe.totalRecipe.calories) return recipe
+
+      const targetCalories = mealCalorieTarget(recipe.mealType, dailyCalories)
+      const multiplier = clamp(targetCalories / fullRecipe.totalRecipe.calories, 0.08, 1)
+      const clientServing = {
+        calories: Math.round(fullRecipe.totalRecipe.calories * multiplier),
+        protein: Math.round(fullRecipe.totalRecipe.protein * multiplier),
+        carbs: Math.round(fullRecipe.totalRecipe.carbs * multiplier),
+        fats: Math.round(fullRecipe.totalRecipe.fats * multiplier),
+      }
+      const sourceNote = [
+        `USDA auto-scaled client serving to about ${Math.round(targetCalories)} calories for ${recipe.mealType || 'this meal'}.`,
+        `Client serving share: ${multiplier.toFixed(2)} of the full recipe.`,
+        `Full recipe USDA total: ${fullRecipe.totalRecipe.calories} cal, ${fullRecipe.totalRecipe.protein}g protein, ${fullRecipe.totalRecipe.carbs}g carbs, ${fullRecipe.totalRecipe.fats}g fats.`,
+        fullRecipe.warnings.length ? `Review USDA warnings: ${fullRecipe.warnings.join(' ')}` : '',
+      ].filter(Boolean).join(' ')
+
+      return {
+        ...recipe,
+        clientServingMultiplier: multiplier.toFixed(2),
+        calories: `${clientServing.calories}`,
+        protein: `${clientServing.protein}g`,
+        carbs: `${clientServing.carbs}g`,
+        fats: `${clientServing.fats}g`,
+        notes: [recipe.notes, sourceNote].filter(Boolean).join('\n\n'),
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'USDA macro calculation failed.'
+      return {
+        ...recipe,
+        notes: [recipe.notes, `USDA auto-scaling skipped: ${message}`].filter(Boolean).join('\n\n'),
+      }
+    }
+  }))
+
+  const mealPlan = plan.mealPlan.map((day) => {
+    const updateMeal = (meal: CoachingPlanDraft['mealPlan'][number]['breakfast']) => {
+      const recipe = recipes.find((item) => item.name && item.name === meal.recipeName)
+      return recipe ? { ...meal, macros: recipeMacroLabel(recipe) } : meal
+    }
+
+    return {
+      ...day,
+      breakfast: updateMeal(day.breakfast),
+      lunch: updateMeal(day.lunch),
+      dinner: updateMeal(day.dinner),
+      snacks: day.snacks.map(updateMeal),
+    }
+  })
+
+  return { ...plan, recipes, mealPlan }
 }
 
 export async function POST(req: NextRequest) {
@@ -131,6 +232,8 @@ export async function POST(req: NextRequest) {
         'If mealPlanStyle is family_dinners, every dinner recipe must be written as a full family recipe first. Set familyServings to the total family yield, such as "serves 4" or "serves 2 adults + 2 kids". Set clientServing to the exact client portion, such as "5 oz chicken + 1 cup rice + 1.5 cups vegetables". Set clientServingMultiplier to the client portion of the full recipe as a decimal or fraction, such as "0.25" or "1/4". Set calories, protein, carbs, and fats for the client serving only. Use notes for family plating instructions, leftovers, kid-friendly swaps, and how Laura should adjust the client portion.',
         'If mealPlanStyle is individual_only, set familyServings to "not applicable", clientServing to the full individual serving, and clientServingMultiplier to "1".',
         'Do not add fields outside the schema. Keep family-serving details in familyServings, clientServing, instructions, swaps, notes, adminNotes, or clientNotes.',
+        'For every recipe, write ingredient lines with measurable weights whenever practical, such as "150g cooked chicken breast", "200g cooked rice", "2 oz cheddar cheese", or "100g avocado". Avoid vague amounts like "1 bowl" or "to taste".',
+        'When a meal in mealPlan uses a recipe from recipes, set recipeName exactly equal to that recipe name so USDA-calculated recipe macros can flow back into the meal macro line.',
         'Default to high-protein, high-fiber meals with moderate healthy fats and mostly minimally processed carbohydrates. Avoid extreme low-carb, detox, cleanse, hormone-balancing, or medical-diet language.',
         'Use simple meals, realistic prep, high-protein options, and flexible swaps.',
         'Return only valid structured JSON matching the schema.',
@@ -201,5 +304,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `AI draft did not match the plan format: ${issues}` }, { status: 502 })
   }
 
-  return NextResponse.json({ plan: plan.data })
+  const planWithUsdaServingMath = await addUsdaServingMathToDraft(plan.data)
+
+  return NextResponse.json({ plan: planWithUsdaServingMath })
 }

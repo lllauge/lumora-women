@@ -205,6 +205,10 @@ export async function POST(req: NextRequest) {
         eatingOut: parsed.data.planningInputs.eatingOut ?? '',
         sleep: parsed.data.planningInputs.sleep ?? '',
         stress: parsed.data.planningInputs.stress ?? '',
+        breakfastPct: parsed.data.planningInputs.breakfastPct ?? '35',
+        lunchPct: parsed.data.planningInputs.lunchPct ?? '30',
+        dinnerPct: parsed.data.planningInputs.dinnerPct ?? '25',
+        snackPct: parsed.data.planningInputs.snackPct ?? '10',
       })
     : null
 

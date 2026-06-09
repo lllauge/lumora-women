@@ -23,6 +23,10 @@ export type MacroCalculationInputs = {
   eatingOut: string
   sleep: string
   stress: string
+  breakfastPct: string
+  lunchPct: string
+  dinnerPct: string
+  snackPct: string
 }
 
 export type CalculatedMacroTargets = {

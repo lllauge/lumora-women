@@ -94,6 +94,10 @@ function buildPlanningInputs(onboardingData: Record<string, unknown>): MacroCalc
     eatingOut: stringField(nutrition, 'eatingOut'),
     sleep: stringField(health, 'sleep'),
     stress: stringField(health, 'stress'),
+    breakfastPct: '35',
+    lunchPct: '30',
+    dinnerPct: '25',
+    snackPct: '10',
   }
 }
 
@@ -127,13 +131,17 @@ function firstNumber(value: string) {
   return match ? Number(match[0]) : 0
 }
 
-function mealCalorieTarget(mealType: string, dailyCalories: number) {
+function mealCalorieTarget(mealType: string, dailyCalories: number, inputs: MacroCalculationInputs) {
   const type = mealType.toLowerCase()
-  if (type.includes('breakfast')) return dailyCalories * 0.25
-  if (type.includes('lunch')) return dailyCalories * 0.3
-  if (type.includes('dinner')) return dailyCalories * 0.35
-  if (type.includes('snack')) return dailyCalories * 0.1
-  return dailyCalories * 0.3
+  const bPct = (firstNumber(inputs.breakfastPct) || 35) / 100
+  const lPct = (firstNumber(inputs.lunchPct) || 30) / 100
+  const dPct = (firstNumber(inputs.dinnerPct) || 25) / 100
+  const sPct = (firstNumber(inputs.snackPct) || 10) / 100
+  if (type.includes('breakfast')) return dailyCalories * bPct
+  if (type.includes('lunch')) return dailyCalories * lPct
+  if (type.includes('dinner')) return dailyCalories * dPct
+  if (type.includes('snack')) return dailyCalories * sPct
+  return dailyCalories * lPct
 }
 
 function macroPart(value: string, label: string) {
@@ -386,7 +394,7 @@ export default function CoachingPlanEditor({
       body: JSON.stringify({
         ingredients: recipe.ingredients,
         clientServingMultiplier: recipe.clientServingMultiplier,
-        targetCalories: dailyCalories ? mealCalorieTarget(recipe.mealType, dailyCalories) : undefined,
+        targetCalories: dailyCalories ? mealCalorieTarget(recipe.mealType, dailyCalories, planningInputs) : undefined,
         familyServings: recipe.familyServings || recipe.servings,
       }),
     })
@@ -463,7 +471,7 @@ export default function CoachingPlanEditor({
           body: JSON.stringify({
             ingredients: recipe.ingredients,
             clientServingMultiplier: recipe.clientServingMultiplier,
-            targetCalories: mealCalorieTarget(recipe.mealType, dailyCalories),
+            targetCalories: mealCalorieTarget(recipe.mealType, dailyCalories, planningInputs),
             familyServings: recipe.familyServings || recipe.servings,
           }),
         })
@@ -631,6 +639,23 @@ export default function CoachingPlanEditor({
           </label>
           <TextInput label="Average Steps" value={planningInputs.steps} onChange={(v) => updatePlanningInput('steps', v)} />
           <TextInput label="Water Intake" value={planningInputs.water} onChange={(v) => updatePlanningInput('water', v)} />
+          <div className="space-y-1 md:col-span-2 xl:col-span-4">
+            <span className="admin-label">Meal Calorie Distribution (%) — Breakfast should be heaviest for weight loss. Adjust if client exercises at night.</span>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-1">
+              <TextInput label="Breakfast %" value={planningInputs.breakfastPct} onChange={(v) => updatePlanningInput('breakfastPct', v)} />
+              <TextInput label="Lunch %" value={planningInputs.lunchPct} onChange={(v) => updatePlanningInput('lunchPct', v)} />
+              <TextInput label="Dinner %" value={planningInputs.dinnerPct} onChange={(v) => updatePlanningInput('dinnerPct', v)} />
+              <TextInput label="Snacks %" value={planningInputs.snackPct} onChange={(v) => updatePlanningInput('snackPct', v)} />
+            </div>
+            {(() => {
+              const total = (firstNumber(planningInputs.breakfastPct) || 35) + (firstNumber(planningInputs.lunchPct) || 30) + (firstNumber(planningInputs.dinnerPct) || 25) + (firstNumber(planningInputs.snackPct) || 10)
+              return total !== 100 ? (
+                <p style={{ fontFamily: 'var(--font-hanken)', color: '#B42318', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                  Percentages add up to {total}% — adjust so they total 100%.
+                </p>
+              ) : null
+            })()}
+          </div>
           <label className="space-y-1">
             <span className="admin-label">Strength Training</span>
             <select className="admin-input" value={planningInputs.strengthTraining} onChange={(e) => updatePlanningInput('strengthTraining', e.target.value)}>

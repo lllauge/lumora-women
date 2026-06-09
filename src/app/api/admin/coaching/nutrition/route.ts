@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getVerifiedAdminUser } from '@/lib/admin-guard'
 import { requireSameOrigin } from '@/lib/request-security'
+import { getUsdaApiKey } from '@/lib/usda/api-key'
 import { calculateRecipeNutritionFromUsda } from '@/lib/usda/food-data'
 
 const NutritionRequestSchema = z.object({
@@ -21,7 +22,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 })
   }
 
-  const apiKey = process.env.USDA_FDC_API_KEY || process.env.USDA_API_KEY || 'DEMO_KEY'
+  const apiKey = getUsdaApiKey()
 
   let body: unknown
   try {
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest) {
       clientServingMultiplier: parsed.data.clientServingMultiplier,
       targetCalories: parsed.data.targetCalories,
       familyServings: parsed.data.familyServings,
-      apiKey,
+      apiKey: apiKey.key,
     })
 
     if (nutrition.ingredients.length === 0) {
@@ -57,6 +58,8 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'USDA nutrition calculation failed.'
     console.error('[usda nutrition] failed:', message)
-    return NextResponse.json({ error: message }, { status: 502 })
+    return NextResponse.json({
+      error: `${message} App used ${apiKey.source} (${apiKey.fingerprint}).`,
+    }, { status: 502 })
   }
 }

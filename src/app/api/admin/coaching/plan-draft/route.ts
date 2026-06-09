@@ -9,6 +9,7 @@ import {
 import { calculateMacroTargets } from '@/lib/coaching-macro-calculator'
 import { requireSameOrigin } from '@/lib/request-security'
 import { createAdminClient } from '@/lib/supabase/server'
+import { getUsdaApiKey } from '@/lib/usda/api-key'
 import { calculateRecipeNutritionFromUsda } from '@/lib/usda/food-data'
 
 const DraftRequestSchema = z.object({
@@ -59,8 +60,8 @@ function recipeMacroLabel(recipe: CoachingPlanDraft['recipes'][number]) {
 }
 
 async function addUsdaServingMathToDraft(plan: CoachingPlanDraft) {
-  const apiKey = process.env.USDA_FDC_API_KEY || process.env.USDA_API_KEY
-  if (!apiKey) {
+  const apiKey = getUsdaApiKey()
+  if (apiKey.source === 'DEMO_KEY') {
     return plan
   }
 
@@ -76,7 +77,7 @@ async function addUsdaServingMathToDraft(plan: CoachingPlanDraft) {
         clientServingMultiplier: recipe.clientServingMultiplier,
         targetCalories: mealCalorieTarget(recipe.mealType, dailyCalories),
         familyServings: recipe.familyServings || recipe.servings,
-        apiKey,
+        apiKey: apiKey.key,
       })
 
       if (!nutrition.totalRecipe.calories) return recipe
@@ -105,7 +106,7 @@ async function addUsdaServingMathToDraft(plan: CoachingPlanDraft) {
       const message = error instanceof Error ? error.message : 'USDA macro calculation failed.'
       return {
         ...recipe,
-        notes: [recipe.notes, `USDA auto-scaling skipped: ${message}`].filter(Boolean).join('\n\n'),
+        notes: [recipe.notes, `USDA auto-scaling skipped: ${message} App used ${apiKey.source} (${apiKey.fingerprint}).`].filter(Boolean).join('\n\n'),
       }
     }
   }))

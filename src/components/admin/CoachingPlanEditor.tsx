@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { ChevronDown, Sparkles } from 'lucide-react'
+import { ChevronDown, Sparkles, Trash2 } from 'lucide-react'
 import type { CoachingPlanDraft } from '@/lib/coaching-plan-schema'
 import { emptyCoachingPlan } from '@/lib/coaching-plan-schema'
 import {
@@ -89,6 +89,82 @@ function joinLines(value: string[]) {
   return value.join('\n')
 }
 
+function firstNumber(value: string) {
+  const match = value.match(/-?\d+(\.\d+)?/)
+  return match ? Number(match[0]) : 0
+}
+
+function macroPart(value: string, label: string) {
+  if (!value.trim()) return ''
+  return value.toLowerCase().includes(label) ? value : `${value} ${label}`
+}
+
+function caloriePart(value: string) {
+  if (!value.trim()) return ''
+  const lower = value.toLowerCase()
+  return lower.includes('cal') || lower.includes('kcal') ? value : `${value} cal`
+}
+
+function recipeMacroLabel(recipe: CoachingPlanDraft['recipes'][number]) {
+  return [
+    caloriePart(recipe.calories),
+    macroPart(recipe.protein, 'protein'),
+    macroPart(recipe.carbs, 'carbs'),
+    macroPart(recipe.fats, 'fats'),
+  ].filter(Boolean).join(', ')
+}
+
+function parseMealMacroLine(value: string) {
+  const lower = value.toLowerCase()
+  const numbers = value.match(/-?\d+(\.\d+)?/g)?.map(Number) ?? []
+  const labeled = {
+    calories: Number(lower.match(/(\d+(\.\d+)?)\s*(?:cal|calorie|kcal)/)?.[1] ?? 0),
+    protein: Number(lower.match(/(\d+(\.\d+)?)\s*g?\s*(?:protein|p\b)/)?.[1] ?? 0),
+    carbs: Number(lower.match(/(\d+(\.\d+)?)\s*g?\s*(?:carb|carbs|c\b)/)?.[1] ?? 0),
+    fats: Number(lower.match(/(\d+(\.\d+)?)\s*g?\s*(?:fat|fats|f\b)/)?.[1] ?? 0),
+  }
+
+  return {
+    calories: labeled.calories || numbers[0] || 0,
+    protein: labeled.protein || numbers[1] || 0,
+    carbs: labeled.carbs || numbers[2] || 0,
+    fats: labeled.fats || numbers[3] || 0,
+  }
+}
+
+function dayMacroTotal(day: CoachingPlanDraft['mealPlan'][number]) {
+  const meals = [day.breakfast, day.lunch, day.dinner, ...day.snacks]
+  return meals.reduce((total, meal) => {
+    const parsed = parseMealMacroLine(meal.macros)
+    return {
+      calories: total.calories + parsed.calories,
+      protein: total.protein + parsed.protein,
+      carbs: total.carbs + parsed.carbs,
+      fats: total.fats + parsed.fats,
+    }
+  }, { calories: 0, protein: 0, carbs: 0, fats: 0 })
+}
+
+function recipeMacroAverage(recipes: CoachingPlanDraft['recipes']) {
+  const withMacros = recipes.filter((recipe) => recipe.calories || recipe.protein || recipe.carbs || recipe.fats)
+  if (withMacros.length === 0) return null
+
+  const total = withMacros.reduce((sum, recipe) => ({
+    calories: sum.calories + firstNumber(recipe.calories),
+    protein: sum.protein + firstNumber(recipe.protein),
+    carbs: sum.carbs + firstNumber(recipe.carbs),
+    fats: sum.fats + firstNumber(recipe.fats),
+  }), { calories: 0, protein: 0, carbs: 0, fats: 0 })
+
+  return {
+    count: withMacros.length,
+    calories: Math.round(total.calories / withMacros.length),
+    protein: Math.round(total.protein / withMacros.length),
+    carbs: Math.round(total.carbs / withMacros.length),
+    fats: Math.round(total.fats / withMacros.length),
+  }
+}
+
 function TextInput({
   label,
   value,
@@ -144,6 +220,7 @@ export default function CoachingPlanEditor({
 
   const calculatedMacros = calculateMacroTargets(planningInputs)
   const hasSavedMacros = Object.values(plan.macroTargets).some((value) => value.trim())
+  const recipeAverage = recipeMacroAverage(plan.recipes)
 
   useEffect(() => {
     if (!hasSavedMacros && calculatedMacros) {
@@ -160,6 +237,32 @@ export default function CoachingPlanEditor({
 
   function updatePlanningInput(key: keyof MacroCalculationInputs, value: string) {
     setPlanningInputs((current) => ({ ...current, [key]: value }))
+  }
+
+  function updateMeal(dayIndex: number, mealKey: 'breakfast' | 'lunch' | 'dinner', updates: Partial<CoachingPlanDraft['mealPlan'][number]['breakfast']>) {
+    const mealPlan = [...plan.mealPlan]
+    const day = mealPlan[dayIndex]
+    mealPlan[dayIndex] = { ...day, [mealKey]: { ...day[mealKey], ...updates } }
+    setPlan((current) => ({ ...current, mealPlan }))
+  }
+
+  function applyRecipeToMeal(dayIndex: number, mealKey: 'breakfast' | 'lunch' | 'dinner', recipeName: string) {
+    const recipe = plan.recipes.find((item) => item.name === recipeName)
+    if (!recipe) {
+      updateMeal(dayIndex, mealKey, { recipeName })
+      return
+    }
+
+    updateMeal(dayIndex, mealKey, {
+      name: recipe.name,
+      recipeName: recipe.name,
+      description: [
+        recipe.clientServing ? `Client serving: ${recipe.clientServing}.` : '',
+        recipe.familyServings ? `Family yield: ${recipe.familyServings}.` : '',
+        recipe.notes,
+      ].filter(Boolean).join(' '),
+      macros: recipeMacroLabel(recipe),
+    })
   }
 
   function applyMacroEstimate() {
@@ -404,9 +507,36 @@ export default function CoachingPlanEditor({
         {plan.mealPlan.map((day, dayIndex) => (
           <details key={dayIndex} className="admin-card p-4" open={dayIndex === 0}>
             <summary className="flex items-center justify-between cursor-pointer" style={{ fontFamily: 'var(--font-hanken)', fontWeight: 800 }}>
-              {day.day || `Day ${dayIndex + 1}`}
-              <ChevronDown size={16} />
+              <span>{day.day || `Day ${dayIndex + 1}`}</span>
+              <span className="inline-flex items-center gap-3">
+                <button
+                  type="button"
+                  className="admin-btn-secondary"
+                  style={{ padding: '0.45rem 0.7rem' }}
+                  onClick={(event) => {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    setPlan((current) => ({
+                      ...current,
+                      mealPlan: current.mealPlan.filter((_, index) => index !== dayIndex),
+                    }))
+                  }}
+                >
+                  <Trash2 size={14} />
+                  Delete Day
+                </button>
+                <ChevronDown size={16} />
+              </span>
             </summary>
+            {(() => {
+              const total = dayMacroTotal(day)
+              const hasDayMacros = total.calories || total.protein || total.carbs || total.fats
+              return hasDayMacros ? (
+                <p className="mt-3" style={{ fontFamily: 'var(--font-hanken)', color: 'var(--admin-on-surface-variant)' }}>
+                  Day total from meal macro lines: {total.calories} cal, {total.protein}g protein, {total.carbs}g carbs, {total.fats}g fats.
+                </p>
+              ) : null
+            })()}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               <TextInput label="Day Label" value={day.day} onChange={(v) => {
                 const mealPlan = [...plan.mealPlan]
@@ -421,20 +551,29 @@ export default function CoachingPlanEditor({
               {(['breakfast', 'lunch', 'dinner'] as const).map((mealKey) => (
                 <div key={mealKey} className="space-y-3 rounded-lg p-4" style={{ border: '1px solid var(--admin-outline-variant)' }}>
                   <h4 className="capitalize" style={{ fontFamily: 'var(--font-hanken)', fontWeight: 800 }}>{mealKey}</h4>
+                  <label className="space-y-1 block">
+                    <span className="admin-label">Use Recipe Macros</span>
+                    <select
+                      className="admin-input"
+                      value={day[mealKey].recipeName}
+                      onChange={(e) => applyRecipeToMeal(dayIndex, mealKey, e.target.value)}
+                    >
+                      <option value="">Choose a recipe</option>
+                      {plan.recipes.filter((recipe) => recipe.name.trim()).map((recipe) => (
+                        <option key={`${mealKey}-${recipe.name}`} value={recipe.name}>
+                          {recipe.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                   <TextInput label="Meal Name" value={day[mealKey].name} onChange={(v) => {
-                    const mealPlan = [...plan.mealPlan]
-                    mealPlan[dayIndex] = { ...day, [mealKey]: { ...day[mealKey], name: v } }
-                    setPlan((current) => ({ ...current, mealPlan }))
+                    updateMeal(dayIndex, mealKey, { name: v })
                   }} />
                   <TextArea label="Description" value={day[mealKey].description} rows={2} onChange={(v) => {
-                    const mealPlan = [...plan.mealPlan]
-                    mealPlan[dayIndex] = { ...day, [mealKey]: { ...day[mealKey], description: v } }
-                    setPlan((current) => ({ ...current, mealPlan }))
+                    updateMeal(dayIndex, mealKey, { description: v })
                   }} />
                   <TextInput label="Macros" value={day[mealKey].macros} onChange={(v) => {
-                    const mealPlan = [...plan.mealPlan]
-                    mealPlan[dayIndex] = { ...day, [mealKey]: { ...day[mealKey], macros: v } }
-                    setPlan((current) => ({ ...current, mealPlan }))
+                    updateMeal(dayIndex, mealKey, { macros: v })
                   }} />
                 </div>
               ))}
@@ -445,7 +584,14 @@ export default function CoachingPlanEditor({
 
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-3">
-          <h3 style={{ fontFamily: 'var(--font-eb-garamond)', fontSize: '1.375rem', fontWeight: 700 }}>Recipes</h3>
+          <div>
+            <h3 style={{ fontFamily: 'var(--font-eb-garamond)', fontSize: '1.375rem', fontWeight: 700 }}>Recipes</h3>
+            {recipeAverage && (
+              <p style={{ fontFamily: 'var(--font-hanken)', color: 'var(--admin-on-surface-variant)', margin: 0 }}>
+                {recipeAverage.count} recipes with macros. Average client serving: {recipeAverage.calories} cal, {recipeAverage.protein}g protein, {recipeAverage.carbs}g carbs, {recipeAverage.fats}g fats.
+              </p>
+            )}
+          </div>
           <button
             type="button"
             className="admin-btn-secondary"
@@ -476,8 +622,31 @@ export default function CoachingPlanEditor({
         {plan.recipes.map((recipe, index) => (
           <details key={index} className="admin-card p-4">
             <summary className="flex items-center justify-between cursor-pointer" style={{ fontFamily: 'var(--font-hanken)', fontWeight: 800 }}>
-              {recipe.name || `Recipe ${index + 1}`}
-              <ChevronDown size={16} />
+              <span>{recipe.name || `Recipe ${index + 1}`}</span>
+              <span className="inline-flex items-center gap-3">
+                {recipeMacroLabel(recipe) && (
+                  <span style={{ color: 'var(--admin-on-surface-variant)', fontWeight: 600 }}>
+                    {recipeMacroLabel(recipe)}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  className="admin-btn-secondary"
+                  style={{ padding: '0.45rem 0.7rem' }}
+                  onClick={(event) => {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    setPlan((current) => ({
+                      ...current,
+                      recipes: current.recipes.filter((_, recipeIndex) => recipeIndex !== index),
+                    }))
+                  }}
+                >
+                  <Trash2 size={14} />
+                  Delete
+                </button>
+                <ChevronDown size={16} />
+              </span>
             </summary>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               <TextInput label="Recipe Name" value={recipe.name} onChange={(v) => {

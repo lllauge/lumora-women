@@ -105,29 +105,47 @@ export default function IngredientPicker({ onAdd }: Props) {
             borderRadius: 8, marginTop: 2, padding: 0, listStyle: 'none',
             boxShadow: '0 4px 16px rgba(0,0,0,0.12)', maxHeight: 320, overflowY: 'auto',
           }}>
-            {results.map((food) => (
-              <li key={food.fdcId}>
-                <button
-                  type="button"
-                  onClick={() => selectFood(food)}
-                  style={{
-                    width: '100%', textAlign: 'left', padding: '0.6rem 0.9rem',
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    borderBottom: '1px solid var(--admin-outline-variant)',
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#FAF8F3')}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '')}
-                >
-                  <p style={{ fontFamily: 'var(--font-hanken)', fontWeight: 600, fontSize: '0.88rem', color: 'var(--admin-on-surface)', margin: 0 }}>
-                    {food.description}
-                  </p>
-                  <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.75rem', color: 'var(--admin-on-surface-variant)', margin: '2px 0 0' }}>
-                    per 100g — {food.calories} cal · {food.protein}g protein · {food.carbs}g carbs · {food.fats}g fat
-                    {food.dataType && <span style={{ marginLeft: 6, opacity: 0.6 }}>({food.dataType})</span>}
-                  </p>
-                </button>
-              </li>
-            ))}
+            {results.map((food, idx) => {
+              const dataTypeLabel =
+                food.dataType === 'Foundation' ? 'Foundation'
+                : food.dataType === 'SR Legacy' ? 'SR Legacy'
+                : food.dataType === 'Survey (FNDDS)' ? 'Survey'
+                : food.dataType || 'USDA'
+              return (
+                <li key={food.fdcId}>
+                  <button
+                    type="button"
+                    onClick={() => selectFood(food)}
+                    style={{
+                      width: '100%', textAlign: 'left', padding: '0.6rem 0.9rem',
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      borderBottom: '1px solid var(--admin-outline-variant)',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#FAF8F3')}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '')}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <p style={{ fontFamily: 'var(--font-hanken)', fontWeight: 600, fontSize: '0.88rem', color: 'var(--admin-on-surface)', margin: 0 }}>
+                        {food.description}
+                      </p>
+                      {/* USDA verified checkmark */}
+                      <span title="USDA FoodData Central verified" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, borderRadius: '50%', backgroundColor: '#2e7d32', flexShrink: 0 }}>
+                        <svg width="9" height="9" viewBox="0 0 9 9" fill="none"><path d="M1.5 4.5L3.5 6.5L7.5 2.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      </span>
+                      {idx === 0 && (
+                        <span style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.68rem', fontWeight: 600, color: '#1a56a0', backgroundColor: '#e8f0fe', borderRadius: 4, padding: '1px 6px', letterSpacing: '0.02em' }}>
+                          Best Match
+                        </span>
+                      )}
+                    </div>
+                    <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.75rem', color: 'var(--admin-on-surface-variant)', margin: '2px 0 0' }}>
+                      per 100g — {food.calories} cal · {food.protein}g protein · {food.carbs}g carbs · {food.fats}g fat
+                      <span style={{ marginLeft: 6, opacity: 0.55 }}>· {dataTypeLabel}</span>
+                    </p>
+                  </button>
+                </li>
+              )
+            })}
           </ul>
         )}
         {open && !loading && results.length === 0 && debouncedQuery.length >= 2 && (
@@ -145,7 +163,7 @@ export default function IngredientPicker({ onAdd }: Props) {
       {selected && (
         <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
           <label style={{ flex: '0 0 140px' }}>
-            <span className="admin-label">Grams for this client</span>
+            <span className="admin-label">Grams in recipe</span>
             <input
               ref={gramsRef}
               className="admin-input"

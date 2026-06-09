@@ -317,8 +317,6 @@ export default function CoachingPlanEditor({
   ))
   const [pending, setPending] = useState(false)
   const [generating, setGenerating] = useState(false)
-  const [calculatingRecipeIndex, setCalculatingRecipeIndex] = useState<number | null>(null)
-  const [calculatingAllServings, setCalculatingAllServings] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
@@ -388,6 +386,74 @@ export default function CoachingPlanEditor({
     setError('')
     setMessage('')
 
+    // Auto-calculate USDA macros for any recipe that has ingredients
+    const dailyCalories = firstNumber(nextPlan.macroTargets.calories)
+    const recipesToCalc = nextPlan.recipes
+      .map((recipe, index) => ({ recipe, index }))
+      .filter(({ recipe }) => recipe.ingredients.length > 0)
+
+    if (recipesToCalc.length > 0) {
+      const results = await Promise.all(recipesToCalc.map(async ({ recipe, index }) => {
+        const res = await fetch('/api/admin/coaching/nutrition', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ingredients: recipe.ingredients,
+            targetCalories: dailyCalories ? mealCalorieTarget(recipe.mealType, dailyCalories, planningInputs) : undefined,
+            familyServings: recipe.familyServings || recipe.servings,
+          }),
+        })
+        const data = await res.json().catch(() => ({} as UsdaNutritionResponse)) as UsdaNutritionResponse
+        return { index, nutrition: data.nutrition ?? null }
+      }))
+
+      const updatedRecipes = [...nextPlan.recipes]
+      for (const { index, nutrition } of results) {
+        if (!nutrition) continue
+        const r = updatedRecipes[index]
+        updatedRecipes[index] = {
+          ...r,
+          clientServingMultiplier: nutrition.clientServingMultiplier.toFixed(2),
+          clientServingGrams: `${nutrition.clientServingGrams}g`,
+          clientServingMeasure: nutrition.clientServingMeasure,
+          clientServingBreakdown: nutrition.clientServingBreakdown,
+          clientServing: nutrition.clientServingBreakdown || `${nutrition.clientServingGrams}g`,
+          calories: `${nutrition.clientServing.calories}`,
+          protein: `${nutrition.clientServing.protein}g`,
+          carbs: `${nutrition.clientServing.carbs}g`,
+          fats: `${nutrition.clientServing.fats}g`,
+        }
+      }
+
+      // Also update meal plan descriptions with fresh macros
+      const updateMealMacros = (meal: CoachingPlanDraft['mealPlan'][number]['breakfast']) => {
+        const recipe = updatedRecipes.find((r) => r.name && r.name === meal.recipeName)
+        if (!recipe) return meal
+        return {
+          ...meal,
+          description: [
+            recipe.clientServing ? `Client serving: ${recipe.clientServing}.` : '',
+            recipe.clientServingMeasure ? `Portion guide: ${recipe.clientServingMeasure}.` : '',
+            recipe.familyServings ? `Family yield: ${recipe.familyServings}.` : '',
+          ].filter(Boolean).join(' '),
+          macros: recipeMacroLabel(recipe),
+        }
+      }
+
+      nextPlan = {
+        ...nextPlan,
+        recipes: updatedRecipes,
+        mealPlan: nextPlan.mealPlan.map((day) => ({
+          ...day,
+          breakfast: updateMealMacros(day.breakfast),
+          lunch: updateMealMacros(day.lunch),
+          dinner: updateMealMacros(day.dinner),
+          snacks: day.snacks.map(updateMealMacros),
+        })),
+      }
+      setPlan(nextPlan)
+    }
+
     const response = await fetch('/api/admin/coaching/plans', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -433,192 +499,6 @@ export default function CoachingPlanEditor({
     setGenerating(false)
   }
 
-  async function calculateRecipeWithUsda(index: number) {
-    const recipe = plan.recipes[index]
-    const dailyCalories = firstNumber(plan.macroTargets.calories)
-    setCalculatingRecipeIndex(index)
-    setError('')
-    setMessage('')
-
-    const response = await fetch('/api/admin/coaching/nutrition', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ingredients: recipe.ingredients,
-        clientServingMultiplier: recipe.clientServingMultiplier,
-        targetCalories: dailyCalories ? mealCalorieTarget(recipe.mealType, dailyCalories, planningInputs) : undefined,
-        familyServings: recipe.familyServings || recipe.servings,
-      }),
-    })
-    const result = await response.json().catch(() => ({} as UsdaNutritionResponse)) as UsdaNutritionResponse
-
-    if (!response.ok || !result.nutrition) {
-      setError(result.error || `USDA could not calculate this recipe. Response status: ${response.status}.`)
-      setCalculatingRecipeIndex(null)
-      return
-    }
-
-    const { nutrition } = result
-    const sourceNote = [
-      `USDA calculated ${nutrition.ingredients.length} ingredients.`,
-      `Client portion: ${nutrition.clientServingGrams}g. ${nutrition.clientServingMeasure}`,
-      nutrition.clientServingBreakdown ? `Ingredient breakdown: ${nutrition.clientServingBreakdown}.` : '',
-      nutrition.ingredients.length ? `USDA matches: ${nutrition.ingredients.map((ingredient) => `${ingredient.input} -> ${ingredient.matchedFood}`).join(' | ')}.` : '',
-      `Full recipe: ${nutrition.totalRecipe.calories} cal, ${nutrition.totalRecipe.protein}g protein, ${nutrition.totalRecipe.carbs}g carbs, ${nutrition.totalRecipe.fats}g fats.`,
-      nutrition.warnings.length ? `Review warnings: ${nutrition.warnings.join(' ')}` : '',
-    ].filter(Boolean).join(' ')
-
-    setPlan((current) => {
-      const recipes = [...current.recipes]
-      const currentRecipe = recipes[index]
-      recipes[index] = {
-        ...currentRecipe,
-        clientServingMultiplier: nutrition.clientServingMultiplier.toFixed(2),
-        clientServingGrams: `${nutrition.clientServingGrams}g`,
-        clientServingMeasure: nutrition.clientServingMeasure,
-        clientServingBreakdown: nutrition.clientServingBreakdown,
-        clientServing: nutrition.clientServingBreakdown || `${nutrition.clientServingGrams}g`,
-        calories: `${nutrition.clientServing.calories}`,
-        protein: `${nutrition.clientServing.protein}g`,
-        carbs: `${nutrition.clientServing.carbs}g`,
-        fats: `${nutrition.clientServing.fats}g`,
-        notes: [currentRecipe.notes, sourceNote].filter(Boolean).join('\n\n'),
-      }
-      return { ...current, recipes }
-    })
-
-    setMessage(
-      nutrition.warnings.length
-        ? 'USDA macros applied with warnings. Review the recipe notes before publishing.'
-        : 'USDA macros applied to the client serving.'
-    )
-    setCalculatingRecipeIndex(null)
-  }
-
-  async function calculateAllServingsWithUsda() {
-    const dailyCalories = firstNumber(plan.macroTargets.calories)
-    if (!dailyCalories) {
-      setError('Add or calculate daily calories before auto-calculating recipe serving sizes.')
-      return
-    }
-
-    const recipesToCalculate = plan.recipes
-      .map((recipe, index) => ({ recipe, index }))
-      .filter(({ recipe }) => recipe.ingredients.length > 0)
-
-    if (recipesToCalculate.length === 0) {
-      setError('Add recipe ingredients before auto-calculating client servings.')
-      return
-    }
-
-    setCalculatingAllServings(true)
-    setError('')
-    setMessage('')
-
-    try {
-      const calculated = await Promise.all(recipesToCalculate.map(async ({ recipe, index }) => {
-        const response = await fetch('/api/admin/coaching/nutrition', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ingredients: recipe.ingredients,
-            clientServingMultiplier: recipe.clientServingMultiplier,
-            targetCalories: mealCalorieTarget(recipe.mealType, dailyCalories, planningInputs),
-            familyServings: recipe.familyServings || recipe.servings,
-          }),
-        })
-        const result = await response.json().catch(() => ({} as UsdaNutritionResponse)) as UsdaNutritionResponse
-        if (!response.ok || !result.nutrition) {
-          return {
-            index,
-            error: result.error || `USDA could not calculate ${recipe.name || `Recipe ${index + 1}`}. Response status: ${response.status}.`,
-          }
-        }
-
-        return { index, nutrition: result.nutrition }
-      }))
-
-      const successful = calculated.filter((item): item is { index: number; nutrition: NonNullable<UsdaNutritionResponse['nutrition']> } => (
-        'nutrition' in item && Boolean(item.nutrition)
-      ))
-      const failed = calculated.filter((item): item is { index: number; error: string } => (
-        'error' in item && Boolean(item.error)
-      ))
-
-      if (successful.length === 0) {
-        setError(failed.map((item) => item.error).join(' '))
-        return
-      }
-
-      setPlan((current) => {
-        const recipes = current.recipes.map((recipe, index) => {
-          const item = successful.find((result) => result.index === index)
-          if (!item) return recipe
-
-          const { nutrition } = item
-          const sourceNote = [
-            `USDA auto-calculated client serving from ${nutrition.ingredients.length} ingredients.`,
-            `Client portion: ${nutrition.clientServingGrams}g. ${nutrition.clientServingMeasure}`,
-            nutrition.clientServingBreakdown ? `Ingredient breakdown: ${nutrition.clientServingBreakdown}.` : '',
-            nutrition.ingredients.length ? `USDA matches: ${nutrition.ingredients.map((ingredient) => `${ingredient.input} -> ${ingredient.matchedFood}`).join(' | ')}.` : '',
-            `Full recipe: ${nutrition.totalRecipe.calories} cal, ${nutrition.totalRecipe.protein}g protein, ${nutrition.totalRecipe.carbs}g carbs, ${nutrition.totalRecipe.fats}g fats.`,
-            nutrition.warnings.length ? `Review warnings: ${nutrition.warnings.join(' ')}` : '',
-          ].filter(Boolean).join(' ')
-
-          return {
-            ...recipe,
-            clientServingMultiplier: nutrition.clientServingMultiplier.toFixed(2),
-            clientServingGrams: `${nutrition.clientServingGrams}g`,
-            clientServingMeasure: nutrition.clientServingMeasure,
-            clientServingBreakdown: nutrition.clientServingBreakdown,
-            clientServing: nutrition.clientServingBreakdown || `${nutrition.clientServingGrams}g`,
-            calories: `${nutrition.clientServing.calories}`,
-            protein: `${nutrition.clientServing.protein}g`,
-            carbs: `${nutrition.clientServing.carbs}g`,
-            fats: `${nutrition.clientServing.fats}g`,
-            notes: [recipe.notes, sourceNote].filter(Boolean).join('\n\n'),
-          }
-        })
-
-        const updateMeal = (meal: CoachingPlanDraft['mealPlan'][number]['breakfast']) => {
-          const recipe = recipes.find((item) => item.name && item.name === meal.recipeName)
-          if (!recipe) return meal
-          return {
-            ...meal,
-            description: [
-              recipe.clientServing ? `Client serving: ${recipe.clientServing}.` : '',
-              recipe.clientServingMeasure ? `Portion guide: ${recipe.clientServingMeasure}.` : '',
-              recipe.familyServings ? `Family yield: ${recipe.familyServings}.` : '',
-            ].filter(Boolean).join(' '),
-            macros: recipeMacroLabel(recipe),
-          }
-        }
-
-        return {
-          ...current,
-          recipes,
-          mealPlan: current.mealPlan.map((day) => ({
-            ...day,
-            breakfast: updateMeal(day.breakfast),
-            lunch: updateMeal(day.lunch),
-            dinner: updateMeal(day.dinner),
-            snacks: day.snacks.map(updateMeal),
-          })),
-        }
-      })
-
-      setMessage(
-        failed.length
-          ? `Calculated ${successful.length} recipe(s). ${failed.length} recipe(s) need review: ${failed.map((item) => item.error).join(' ')}`
-          : 'Client serving sizes calculated. Review the grams, easy portion guide, and any USDA warnings before saving.'
-      )
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'USDA could not calculate recipe serving sizes.')
-    } finally {
-      setCalculatingAllServings(false)
-    }
-  }
-
   return (
     <section className="admin-card p-6 space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -642,7 +522,7 @@ export default function CoachingPlanEditor({
             {generating ? 'Generating...' : 'Generate AI Draft'}
           </button>
           <button type="button" className="admin-btn-primary" disabled={pending} onClick={() => savePlan()}>
-            {pending ? 'Saving...' : 'Save Plan'}
+            {pending ? 'Calculating & Saving...' : 'Save Plan'}
           </button>
         </div>
       </div>
@@ -892,15 +772,12 @@ export default function CoachingPlanEditor({
 
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-3">
-          <h3 style={{ fontFamily: 'var(--font-eb-garamond)', fontSize: '1.375rem', fontWeight: 700 }}>Recipes</h3>
-          <button
-            type="button"
-            className="admin-btn-secondary"
-            disabled={calculatingAllServings || plan.recipes.length === 0}
-            onClick={calculateAllServingsWithUsda}
-          >
-            {calculatingAllServings ? 'Calculating Servings...' : 'Auto-Calculate Client Servings'}
-          </button>
+          <div>
+            <h3 style={{ fontFamily: 'var(--font-eb-garamond)', fontSize: '1.375rem', fontWeight: 700 }}>Recipes</h3>
+            <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.82rem', color: 'var(--admin-on-surface-variant)', margin: '2px 0 0' }}>
+              Build each recipe for the whole family. Client portions are calculated automatically when you save.
+            </p>
+          </div>
           <button
             type="button"
             className="admin-btn-secondary"
@@ -908,7 +785,7 @@ export default function CoachingPlanEditor({
               ...current,
               recipes: [...current.recipes, {
                 name: '',
-                mealType: '',
+                mealType: 'dinner',
                 servings: '',
                 familyServings: '',
                 clientServing: '',
@@ -945,13 +822,13 @@ export default function CoachingPlanEditor({
           )
         })()}
         {plan.recipes.map((recipe, index) => (
-          <details key={index} className="admin-card p-4">
+          <details key={index} className="admin-card p-4" open={!recipe.calories}>
             <summary className="flex items-center justify-between cursor-pointer" style={{ fontFamily: 'var(--font-hanken)', fontWeight: 800 }}>
               <span>{recipe.name || `Recipe ${index + 1}`}</span>
               <span className="inline-flex items-center gap-3">
                 {recipeMacroLabel(recipe) && (
-                  <span style={{ color: 'var(--admin-on-surface-variant)', fontWeight: 600 }}>
-                    {recipeMacroLabel(recipe)}
+                  <span style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.82rem', color: 'var(--admin-on-surface-variant)', fontWeight: 500 }}>
+                    {recipeMacroLabel(recipe)} · {recipe.clientServingGrams}
                   </span>
                 )}
                 <button
@@ -973,60 +850,48 @@ export default function CoachingPlanEditor({
                 <ChevronDown size={16} />
               </span>
             </summary>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               <TextInput label="Recipe Name" value={recipe.name} onChange={(v) => {
                 const recipes = [...plan.recipes]
                 recipes[index] = { ...recipe, name: v }
                 setPlan((current) => ({ ...current, recipes }))
               }} />
-              <TextInput label="Meal Type" value={recipe.mealType} onChange={(v) => {
-                const recipes = [...plan.recipes]
-                recipes[index] = { ...recipe, mealType: v }
-                setPlan((current) => ({ ...current, recipes }))
-              }} />
-              <TextInput label="Family Yield" value={recipe.familyServings || recipe.servings} onChange={(v) => {
-                const recipes = [...plan.recipes]
-                recipes[index] = { ...recipe, familyServings: v, servings: v }
-                setPlan((current) => ({ ...current, recipes }))
-              }} />
-              <TextInput label="Client Serving Size" value={recipe.clientServing} onChange={(v) => {
-                const recipes = [...plan.recipes]
-                recipes[index] = { ...recipe, clientServing: v }
-                setPlan((current) => ({ ...current, recipes }))
-              }} />
-              <TextInput label="Client Serving Share" value={recipe.clientServingMultiplier} onChange={(v) => {
-                const recipes = [...plan.recipes]
-                recipes[index] = { ...recipe, clientServingMultiplier: v }
-                setPlan((current) => ({ ...current, recipes }))
-              }} />
-              <TextInput label="Client Serving Grams" value={recipe.clientServingGrams} onChange={(v) => {
-                const recipes = [...plan.recipes]
-                recipes[index] = { ...recipe, clientServingGrams: v }
-                setPlan((current) => ({ ...current, recipes }))
-              }} />
-              <TextInput label="Easy Portion Guide" value={recipe.clientServingMeasure} onChange={(v) => {
-                const recipes = [...plan.recipes]
-                recipes[index] = { ...recipe, clientServingMeasure: v }
-                setPlan((current) => ({ ...current, recipes }))
-              }} />
-              <TextArea label="Client Serving Ingredient Breakdown" value={recipe.clientServingBreakdown} rows={2} onChange={(v) => {
-                const recipes = [...plan.recipes]
-                recipes[index] = { ...recipe, clientServingBreakdown: v }
-                setPlan((current) => ({ ...current, recipes }))
-              }} />
-              <TextInput label="Client Serving Calories" value={recipe.calories} onChange={(v) => {
-                const recipes = [...plan.recipes]
-                recipes[index] = { ...recipe, calories: v }
-                setPlan((current) => ({ ...current, recipes }))
-              }} />
-              <TextInput label="Client Serving Protein / Carbs / Fats" value={`${recipe.protein} / ${recipe.carbs} / ${recipe.fats}`} onChange={(v) => {
-                const [protein = '', carbs = '', fats = ''] = v.split('/').map((item) => item.trim())
-                const recipes = [...plan.recipes]
-                recipes[index] = { ...recipe, protein, carbs, fats }
-                setPlan((current) => ({ ...current, recipes }))
-              }} />
-              <div className="space-y-2">
-                <span className="admin-label">Ingredients</span>
+              <label className="space-y-1">
+                <span className="admin-label">Meal</span>
+                <select
+                  className="admin-input"
+                  value={recipe.mealType}
+                  onChange={(e) => {
+                    const recipes = [...plan.recipes]
+                    recipes[index] = { ...recipe, mealType: e.target.value }
+                    setPlan((current) => ({ ...current, recipes }))
+                  }}
+                >
+                  <option value="breakfast">Breakfast</option>
+                  <option value="lunch">Lunch</option>
+                  <option value="dinner">Dinner</option>
+                  <option value="snack">Snack</option>
+                </select>
+              </label>
+              <label className="space-y-1">
+                <span className="admin-label">Serves how many people?</span>
+                <input
+                  className="admin-input"
+                  type="number"
+                  min="1"
+                  placeholder="e.g. 4"
+                  value={recipe.familyServings || recipe.servings}
+                  onChange={(e) => {
+                    const recipes = [...plan.recipes]
+                    recipes[index] = { ...recipe, familyServings: e.target.value, servings: e.target.value }
+                    setPlan((current) => ({ ...current, recipes }))
+                  }}
+                />
+              </label>
+
+              <div className="md:col-span-2 space-y-2">
+                <span className="admin-label">Ingredients — enter amounts for the whole family recipe</span>
                 <IngredientPicker
                   onAdd={(ingredient) => {
                     const recipes = [...plan.recipes]
@@ -1058,47 +923,27 @@ export default function CoachingPlanEditor({
                     })}
                   </ul>
                 )}
-                <details style={{ marginTop: 4 }}>
-                  <summary style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.78rem', color: 'var(--admin-on-surface-variant)', cursor: 'pointer' }}>
-                    Or paste ingredients as text (one per line, e.g. 150g chicken breast cooked)
-                  </summary>
-                  <textarea
-                    className="admin-input"
-                    style={{ marginTop: 6 }}
-                    rows={4}
-                    value={joinLines(recipe.ingredients.map((i) => i.replace(/^\[fdc:\d+\]\s*/, '')))}
-                    onChange={(v) => {
-                      const recipes = [...plan.recipes]
-                      recipes[index] = { ...recipe, ingredients: splitLines(v.target.value) }
-                      setPlan((current) => ({ ...current, recipes }))
-                    }}
-                  />
-                </details>
               </div>
-              <div className="space-y-2">
-                <button
-                  type="button"
-                  className="admin-btn-secondary"
-                  disabled={calculatingRecipeIndex === index || recipe.ingredients.length === 0}
-                  onClick={() => calculateRecipeWithUsda(index)}
-                >
-                  {calculatingRecipeIndex === index ? 'Calculating USDA...' : 'Calculate Macros With USDA'}
-                </button>
-                <p style={{ fontFamily: 'var(--font-hanken)', color: 'var(--admin-on-surface-variant)', fontSize: '0.9rem', lineHeight: 1.5 }}>
-                  Best accuracy: enter the cooked client-plate weights, like 150g cooked chicken breast and 200g cooked rice. Leave Client Serving Share blank to use the amounts exactly as entered. Type 1/2, 1/4, or 0.25 only when the ingredients represent a larger family recipe.
-                </p>
-              </div>
-              <TextArea label="Cooking Instructions, one per line" value={joinLines(recipe.instructions)} onChange={(v) => {
-                const recipes = [...plan.recipes]
-                recipes[index] = { ...recipe, instructions: splitLines(v) }
-                setPlan((current) => ({ ...current, recipes }))
-              }} />
-              <TextArea label="Recipe Notes" value={recipe.notes} onChange={(v) => {
-                const recipes = [...plan.recipes]
-                recipes[index] = { ...recipe, notes: v }
-                setPlan((current) => ({ ...current, recipes }))
-              }} />
+
+              <details className="md:col-span-2">
+                <summary style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.82rem', color: 'var(--admin-on-surface-variant)', cursor: 'pointer', userSelect: 'none' }}>
+                  Instructions &amp; Notes (optional)
+                </summary>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                  <TextArea label="Cooking Instructions, one per line" value={joinLines(recipe.instructions)} onChange={(v) => {
+                    const recipes = [...plan.recipes]
+                    recipes[index] = { ...recipe, instructions: splitLines(v) }
+                    setPlan((current) => ({ ...current, recipes }))
+                  }} />
+                  <TextArea label="Recipe Notes" value={recipe.notes} onChange={(v) => {
+                    const recipes = [...plan.recipes]
+                    recipes[index] = { ...recipe, notes: v }
+                    setPlan((current) => ({ ...current, recipes }))
+                  }} />
+                </div>
+              </details>
             </div>
+
             <RecipePortionCard recipe={recipe} />
           </details>
         ))}

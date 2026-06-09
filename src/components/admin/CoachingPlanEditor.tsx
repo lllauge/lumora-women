@@ -819,125 +819,14 @@ export default function CoachingPlanEditor({
         </div>
       </div>
 
-      {/* ── Section 4: Meal Plan ── */}
+      {/* ── Section 4: Meal Plan & Recipes ── */}
       <div style={sCard}>
         <div style={sHeader}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <SectionNum n={4} done={plan.mealPlan.length > 0} />
-            <SectionTitle title="Meal Plan" subtitle="Which recipe goes on which day — built from your recipes below" />
+            <SectionNum n={4} done={plan.recipes.some((r) => !!r.calories) && plan.mealPlan.length > 0} />
+            <SectionTitle title="Meal Plan & Recipes" subtitle="Build recipes with USDA ingredients, then assign them to each day" />
           </div>
-          <button
-            type="button"
-            className="admin-btn-secondary"
-            style={{ flexShrink: 0 }}
-            onClick={() => setPlan((current) => ({
-              ...current,
-              mealPlan: [...current.mealPlan, {
-                day: `Day ${current.mealPlan.length + 1}`,
-                breakfast: { name: '', description: '', macros: '', recipeName: '' },
-                lunch: { name: '', description: '', macros: '', recipeName: '' },
-                dinner: { name: '', description: '', macros: '', recipeName: '' },
-                snacks: [],
-                notes: '',
-              }],
-            }))}
-          >
-            + Add Day
-          </button>
-        </div>
-        <div style={{ ...sBody, display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {plan.mealPlan.length === 0 && (
-            <p style={{ fontFamily: 'var(--font-hanken)', color: 'var(--admin-on-surface-variant)', fontSize: '0.85rem', textAlign: 'center', padding: '20px 0' }}>
-              No days added yet. Click &quot;+ Add Day&quot; or use Generate AI Draft to build a full week.
-            </p>
-          )}
-          {plan.mealPlan.map((day, dayIndex) => (
-            <details key={dayIndex} style={{ border: '1px solid var(--admin-outline-variant)', borderRadius: 10, overflow: 'hidden' }} open={dayIndex === 0}>
-              <summary style={{ listStyle: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: 'pointer', background: 'var(--admin-surface-low)' }}>
-                <div>
-                  <div style={{ fontFamily: 'var(--font-hanken)', fontWeight: 700, fontSize: '0.92rem', color: 'var(--admin-on-surface)' }}>{day.day || `Day ${dayIndex + 1}`}</div>
-                  {(() => {
-                    const total = dayMacroTotal(day)
-                    const hasDayMacros = total.calories || total.protein || total.carbs || total.fats
-                    return hasDayMacros ? (
-                      <div style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.75rem', color: 'var(--admin-on-surface-variant)', marginTop: 2 }}>
-                        {total.calories} cal · {total.protein}g protein · {total.carbs}g carbs · {total.fats}g fat
-                      </div>
-                    ) : null
-                  })()}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <button
-                    type="button"
-                    className="admin-btn-ghost"
-                    style={{ color: 'var(--admin-error)', fontSize: '0.78rem' }}
-                    onClick={(event) => {
-                      event.preventDefault()
-                      event.stopPropagation()
-                      setPlan((current) => ({
-                        ...current,
-                        mealPlan: current.mealPlan.filter((_, index) => index !== dayIndex),
-                      }))
-                    }}
-                  >
-                    <Trash2 size={13} /> Delete
-                  </button>
-                  <ChevronDown size={15} style={{ color: 'var(--admin-on-surface-variant)' }} />
-                </div>
-              </summary>
-              <div style={{ padding: '14px 16px', borderTop: '1px solid var(--admin-outline-variant)' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                  <TextInput label="Day Label" value={day.day} onChange={(v) => {
-                    const mealPlan = [...plan.mealPlan]
-                    mealPlan[dayIndex] = { ...day, day: v }
-                    setPlan((current) => ({ ...current, mealPlan }))
-                  }} />
-                  <TextInput label="Daily Notes" value={day.notes} onChange={(v) => {
-                    const mealPlan = [...plan.mealPlan]
-                    mealPlan[dayIndex] = { ...day, notes: v }
-                    setPlan((current) => ({ ...current, mealPlan }))
-                  }} />
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-                  {(['breakfast', 'lunch', 'dinner'] as const).map((mealKey) => (
-                    <div key={mealKey} style={{ background: 'var(--admin-surface-low)', border: '1px solid var(--admin-outline-variant)', borderRadius: 9, padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      <div style={{ fontFamily: 'var(--font-hanken)', fontWeight: 800, fontSize: '0.82rem', textTransform: 'capitalize', color: 'var(--admin-on-surface)' }}>{mealKey}</div>
-                      <label className="space-y-1 block">
-                        <span className="admin-label">Use Recipe</span>
-                        <select
-                          className="admin-input"
-                          value={day[mealKey].recipeName}
-                          onChange={(e) => applyRecipeToMeal(dayIndex, mealKey, e.target.value)}
-                        >
-                          <option value="">Choose a recipe</option>
-                          {plan.recipes.filter((recipe) => recipe.name.trim()).map((recipe) => (
-                            <option key={`${mealKey}-${recipe.name}`} value={recipe.name}>
-                              {recipe.name}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <TextInput label="Meal Name" value={day[mealKey].name} onChange={(v) => updateMeal(dayIndex, mealKey, { name: v })} />
-                      <TextArea label="Description" value={day[mealKey].description} rows={2} onChange={(v) => updateMeal(dayIndex, mealKey, { description: v })} />
-                      <TextInput label="Macros" value={day[mealKey].macros} onChange={(v) => updateMeal(dayIndex, mealKey, { macros: v })} />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </details>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Section 5: Recipes ── */}
-      <div style={sCard}>
-        <div style={sHeader}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <SectionNum n={5} done={plan.recipes.some((r) => !!r.calories)} />
-            <SectionTitle title="Recipes" subtitle="Build each recipe with USDA ingredients for the whole family — client's exact portion is calculated on save" />
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-            <span style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.75rem', color: 'var(--admin-on-surface-variant)' }}>All amounts = whole family recipe</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             <button
               type="button"
               className="admin-btn-secondary"
@@ -968,85 +857,118 @@ export default function CoachingPlanEditor({
             >
               + Add Recipe
             </button>
+            <button
+              type="button"
+              className="admin-btn-secondary"
+              onClick={() => setPlan((current) => ({
+                ...current,
+                mealPlan: [...current.mealPlan, {
+                  day: `Day ${current.mealPlan.length + 1}`,
+                  breakfast: { name: '', description: '', macros: '', recipeName: '' },
+                  lunch: { name: '', description: '', macros: '', recipeName: '' },
+                  dinner: { name: '', description: '', macros: '', recipeName: '' },
+                  snacks: [],
+                  notes: '',
+                }],
+              }))}
+            >
+              + Add Day
+            </button>
           </div>
         </div>
-        <div style={sBody}>
-          {/* Macro budget tracker */}
-          {(() => {
-            const budget = recipeMacroBudget(plan.recipes, plan.macroTargets)
-            if (!budget) return null
-            return (
-              <div style={{ background: 'var(--admin-surface-low)', border: '1px solid var(--admin-outline-variant)', borderRadius: 10, padding: '14px 16px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 14 }}>
-                <MacroBudgetBar label="Calories" used={budget.used.calories} target={budget.target.calories} unit=" cal" />
-                <MacroBudgetBar label="Protein" used={budget.used.protein} target={budget.target.protein} unit="g" />
-                <MacroBudgetBar label="Carbs" used={budget.used.carbs} target={budget.target.carbs} unit="g" />
-                <MacroBudgetBar label="Fat" used={budget.used.fats} target={budget.target.fats} unit="g" />
+        <div style={{ ...sBody, display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+          {/* ── Recipe Bank ── */}
+          <details open={plan.recipes.length === 0 || plan.recipes.some((r) => !r.calories)}>
+            <summary style={{ listStyle: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none', padding: '10px 14px', background: 'var(--admin-surface-low)', borderRadius: 9, border: '1px solid var(--admin-outline-variant)' }}>
+              <span style={{ fontFamily: 'var(--font-hanken)', fontWeight: 700, fontSize: '0.88rem', color: 'var(--admin-on-surface)' }}>
+                Recipe Bank {plan.recipes.length > 0 ? `(${plan.recipes.length})` : ''}
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.72rem', color: 'var(--admin-on-surface-variant)' }}>All amounts = whole family recipe</span>
+                <ChevronDown size={14} style={{ color: 'var(--admin-on-surface-variant)' }} />
               </div>
-            )
-          })()}
+            </summary>
+            <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {/* Macro budget tracker */}
+              {(() => {
+                const budget = recipeMacroBudget(plan.recipes, plan.macroTargets)
+                if (!budget) return null
+                return (
+                  <div style={{ background: 'var(--admin-surface-low)', border: '1px solid var(--admin-outline-variant)', borderRadius: 10, padding: '14px 16px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+                    <MacroBudgetBar label="Calories" used={budget.used.calories} target={budget.target.calories} unit=" cal" />
+                    <MacroBudgetBar label="Protein" used={budget.used.protein} target={budget.target.protein} unit="g" />
+                    <MacroBudgetBar label="Carbs" used={budget.used.carbs} target={budget.target.carbs} unit="g" />
+                    <MacroBudgetBar label="Fat" used={budget.used.fats} target={budget.target.fats} unit="g" />
+                  </div>
+                )
+              })()}
 
-          {/* Recipe cards */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {plan.recipes.map((recipe, index) => {
-              const isCalculated = !!recipe.calories
-              return (
-                <details key={index} style={{ border: `1px solid ${isCalculated ? 'var(--admin-outline-variant)' : '#C9A84C'}`, borderRadius: 10, overflow: 'hidden' }} open={!recipe.calories}>
-                  <summary style={{ listStyle: 'none', display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', cursor: 'pointer', background: isCalculated ? 'var(--admin-surface-low)' : '#FFFEF9' }}>
-                    {/* Status indicator */}
-                    <div style={{ width: 22, height: 22, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 700, ...(isCalculated ? { background: '#e8f5e9', color: '#2e7d32', border: '1.5px solid #a5d6a7' } : { background: '#FEF9EE', color: '#92400e', border: '1.5px solid #E9C46A' }) }}>
-                      {isCalculated ? '✓' : '!'}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: 'var(--font-hanken)', fontWeight: 700, fontSize: '0.95rem', color: 'var(--admin-on-surface)' }}>
-                        {recipe.name || `Recipe ${index + 1}`}
-                      </div>
-                      <div style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.75rem', color: 'var(--admin-on-surface-variant)', marginTop: 2 }}>
-                        {recipe.mealType && <span style={{ textTransform: 'capitalize' }}>{recipe.mealType}</span>}
-                        {(recipe.familyServings || recipe.servings) && <span> · Serves {recipe.familyServings || recipe.servings}</span>}
-                        {!isCalculated && <span style={{ color: '#d97706', fontStyle: 'italic' }}> · needs save to calculate</span>}
-                      </div>
-                    </div>
-                    {recipeMacroLabel(recipe) && (
-                      <div style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.78rem', color: 'var(--admin-on-surface-variant)', textAlign: 'right', flexShrink: 0 }}>
-                        {recipeMacroLabel(recipe)}
-                        {recipe.clientServingGrams && <> · <strong style={{ color: 'var(--admin-on-surface)' }}>client gets {recipe.clientServingGrams}</strong></>}
-                      </div>
-                    )}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                      <button
-                        type="button"
-                        className="admin-btn-ghost"
-                        style={{ color: 'var(--admin-error)', fontSize: '0.75rem', padding: '4px 8px' }}
-                        onClick={(event) => {
-                          event.preventDefault()
-                          event.stopPropagation()
-                          setPlan((current) => ({
-                            ...current,
-                            recipes: current.recipes.filter((_, recipeIndex) => recipeIndex !== index),
-                          }))
-                        }}
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                      <ChevronDown size={15} style={{ color: 'var(--admin-on-surface-variant)' }} />
-                    </div>
-                  </summary>
+              {plan.recipes.length === 0 && (
+                <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.85rem', color: 'var(--admin-on-surface-variant)', textAlign: 'center', padding: '16px 0' }}>
+                  No recipes yet. Click &quot;+ Add Recipe&quot; to build your first one with USDA ingredients.
+                </p>
+              )}
 
-                  <div style={{ padding: '16px', borderTop: `1px solid ${isCalculated ? 'var(--admin-outline-variant)' : '#F0E4C0'}`, background: isCalculated ? 'var(--admin-surface)' : '#FFFEF9' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
-                      <TextInput label="Recipe Name" value={recipe.name} onChange={(v) => {
-                        const recipes = [...plan.recipes]
-                        recipes[index] = { ...recipe, name: v }
-                        setPlan((current) => ({ ...current, recipes }))
-                      }} />
-                      <label className="space-y-1">
-                        <span className="admin-label">Meal</span>
-                        <select
-                          className="admin-input"
-                          value={recipe.mealType}
-                          onChange={(e) => {
-                            const recipes = [...plan.recipes]
-                            recipes[index] = { ...recipe, mealType: e.target.value }
+              {plan.recipes.map((recipe, index) => {
+                const isCalculated = !!recipe.calories
+                return (
+                  <details key={index} style={{ border: `1px solid ${isCalculated ? 'var(--admin-outline-variant)' : '#C9A84C'}`, borderRadius: 10, overflow: 'hidden' }} open={!recipe.calories}>
+                    <summary style={{ listStyle: 'none', display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', cursor: 'pointer', background: isCalculated ? 'var(--admin-surface-low)' : '#FFFEF9' }}>
+                      <div style={{ width: 22, height: 22, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 700, ...(isCalculated ? { background: '#e8f5e9', color: '#2e7d32', border: '1.5px solid #a5d6a7' } : { background: '#FEF9EE', color: '#92400e', border: '1.5px solid #E9C46A' }) }}>
+                        {isCalculated ? '✓' : '!'}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontFamily: 'var(--font-hanken)', fontWeight: 700, fontSize: '0.95rem', color: 'var(--admin-on-surface)' }}>
+                          {recipe.name || `Recipe ${index + 1}`}
+                        </div>
+                        <div style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.75rem', color: 'var(--admin-on-surface-variant)', marginTop: 2 }}>
+                          {recipe.mealType && <span style={{ textTransform: 'capitalize' }}>{recipe.mealType}</span>}
+                          {(recipe.familyServings || recipe.servings) && <span> · Serves {recipe.familyServings || recipe.servings}</span>}
+                          {!isCalculated && <span style={{ color: '#d97706', fontStyle: 'italic' }}> · needs save to calculate</span>}
+                        </div>
+                      </div>
+                      {recipeMacroLabel(recipe) && (
+                        <div style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.78rem', color: 'var(--admin-on-surface-variant)', textAlign: 'right', flexShrink: 0 }}>
+                          {recipeMacroLabel(recipe)}
+                          {recipe.clientServingGrams && <> · <strong style={{ color: 'var(--admin-on-surface)' }}>client gets {recipe.clientServingGrams}</strong></>}
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                        <button
+                          type="button"
+                          className="admin-btn-ghost"
+                          style={{ color: 'var(--admin-error)', fontSize: '0.75rem', padding: '4px 8px' }}
+                          onClick={(event) => {
+                            event.preventDefault()
+                            event.stopPropagation()
+                            setPlan((current) => ({
+                              ...current,
+                              recipes: current.recipes.filter((_, recipeIndex) => recipeIndex !== index),
+                            }))
+                          }}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                        <ChevronDown size={15} style={{ color: 'var(--admin-on-surface-variant)' }} />
+                      </div>
+                    </summary>
+
+                    <div style={{ padding: '16px', borderTop: `1px solid ${isCalculated ? 'var(--admin-outline-variant)' : '#F0E4C0'}`, background: isCalculated ? 'var(--admin-surface)' : '#FFFEF9' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
+                        <TextInput label="Recipe Name" value={recipe.name} onChange={(v) => {
+                          const recipes = [...plan.recipes]
+                          recipes[index] = { ...recipe, name: v }
+                          setPlan((current) => ({ ...current, recipes }))
+                        }} />
+                        <label className="space-y-1">
+                          <span className="admin-label">Meal</span>
+                          <select
+                            className="admin-input"
+                            value={recipe.mealType}
+                            onChange={(e) => {
+                              const recipes = [...plan.recipes]
+                              recipes[index] = { ...recipe, mealType: e.target.value }
                             setPlan((current) => ({ ...current, recipes }))
                           }}
                         >
@@ -1134,15 +1056,133 @@ export default function CoachingPlanEditor({
                 </details>
               )
             })}
-          </div>
+            </div>
+          </details>
+
+          {/* ── Day Accordions ── */}
+          {plan.mealPlan.length === 0 && (
+            <p style={{ fontFamily: 'var(--font-hanken)', color: 'var(--admin-on-surface-variant)', fontSize: '0.85rem', textAlign: 'center', padding: '20px 0' }}>
+              No days added yet. Click &quot;+ Add Day&quot; above to start building the week.
+            </p>
+          )}
+          {plan.mealPlan.map((day, dayIndex) => (
+            <details key={dayIndex} style={{ border: '1px solid var(--admin-outline-variant)', borderRadius: 10, overflow: 'hidden' }} open={dayIndex === 0}>
+              <summary style={{ listStyle: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: 'pointer', background: 'var(--admin-surface-low)' }}>
+                <div>
+                  <div style={{ fontFamily: 'var(--font-hanken)', fontWeight: 700, fontSize: '0.92rem', color: 'var(--admin-on-surface)' }}>{day.day || `Day ${dayIndex + 1}`}</div>
+                  {(() => {
+                    const total = dayMacroTotal(day)
+                    const hasDayMacros = total.calories || total.protein || total.carbs || total.fats
+                    return hasDayMacros ? (
+                      <div style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.75rem', color: 'var(--admin-on-surface-variant)', marginTop: 2 }}>
+                        {total.calories} cal · {total.protein}g protein · {total.carbs}g carbs · {total.fats}g fat
+                      </div>
+                    ) : null
+                  })()}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button
+                    type="button"
+                    className="admin-btn-ghost"
+                    style={{ color: 'var(--admin-error)', fontSize: '0.78rem' }}
+                    onClick={(event) => {
+                      event.preventDefault()
+                      event.stopPropagation()
+                      setPlan((current) => ({
+                        ...current,
+                        mealPlan: current.mealPlan.filter((_, i) => i !== dayIndex),
+                      }))
+                    }}
+                  >
+                    <Trash2 size={13} /> Delete
+                  </button>
+                  <ChevronDown size={15} style={{ color: 'var(--admin-on-surface-variant)' }} />
+                </div>
+              </summary>
+              <div style={{ padding: '14px 16px', borderTop: '1px solid var(--admin-outline-variant)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                  <TextInput label="Day Label" value={day.day} onChange={(v) => {
+                    const mealPlan = [...plan.mealPlan]
+                    mealPlan[dayIndex] = { ...day, day: v }
+                    setPlan((current) => ({ ...current, mealPlan }))
+                  }} />
+                  <TextInput label="Daily Notes" value={day.notes} onChange={(v) => {
+                    const mealPlan = [...plan.mealPlan]
+                    mealPlan[dayIndex] = { ...day, notes: v }
+                    setPlan((current) => ({ ...current, mealPlan }))
+                  }} />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+                  {(['breakfast', 'lunch', 'dinner'] as const).map((mealKey) => {
+                    const meal = day[mealKey]
+                    return (
+                      <div key={mealKey} style={{ background: 'var(--admin-surface-low)', border: '1px solid var(--admin-outline-variant)', borderRadius: 9, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <div style={{ fontFamily: 'var(--font-hanken)', fontWeight: 800, fontSize: '0.8rem', textTransform: 'capitalize', color: 'var(--admin-on-surface)' }}>{mealKey}</div>
+                        <select
+                          className="admin-input"
+                          style={{ fontSize: '0.83rem' }}
+                          value={meal.recipeName}
+                          onChange={(e) => applyRecipeToMeal(dayIndex, mealKey, e.target.value)}
+                        >
+                          <option value="">— no recipe —</option>
+                          {plan.recipes.filter((r) => r.name.trim()).map((r) => (
+                            <option key={r.name} value={r.name}>{r.name}</option>
+                          ))}
+                        </select>
+                        {meal.macros && (
+                          <div style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.74rem', color: '#2d4a2b', background: '#EBF5EA', border: '1px solid #C5D9C3', borderRadius: 6, padding: '5px 8px', lineHeight: 1.5 }}>
+                            {meal.macros}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                  {/* Snack slot */}
+                  {(() => {
+                    const snack = day.snacks[0] ?? { name: '', description: '', macros: '', recipeName: '' }
+                    return (
+                      <div style={{ background: 'var(--admin-surface-low)', border: '1px solid var(--admin-outline-variant)', borderRadius: 9, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <div style={{ fontFamily: 'var(--font-hanken)', fontWeight: 800, fontSize: '0.8rem', color: 'var(--admin-on-surface)' }}>Snack</div>
+                        <select
+                          className="admin-input"
+                          style={{ fontSize: '0.83rem' }}
+                          value={snack.recipeName}
+                          onChange={(e) => {
+                            const recipeName = e.target.value
+                            const recipe = plan.recipes.find((r) => r.name === recipeName)
+                            const updated = recipe
+                              ? { name: recipe.name, recipeName: recipe.name, macros: recipeMacroLabel(recipe), description: '' }
+                              : { ...snack, recipeName }
+                            const mealPlan = [...plan.mealPlan]
+                            mealPlan[dayIndex] = { ...day, snacks: recipeName ? [updated] : [] }
+                            setPlan((current) => ({ ...current, mealPlan }))
+                          }}
+                        >
+                          <option value="">— no snack —</option>
+                          {plan.recipes.filter((r) => r.name.trim()).map((r) => (
+                            <option key={r.name} value={r.name}>{r.name}</option>
+                          ))}
+                        </select>
+                        {snack.macros && (
+                          <div style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.74rem', color: '#2d4a2b', background: '#EBF5EA', border: '1px solid #C5D9C3', borderRadius: 6, padding: '5px 8px', lineHeight: 1.5 }}>
+                            {snack.macros}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
+                </div>
+              </div>
+            </details>
+          ))}
         </div>
       </div>
 
-      {/* ── Section 6: Grocery List ── */}
+      {/* ── Section 5: Grocery List ── */}
       <details style={sCard}>
         <summary style={{ listStyle: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', cursor: 'pointer', userSelect: 'none' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <SectionNum n={6} done={plan.groceryList.length > 0} />
+            <SectionNum n={5} done={plan.groceryList.length > 0} />
             <SectionTitle title="Grocery List" subtitle="Auto-generated from recipes on save, or edit manually" />
           </div>
           <ChevronDown size={16} style={{ color: 'var(--admin-on-surface-variant)', flexShrink: 0 }} />

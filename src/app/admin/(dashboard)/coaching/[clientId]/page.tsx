@@ -314,84 +314,114 @@ export default async function AdminCoachingClientPage({ params }: PageProps) {
             </p>
           </div>
 
-          <SectionCard
-            title="Personal Information"
-            section={asObject(formData.personal)}
-            fields={[
-              { key: 'firstName', label: 'First Name' },
-              { key: 'lastName', label: 'Last Name' },
-              { key: 'phone', label: 'Phone' },
-              { key: 'timezone', label: 'Time Zone' },
-            ]}
-          />
+          <details className="admin-card">
+            <summary
+              style={{
+                listStyle: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '18px 24px',
+                cursor: 'pointer',
+                userSelect: 'none',
+              }}
+            >
+              <h2
+                style={{
+                  fontFamily: 'var(--font-eb-garamond)',
+                  fontSize: '1.35rem',
+                  fontWeight: 700,
+                  color: 'var(--admin-on-surface)',
+                  margin: 0,
+                }}
+              >
+                Client Onboarding Responses
+              </h2>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ color: 'var(--admin-on-surface-variant)', flexShrink: 0 }}>
+                <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </summary>
+            <div className="space-y-6" style={{ padding: '0 0 8px' }}>
+              <SectionCard
+                title="Personal Information"
+                section={asObject(formData.personal)}
+                fields={[
+                  { key: 'firstName', label: 'First Name' },
+                  { key: 'lastName', label: 'Last Name' },
+                  { key: 'phone', label: 'Phone' },
+                  { key: 'timezone', label: 'Time Zone' },
+                ]}
+              />
 
-          <SectionCard
-            title="Goals & Body Data"
-            section={{ ...asObject(formData.goals), ...asObject(formData.body) }}
-            fields={[
-              { key: 'height', label: 'Height' },
-              { key: 'age', label: 'Age' },
-              { key: 'weight', label: 'Current Weight' },
-              { key: 'targetWeight', label: 'Goal Weight' },
-              { key: 'waist', label: 'Waist' },
-              { key: 'hips', label: 'Hips' },
-              { key: 'primaryGoal', label: 'Main Goal' },
-              { key: 'whyNow', label: 'Why Now' },
-              { key: 'success', label: '12-Week Success' },
-            ]}
-          />
+              <SectionCard
+                title="Goals & Body Data"
+                section={{ ...asObject(formData.goals), ...asObject(formData.body) }}
+                fields={[
+                  { key: 'height', label: 'Height' },
+                  { key: 'age', label: 'Age' },
+                  { key: 'weight', label: 'Current Weight' },
+                  { key: 'targetWeight', label: 'Goal Weight' },
+                  { key: 'waist', label: 'Waist' },
+                  { key: 'hips', label: 'Hips' },
+                  { key: 'primaryGoal', label: 'Main Goal' },
+                  { key: 'whyNow', label: 'Why Now' },
+                  { key: 'success', label: '12-Week Success' },
+                ]}
+              />
 
-          <SectionCard
-            title="Health & Lifestyle"
-            section={asObject(formData.health)}
-            fields={[
-              { key: 'medicalConditions', label: 'Medical Conditions' },
-              { key: 'medications', label: 'Medications / Supplements' },
-              { key: 'injuries', label: 'Injuries / Limitations' },
-              { key: 'eatingDisorderHistory', label: 'Eating History' },
-              { key: 'sleep', label: 'Sleep' },
-              { key: 'stress', label: 'Stress' },
-            ]}
-          />
+              <SectionCard
+                title="Health & Lifestyle"
+                section={asObject(formData.health)}
+                fields={[
+                  { key: 'medicalConditions', label: 'Medical Conditions' },
+                  { key: 'medications', label: 'Medications / Supplements' },
+                  { key: 'injuries', label: 'Injuries / Limitations' },
+                  { key: 'eatingDisorderHistory', label: 'Eating History' },
+                  { key: 'sleep', label: 'Sleep' },
+                  { key: 'stress', label: 'Stress' },
+                ]}
+              />
 
-          <SectionCard
-            title="Nutrition"
-            section={asObject(formData.nutrition)}
-            fields={[
-              { key: 'currentEating', label: 'Normal Day of Eating' },
-              { key: 'trackingExperience', label: 'Tracking Experience' },
-              { key: 'allergies', label: 'Allergies' },
-              { key: 'restrictions', label: 'Restrictions' },
-              { key: 'favoriteFoods', label: 'Favorite Foods' },
-              { key: 'dislikedFoods', label: 'Disliked Foods' },
-              { key: 'eatingOut', label: 'Eating Out' },
-              { key: 'water', label: 'Water' },
-              { key: 'caffeine', label: 'Caffeine' },
-            ]}
-          />
+              <SectionCard
+                title="Nutrition"
+                section={asObject(formData.nutrition)}
+                fields={[
+                  { key: 'currentEating', label: 'Normal Day of Eating' },
+                  { key: 'trackingExperience', label: 'Tracking Experience' },
+                  { key: 'allergies', label: 'Allergies' },
+                  { key: 'restrictions', label: 'Restrictions' },
+                  { key: 'favoriteFoods', label: 'Favorite Foods' },
+                  { key: 'dislikedFoods', label: 'Disliked Foods' },
+                  { key: 'eatingOut', label: 'Eating Out' },
+                  { key: 'water', label: 'Water' },
+                  { key: 'caffeine', label: 'Caffeine' },
+                ]}
+              />
 
-          <SectionCard
-            title="Schedule & Accountability"
-            section={asObject(formData.lifestyle)}
-            fields={[
-              { key: 'workSchedule', label: 'Work / Family Schedule' },
-              { key: 'strengthTraining', label: 'Strength Training' },
-              { key: 'workouts', label: 'Current Workouts' },
-              { key: 'steps', label: 'Average Steps' },
-              { key: 'barriers', label: 'Biggest Barriers' },
-              { key: 'accountability', label: 'Preferred Accountability' },
-            ]}
-          />
+              <SectionCard
+                title="Schedule & Accountability"
+                section={asObject(formData.lifestyle)}
+                fields={[
+                  { key: 'workSchedule', label: 'Work / Family Schedule' },
+                  { key: 'strengthTraining', label: 'Strength Training' },
+                  { key: 'workouts', label: 'Current Workouts' },
+                  { key: 'steps', label: 'Average Steps' },
+                  { key: 'barriers', label: 'Biggest Barriers' },
+                  { key: 'accountability', label: 'Preferred Accountability' },
+                ]}
+              />
 
-          <SectionCard
-            title="Agreements"
-            section={asObject(formData.agreements)}
-            fields={[
-              { key: 'notMedicalCare', label: 'Understands Coaching Is Not Medical Care' },
-              { key: 'notPregnantBreastfeeding', label: 'Not Pregnant Or Breastfeeding' },
-              { key: 'terms', label: 'Understands Plan Review Process' },
-            ]}
-          />
+              <SectionCard
+                title="Agreements"
+                section={asObject(formData.agreements)}
+                fields={[
+                  { key: 'notMedicalCare', label: 'Understands Coaching Is Not Medical Care' },
+                  { key: 'notPregnantBreastfeeding', label: 'Not Pregnant Or Breastfeeding' },
+                  { key: 'terms', label: 'Understands Plan Review Process' },
+                ]}
+              />
+            </div>
+          </details>
         </>
       )}
     </div>

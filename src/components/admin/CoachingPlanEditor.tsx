@@ -380,23 +380,31 @@ export default function CoachingPlanEditor({
   function addIngredientToSlot(dayIndex: number, mealKey: 'breakfast' | 'lunch' | 'dinner', ingredient: string) {
     setPlan(current => {
       const meal = current.mealPlan[dayIndex][mealKey]
-      const recipeName = meal.recipeName || `Custom ${mealKey.charAt(0).toUpperCase() + mealKey.slice(1)}`
+      // Use a slot-specific key so ingredients never bleed across slots
+      const slotKey = `d${dayIndex + 1}-${mealKey}`
+      const sharedName = meal.recipeName || ''
+      const slotRecipeName = sharedName ? `${sharedName} (${slotKey})` : `Custom ${mealKey} (${slotKey})`
+
       let newRecipes = [...current.recipes]
-      const idx = newRecipes.findIndex(r => r.name === recipeName)
-      if (idx >= 0) {
-        newRecipes[idx] = { ...newRecipes[idx], ingredients: [...newRecipes[idx].ingredients, ingredient] }
-      } else {
-        newRecipes.push({
-          name: recipeName, mealType: mealKey, servings: '1', familyServings: '1',
-          clientServing: '', clientServingMultiplier: '', clientServingGrams: '',
-          clientServingMeasure: '', clientServingBreakdown: '',
-          prepTime: '', cookTime: '', calories: '', protein: '', carbs: '', fats: '',
-          ingredients: [ingredient], instructions: [], swaps: [], notes: '',
-        })
+      // If this slot doesn't yet have its own copy, clone the shared recipe (or start fresh)
+      if (!newRecipes.some(r => r.name === slotRecipeName)) {
+        const source = newRecipes.find(r => r.name === sharedName)
+        newRecipes.push(source
+          ? { ...source, name: slotRecipeName }
+          : {
+              name: slotRecipeName, mealType: mealKey, servings: '1', familyServings: '1',
+              clientServing: '', clientServingMultiplier: '', clientServingGrams: '',
+              clientServingMeasure: '', clientServingBreakdown: '',
+              prepTime: '', cookTime: '', calories: '', protein: '', carbs: '', fats: '',
+              ingredients: [], instructions: [], swaps: [], notes: '',
+            }
+        )
       }
+      const idx = newRecipes.findIndex(r => r.name === slotRecipeName)
+      newRecipes[idx] = { ...newRecipes[idx], ingredients: [...newRecipes[idx].ingredients, ingredient] }
+
       const mealPlan = [...current.mealPlan]
-      const day = mealPlan[dayIndex]
-      mealPlan[dayIndex] = { ...day, [mealKey]: { ...meal, recipeName, name: recipeName } }
+      mealPlan[dayIndex] = { ...mealPlan[dayIndex], [mealKey]: { ...meal, recipeName: slotRecipeName, name: slotRecipeName } }
       return { ...current, recipes: newRecipes, mealPlan }
     })
   }
@@ -416,21 +424,28 @@ export default function CoachingPlanEditor({
     setPlan(current => {
       const snacks = [...(current.mealPlan[dayIndex].snacks ?? [])]
       const snack = snacks[snackIndex] ?? { name: '', recipeName: '', description: '', macros: '' }
-      const recipeName = snack.recipeName || `Custom Snack ${snackIndex > 0 ? snackIndex + 1 : ''}`.trim()
+      const slotKey = `d${dayIndex + 1}-snack${snackIndex}`
+      const sharedName = snack.recipeName || ''
+      const slotRecipeName = sharedName ? `${sharedName} (${slotKey})` : `Custom Snack (${slotKey})`
+
       let newRecipes = [...current.recipes]
-      const idx = newRecipes.findIndex(r => r.name === recipeName)
-      if (idx >= 0) {
-        newRecipes[idx] = { ...newRecipes[idx], ingredients: [...newRecipes[idx].ingredients, ingredient] }
-      } else {
-        newRecipes.push({
-          name: recipeName, mealType: 'snack', servings: '1', familyServings: '1',
-          clientServing: '', clientServingMultiplier: '', clientServingGrams: '',
-          clientServingMeasure: '', clientServingBreakdown: '',
-          prepTime: '', cookTime: '', calories: '', protein: '', carbs: '', fats: '',
-          ingredients: [ingredient], instructions: [], swaps: [], notes: '',
-        })
+      if (!newRecipes.some(r => r.name === slotRecipeName)) {
+        const source = newRecipes.find(r => r.name === sharedName)
+        newRecipes.push(source
+          ? { ...source, name: slotRecipeName }
+          : {
+              name: slotRecipeName, mealType: 'snack', servings: '1', familyServings: '1',
+              clientServing: '', clientServingMultiplier: '', clientServingGrams: '',
+              clientServingMeasure: '', clientServingBreakdown: '',
+              prepTime: '', cookTime: '', calories: '', protein: '', carbs: '', fats: '',
+              ingredients: [], instructions: [], swaps: [], notes: '',
+            }
+        )
       }
-      snacks[snackIndex] = { ...snack, recipeName, name: recipeName }
+      const idx = newRecipes.findIndex(r => r.name === slotRecipeName)
+      newRecipes[idx] = { ...newRecipes[idx], ingredients: [...newRecipes[idx].ingredients, ingredient] }
+
+      snacks[snackIndex] = { ...snack, recipeName: slotRecipeName, name: slotRecipeName }
       const mealPlan = [...current.mealPlan]
       mealPlan[dayIndex] = { ...mealPlan[dayIndex], snacks }
       return { ...current, recipes: newRecipes, mealPlan }

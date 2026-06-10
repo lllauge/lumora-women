@@ -265,7 +265,6 @@ export default function CoachingPlanEditor({
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [libraryRecipes, setLibraryRecipes] = useState<LibraryRecipe[]>([])
-  const [customSlots, setCustomSlots] = useState<Record<string, { name: string; ingredients: string[] }>>({})
 
   useEffect(() => {
     fetch('/api/admin/recipes')
@@ -378,38 +377,75 @@ export default function CoachingPlanEditor({
     })
   }
 
-  function applyCustomMealToSlot(dayIndex: number, mealKey: 'breakfast' | 'lunch' | 'dinner' | 'snack', slotKey: string, snackIndex?: number) {
-    const slot = customSlots[slotKey]
-    if (!slot || slot.ingredients.length === 0) {
-      setError('Add at least one ingredient before saving to the plan.')
-      return
-    }
-    const recipeName = slot.name.trim() || `Custom ${mealKey.charAt(0).toUpperCase() + mealKey.slice(1)}`
+  function addIngredientToSlot(dayIndex: number, mealKey: 'breakfast' | 'lunch' | 'dinner', ingredient: string) {
     setPlan(current => {
-      let newRecipes = current.recipes
-      if (!current.recipes.some(r => r.name === recipeName)) {
-        newRecipes = [...current.recipes, {
-          name: recipeName, mealType: mealKey === 'snack' ? 'snack' : mealKey,
-          servings: '1', familyServings: '1',
+      const meal = current.mealPlan[dayIndex][mealKey]
+      const recipeName = meal.recipeName || `Custom ${mealKey.charAt(0).toUpperCase() + mealKey.slice(1)}`
+      let newRecipes = [...current.recipes]
+      const idx = newRecipes.findIndex(r => r.name === recipeName)
+      if (idx >= 0) {
+        newRecipes[idx] = { ...newRecipes[idx], ingredients: [...newRecipes[idx].ingredients, ingredient] }
+      } else {
+        newRecipes.push({
+          name: recipeName, mealType: mealKey, servings: '1', familyServings: '1',
           clientServing: '', clientServingMultiplier: '', clientServingGrams: '',
           clientServingMeasure: '', clientServingBreakdown: '',
           prepTime: '', cookTime: '', calories: '', protein: '', carbs: '', fats: '',
-          ingredients: slot.ingredients, instructions: [], swaps: [], notes: '',
-        }]
+          ingredients: [ingredient], instructions: [], swaps: [], notes: '',
+        })
       }
       const mealPlan = [...current.mealPlan]
       const day = mealPlan[dayIndex]
-      const meal = { name: recipeName, recipeName, description: '', macros: '' }
-      if (mealKey === 'snack') {
-        const snacks = [...(day.snacks ?? [])]
-        snacks[snackIndex ?? snacks.length] = meal
-        mealPlan[dayIndex] = { ...day, snacks }
-      } else {
-        mealPlan[dayIndex] = { ...day, [mealKey]: meal }
-      }
+      mealPlan[dayIndex] = { ...day, [mealKey]: { ...meal, recipeName, name: recipeName } }
       return { ...current, recipes: newRecipes, mealPlan }
     })
-    setCustomSlots(prev => { const n = { ...prev }; delete n[slotKey]; return n })
+  }
+
+  function removeIngredientFromSlot(dayIndex: number, mealKey: 'breakfast' | 'lunch' | 'dinner', ingredientIndex: number) {
+    setPlan(current => {
+      const recipeName = current.mealPlan[dayIndex][mealKey].recipeName
+      if (!recipeName) return current
+      const newRecipes = current.recipes.map(r =>
+        r.name === recipeName ? { ...r, ingredients: r.ingredients.filter((_, i) => i !== ingredientIndex) } : r
+      )
+      return { ...current, recipes: newRecipes }
+    })
+  }
+
+  function addIngredientToSnackSlot(dayIndex: number, snackIndex: number, ingredient: string) {
+    setPlan(current => {
+      const snacks = [...(current.mealPlan[dayIndex].snacks ?? [])]
+      const snack = snacks[snackIndex] ?? { name: '', recipeName: '', description: '', macros: '' }
+      const recipeName = snack.recipeName || `Custom Snack ${snackIndex > 0 ? snackIndex + 1 : ''}`.trim()
+      let newRecipes = [...current.recipes]
+      const idx = newRecipes.findIndex(r => r.name === recipeName)
+      if (idx >= 0) {
+        newRecipes[idx] = { ...newRecipes[idx], ingredients: [...newRecipes[idx].ingredients, ingredient] }
+      } else {
+        newRecipes.push({
+          name: recipeName, mealType: 'snack', servings: '1', familyServings: '1',
+          clientServing: '', clientServingMultiplier: '', clientServingGrams: '',
+          clientServingMeasure: '', clientServingBreakdown: '',
+          prepTime: '', cookTime: '', calories: '', protein: '', carbs: '', fats: '',
+          ingredients: [ingredient], instructions: [], swaps: [], notes: '',
+        })
+      }
+      snacks[snackIndex] = { ...snack, recipeName, name: recipeName }
+      const mealPlan = [...current.mealPlan]
+      mealPlan[dayIndex] = { ...mealPlan[dayIndex], snacks }
+      return { ...current, recipes: newRecipes, mealPlan }
+    })
+  }
+
+  function removeIngredientFromSnackSlot(dayIndex: number, snackIndex: number, ingredientIndex: number) {
+    setPlan(current => {
+      const recipeName = current.mealPlan[dayIndex].snacks[snackIndex]?.recipeName
+      if (!recipeName) return current
+      const newRecipes = current.recipes.map(r =>
+        r.name === recipeName ? { ...r, ingredients: r.ingredients.filter((_, i) => i !== ingredientIndex) } : r
+      )
+      return { ...current, recipes: newRecipes }
+    })
   }
 
   function applyMacroEstimate() {
@@ -940,73 +976,38 @@ export default function CoachingPlanEditor({
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
                   {(['breakfast', 'lunch', 'dinner'] as const).map((mealKey) => {
                     const meal = day[mealKey]
-                    const slotKey = `${dayIndex}-${mealKey}`
-                    const custom = customSlots[slotKey]
-                    const isCustomMode = meal.recipeName === '__custom__' || !!custom
+                    const mealRecipe = plan.recipes.find(r => r.name === meal.recipeName)
+                    const ingredients = mealRecipe?.ingredients ?? []
                     return (
                       <div key={mealKey} style={{ background: 'var(--admin-surface-low)', border: '1px solid var(--admin-outline-variant)', borderRadius: 9, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
                         <div style={{ fontFamily: 'var(--font-hanken)', fontWeight: 800, fontSize: '0.8rem', textTransform: 'capitalize', color: 'var(--admin-on-surface)' }}>{mealKey}</div>
-                        {!isCustomMode ? (
-                          <>
-                            <select
-                              className="admin-input"
-                              style={{ fontSize: '0.83rem' }}
-                              value={meal.recipeName}
-                              onChange={(e) => {
-                                if (e.target.value === '__custom__') {
-                                  const defaultName = `Custom ${mealKey.charAt(0).toUpperCase() + mealKey.slice(1)}`
-                                  setCustomSlots(prev => ({ ...prev, [slotKey]: { name: defaultName, ingredients: [] } }))
-                                  updateMeal(dayIndex, mealKey, { recipeName: '__custom__', name: defaultName, macros: '', description: '' })
-                                } else {
-                                  applyLibraryRecipeToMeal(dayIndex, mealKey, e.target.value)
-                                }
-                              }}
-                            >
-                              <option value="">— no meal —</option>
-                              {libraryRecipes.map((r) => (
-                                <option key={r.id} value={r.name}>{r.name}</option>
-                              ))}
-                              <option value="__custom__">✏ Custom ingredients…</option>
-                            </select>
-                          </>
-                        ) : (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            <input
-                              className="admin-input"
-                              placeholder="Meal name"
-                              style={{ fontSize: '0.83rem' }}
-                              value={custom?.name ?? ''}
-                              onChange={(e) => setCustomSlots(prev => ({ ...prev, [slotKey]: { ...(prev[slotKey] ?? { ingredients: [] }), name: e.target.value } }))}
-                            />
-                            <IngredientPicker
-                              onAdd={(ing) => setCustomSlots(prev => ({
-                                ...prev,
-                                [slotKey]: { ...(prev[slotKey] ?? { name: '' }), ingredients: [...(prev[slotKey]?.ingredients ?? []), ing] },
-                              }))}
-                            />
-                            {(custom?.ingredients ?? []).map((ing, i) => (
-                              <div key={i} style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.73rem', color: 'var(--admin-on-surface-variant)', background: 'var(--admin-surface)', border: '1px solid var(--admin-outline-variant)', borderRadius: 5, padding: '3px 7px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <span>{ing.replace(/^\[fdc:\d+\]\s*/, '')}</span>
-                                <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--admin-on-surface-variant)', fontSize: '0.9rem', padding: '0 2px' }}
-                                  onClick={() => setCustomSlots(prev => ({ ...prev, [slotKey]: { ...(prev[slotKey] ?? { name: '' }), ingredients: (prev[slotKey]?.ingredients ?? []).filter((_, j) => j !== i) } }))}>×</button>
-                              </div>
+                        <select
+                          className="admin-input"
+                          style={{ fontSize: '0.83rem' }}
+                          value={meal.recipeName}
+                          onChange={(e) => applyLibraryRecipeToMeal(dayIndex, mealKey, e.target.value)}
+                        >
+                          <option value="">— no recipe —</option>
+                          {libraryRecipes.map((r) => (
+                            <option key={r.id} value={r.name}>{r.name}</option>
+                          ))}
+                        </select>
+                        {ingredients.length > 0 && (
+                          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                            {ingredients.map((ing, i) => (
+                              <li key={i} style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.72rem', color: 'var(--admin-on-surface-variant)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+                                <span style={{ flex: 1 }}>{ing.replace(/^\[fdc:\d+\]\s*/, '')}</span>
+                                <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--admin-on-surface-variant)', fontSize: '0.85rem', padding: '0 2px', flexShrink: 0 }}
+                                  onClick={() => removeIngredientFromSlot(dayIndex, mealKey, i)}>×</button>
+                              </li>
                             ))}
-                            <div style={{ display: 'flex', gap: 6 }}>
-                              <button type="button" className="admin-btn-primary" style={{ fontSize: '0.75rem', padding: '5px 10px', background: '#C9A84C', color: '#162814', border: 'none', fontWeight: 700, flex: 1 }}
-                                onClick={() => applyCustomMealToSlot(dayIndex, mealKey, slotKey)}>
-                                Save to Plan
-                              </button>
-                              <button type="button" className="admin-btn-ghost" style={{ fontSize: '0.75rem', padding: '5px 8px' }}
-                                onClick={() => { setCustomSlots(prev => { const n = { ...prev }; delete n[slotKey]; return n }); updateMeal(dayIndex, mealKey, { recipeName: '', name: '', macros: '', description: '' }) }}>
-                                Cancel
-                              </button>
-                            </div>
-                          </div>
+                          </ul>
                         )}
+                        <IngredientPicker onAdd={(ing) => addIngredientToSlot(dayIndex, mealKey, ing)} />
                       </div>
                     )
                   })}
-                  {/* Snack slot */}
+                  {/* Snack slots */}
                   <div style={{ background: 'var(--admin-surface-low)', border: '1px solid var(--admin-outline-variant)', borderRadius: 9, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <div style={{ fontFamily: 'var(--font-hanken)', fontWeight: 800, fontSize: '0.8rem', color: 'var(--admin-on-surface)' }}>Snacks</div>
@@ -1021,84 +1022,43 @@ export default function CoachingPlanEditor({
                       >+ Add Snack</button>
                     </div>
                     {(day.snacks.length === 0 ? [{ name: '', recipeName: '', description: '', macros: '' }] : day.snacks).map((snack, snackIndex) => {
-                      const slotKey = `${dayIndex}-snack-${snackIndex}`
-                      const custom = customSlots[slotKey]
-                      const isCustomMode = snack.recipeName === '__custom__' || !!custom
+                      const snackRecipe = plan.recipes.find(r => r.name === snack.recipeName)
+                      const snackIngredients = snackRecipe?.ingredients ?? []
                       return (
-                        <div key={snackIndex} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          {!isCustomMode ? (
-                            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                              <select
-                                className="admin-input"
-                                style={{ fontSize: '0.83rem', flex: 1 }}
-                                value={snack.recipeName}
-                                onChange={(e) => {
-                                  if (e.target.value === '__custom__') {
-                                    setCustomSlots(prev => ({ ...prev, [slotKey]: { name: 'Custom Snack', ingredients: [] } }))
-                                    const mealPlan = [...plan.mealPlan]
-                                    const snacks = [...(day.snacks.length === 0 ? [{ name: '', recipeName: '', description: '', macros: '' }] : day.snacks)]
-                                    snacks[snackIndex] = { name: 'Custom Snack', recipeName: '__custom__', description: '', macros: '' }
-                                    mealPlan[dayIndex] = { ...day, snacks }
-                                    setPlan(c => ({ ...c, mealPlan }))
-                                  } else {
-                                    applyLibraryRecipeToSnack(dayIndex, snackIndex, e.target.value)
-                                  }
-                                }}
-                              >
-                                <option value="">— no snack —</option>
-                                {libraryRecipes.map((r) => (
-                                  <option key={r.id} value={r.name}>{r.name}</option>
-                                ))}
-                                <option value="__custom__">✏ Custom ingredients…</option>
-                              </select>
-                              {day.snacks.length > 0 && (
-                                <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--admin-error)', fontSize: '1rem', padding: '0 2px', flexShrink: 0 }}
-                                  onClick={() => {
-                                    const mealPlan = [...plan.mealPlan]
-                                    mealPlan[dayIndex] = { ...day, snacks: day.snacks.filter((_, j) => j !== snackIndex) }
-                                    setPlan(c => ({ ...c, mealPlan }))
-                                  }}>×</button>
-                              )}
-                            </div>
-                          ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                              <input
-                                className="admin-input"
-                                placeholder="Snack name"
-                                style={{ fontSize: '0.83rem' }}
-                                value={custom?.name ?? ''}
-                                onChange={(e) => setCustomSlots(prev => ({ ...prev, [slotKey]: { ...(prev[slotKey] ?? { ingredients: [] }), name: e.target.value } }))}
-                              />
-                              <IngredientPicker
-                                onAdd={(ing) => setCustomSlots(prev => ({
-                                  ...prev,
-                                  [slotKey]: { ...(prev[slotKey] ?? { name: '' }), ingredients: [...(prev[slotKey]?.ingredients ?? []), ing] },
-                                }))}
-                              />
-                              {(custom?.ingredients ?? []).map((ing, i) => (
-                                <div key={i} style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.73rem', color: 'var(--admin-on-surface-variant)', background: 'var(--admin-surface)', border: '1px solid var(--admin-outline-variant)', borderRadius: 5, padding: '3px 7px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                  <span>{ing.replace(/^\[fdc:\d+\]\s*/, '')}</span>
-                                  <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--admin-on-surface-variant)', fontSize: '0.9rem', padding: '0 2px' }}
-                                    onClick={() => setCustomSlots(prev => ({ ...prev, [slotKey]: { ...(prev[slotKey] ?? { name: '' }), ingredients: (prev[slotKey]?.ingredients ?? []).filter((_, j) => j !== i) } }))}>×</button>
-                                </div>
+                        <div key={snackIndex} style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: snackIndex < day.snacks.length - 1 ? 8 : 0, borderBottom: snackIndex < day.snacks.length - 1 ? '1px solid var(--admin-outline-variant)' : 'none' }}>
+                          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                            <select
+                              className="admin-input"
+                              style={{ fontSize: '0.83rem', flex: 1 }}
+                              value={snack.recipeName}
+                              onChange={(e) => applyLibraryRecipeToSnack(dayIndex, snackIndex, e.target.value)}
+                            >
+                              <option value="">— no snack —</option>
+                              {libraryRecipes.map((r) => (
+                                <option key={r.id} value={r.name}>{r.name}</option>
                               ))}
-                              <div style={{ display: 'flex', gap: 6 }}>
-                                <button type="button" className="admin-btn-primary" style={{ fontSize: '0.75rem', padding: '5px 10px', background: '#C9A84C', color: '#162814', border: 'none', fontWeight: 700, flex: 1 }}
-                                  onClick={() => applyCustomMealToSlot(dayIndex, 'snack', slotKey, snackIndex)}>
-                                  Save to Plan
-                                </button>
-                                <button type="button" className="admin-btn-ghost" style={{ fontSize: '0.75rem', padding: '5px 8px' }}
-                                  onClick={() => {
-                                    setCustomSlots(prev => { const n = { ...prev }; delete n[slotKey]; return n })
-                                    const mealPlan = [...plan.mealPlan]
-                                    mealPlan[dayIndex] = { ...day, snacks: day.snacks.filter((_, j) => j !== snackIndex) }
-                                    setPlan(c => ({ ...c, mealPlan }))
-                                  }}>
-                                  Cancel
-                                </button>
-                              </div>
-                            </div>
+                            </select>
+                            {day.snacks.length > 0 && (
+                              <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--admin-error)', fontSize: '1rem', padding: '0 2px', flexShrink: 0 }}
+                                onClick={() => {
+                                  const mealPlan = [...plan.mealPlan]
+                                  mealPlan[dayIndex] = { ...day, snacks: day.snacks.filter((_, j) => j !== snackIndex) }
+                                  setPlan(c => ({ ...c, mealPlan }))
+                                }}>×</button>
+                            )}
+                          </div>
+                          {snackIngredients.length > 0 && (
+                            <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                              {snackIngredients.map((ing, i) => (
+                                <li key={i} style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.72rem', color: 'var(--admin-on-surface-variant)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+                                  <span style={{ flex: 1 }}>{ing.replace(/^\[fdc:\d+\]\s*/, '')}</span>
+                                  <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--admin-on-surface-variant)', fontSize: '0.85rem', padding: '0 2px', flexShrink: 0 }}
+                                    onClick={() => removeIngredientFromSnackSlot(dayIndex, snackIndex, i)}>×</button>
+                                </li>
+                              ))}
+                            </ul>
                           )}
+                          <IngredientPicker onAdd={(ing) => addIngredientToSnackSlot(dayIndex, snackIndex, ing)} />
                         </div>
                       )
                     })}

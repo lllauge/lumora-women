@@ -2,6 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react'
 
+type UsdaFoodMeasure = {
+  label: string
+  grams: number
+}
+
 type UsdaFoodOption = {
   fdcId: number
   description: string
@@ -11,6 +16,7 @@ type UsdaFoodOption = {
   protein: number
   carbs: number
   fats: number
+  measures?: UsdaFoodMeasure[]
 }
 
 type Props = {
@@ -31,7 +37,8 @@ export default function IngredientPicker({ onAdd }: Props) {
   const [results, setResults] = useState<UsdaFoodOption[]>([])
   const [loading, setLoading] = useState(false)
   const [selected, setSelected] = useState<UsdaFoodOption | null>(null)
-  const [grams, setGrams] = useState('')
+  const [amount, setAmount] = useState('')
+  const [measureIdx, setMeasureIdx] = useState(-1)
   const [open, setOpen] = useState(false)
   // Ancestor cards use overflow:hidden for rounded corners, which clips an
   // absolutely-positioned list — so the dropdown is fixed to the viewport
@@ -84,24 +91,40 @@ export default function IngredientPicker({ onAdd }: Props) {
     setSelected(food)
     setQuery(food.description)
     setOpen(false)
-    setGrams('')
+    // Count-style measures ("1 large", "1 medium") default to counting;
+    // weighed foods (egg whites, chicken, rice) default to grams.
+    const weighedFood = /egg,?\s*white|liquid egg/i.test(food.description)
+    const countMeasure = weighedFood
+      ? -1
+      : (food.measures ?? []).findIndex((m) => /^1\s+(large|medium|small|extra large|jumbo|slice|piece|egg|banana|apple)\b/i.test(m.label))
+    setMeasureIdx(countMeasure)
+    setAmount(countMeasure >= 0 ? '1' : '')
     setTimeout(() => gramsRef.current?.focus(), 50)
   }
 
+  const activeMeasure = selected && measureIdx >= 0 ? (selected.measures ?? [])[measureIdx] ?? null : null
+  const amountNum = parseFloat(amount)
+  const validAmount = Number.isFinite(amountNum) && amountNum > 0
+  const totalGrams = validAmount
+    ? Math.round((activeMeasure ? amountNum * activeMeasure.grams : amountNum) * 10) / 10
+    : null
+
   function addIngredient() {
-    if (!selected || !grams.trim()) return
-    const g = parseFloat(grams)
-    if (!Number.isFinite(g) || g <= 0) return
-    const ingredient = `[fdc:${selected.fdcId}] ${g}g ${selected.description}${selected.brand ? ` (${selected.brand})` : ''}`
+    if (!selected || totalGrams === null) return
+    // Keep the human count in the label; the math always runs on grams.
+    const countText = activeMeasure
+      ? ` (${/^1\s+/.test(activeMeasure.label) ? `${amountNum} ${activeMeasure.label.replace(/^1\s+/, '')}` : `${amountNum} × ${activeMeasure.label}`})`
+      : ''
+    const ingredient = `[fdc:${selected.fdcId}] ${totalGrams}g ${selected.description}${countText}${selected.brand ? ` (${selected.brand})` : ''}`
     onAdd(ingredient)
     setQuery('')
     setSelected(null)
-    setGrams('')
+    setAmount('')
+    setMeasureIdx(-1)
     setResults([])
   }
 
-  const cal = selected && grams ? Math.round(selected.calories * parseFloat(grams) / 100) : null
-  const validGrams = grams && parseFloat(grams) > 0
+  const cal = selected && totalGrams !== null ? Math.round(selected.calories * totalGrams / 100) : null
 
   return (
     <div ref={containerRef} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -186,30 +209,46 @@ export default function IngredientPicker({ onAdd }: Props) {
       </div>
 
       {selected && (
-        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-          <label style={{ flex: '0 0 140px' }}>
-            <span className="admin-label">Grams in recipe</span>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          <label style={{ flex: '0 0 80px' }}>
+            <span className="admin-label">{activeMeasure ? 'How many' : 'Grams'}</span>
             <input
               ref={gramsRef}
               className="admin-input"
               type="number"
-              min="1"
-              placeholder="e.g. 150"
-              value={grams}
-              onChange={(e) => setGrams(e.target.value)}
+              min="0"
+              step="any"
+              placeholder={activeMeasure ? 'e.g. 2' : 'e.g. 150'}
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && addIngredient()}
             />
           </label>
-          {cal !== null && validGrams && (
-            <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.82rem', color: 'var(--admin-on-surface-variant)', marginBottom: 8 }}>
-              ≈ {cal} cal for {grams}g
+          {(selected.measures ?? []).length > 0 && (
+            <label style={{ flex: '1 1 130px', minWidth: 0 }}>
+              <span className="admin-label">Unit</span>
+              <select
+                className="admin-input"
+                value={measureIdx}
+                onChange={(e) => setMeasureIdx(Number(e.target.value))}
+              >
+                <option value={-1}>grams</option>
+                {(selected.measures ?? []).map((m, i) => (
+                  <option key={i} value={i}>{m.label} ({m.grams}g)</option>
+                ))}
+              </select>
+            </label>
+          )}
+          {cal !== null && totalGrams !== null && (
+            <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.82rem', color: 'var(--admin-on-surface-variant)', marginBottom: 8, whiteSpace: 'nowrap' }}>
+              = {totalGrams}g · ≈ {cal} cal
             </p>
           )}
           <button
             type="button"
             className="admin-btn-secondary"
             style={{ marginBottom: 1 }}
-            disabled={!validGrams}
+            disabled={totalGrams === null}
             onClick={addIngredient}
           >
             Add

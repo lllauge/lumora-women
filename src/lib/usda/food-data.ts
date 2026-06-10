@@ -4,6 +4,14 @@ type FoodSearchResult = {
   dataType?: string
   brandOwner?: string
   brandName?: string
+  servingSize?: number
+  servingSizeUnit?: string
+  householdServingFullText?: string
+  foodMeasures?: Array<{
+    disseminationText?: string
+    gramWeight?: number
+    rank?: number
+  }>
   foodNutrients?: Array<{
     nutrientId?: number
     nutrientName?: string
@@ -237,6 +245,11 @@ async function searchFood(query: string, apiKey: string) {
     .sort((a, b) => b.score - a.score)[0]?.food ?? foods[0]
 }
 
+export type UsdaFoodMeasure = {
+  label: string
+  grams: number
+}
+
 export type UsdaFoodOption = {
   fdcId: number
   description: string
@@ -246,6 +259,36 @@ export type UsdaFoodOption = {
   protein: number
   carbs: number
   fats: number
+  measures: UsdaFoodMeasure[]
+}
+
+// Household measures ("1 large", "1 cup, sliced") so count-based foods like
+// eggs and bananas can be entered as "2 each" instead of weighed.
+function foodMeasureOptions(food: FoodSearchResult): UsdaFoodMeasure[] {
+  const measures = (food.foodMeasures ?? [])
+    .filter((m) => {
+      const text = (m.disseminationText ?? '').trim()
+      return typeof m.gramWeight === 'number' && m.gramWeight > 0
+        && text && !/quantity not specified/i.test(text)
+    })
+    .sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99))
+    .slice(0, 6)
+    .map((m) => ({
+      label: (m.disseminationText ?? '').trim(),
+      grams: Math.round((m.gramWeight as number) * 10) / 10,
+    }))
+
+  // Branded foods carry a label serving instead of foodMeasures.
+  const servingUnit = String(food.servingSizeUnit ?? '').toLowerCase()
+  if (measures.length === 0 && typeof food.servingSize === 'number' && food.servingSize > 0
+    && (servingUnit === 'g' || servingUnit === 'ml' || servingUnit === 'grm' || servingUnit === 'mlt')) {
+    measures.push({
+      label: (food.householdServingFullText ?? '').trim() || '1 serving',
+      grams: Math.round(food.servingSize * 10) / 10,
+    })
+  }
+
+  return measures
 }
 
 export async function searchFoodsForPicker(query: string, apiKey: string): Promise<UsdaFoodOption[]> {
@@ -318,6 +361,7 @@ export async function searchFoodsForPicker(query: string, apiKey: string): Promi
       protein: Math.round(corrected.protein * 10) / 10,
       carbs: Math.round(corrected.carbs * 10) / 10,
       fats: Math.round(corrected.fats * 10) / 10,
+      measures: foodMeasureOptions(food),
     }
   }))
 }

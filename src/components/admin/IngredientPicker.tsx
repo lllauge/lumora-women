@@ -6,6 +6,7 @@ type UsdaFoodOption = {
   fdcId: number
   description: string
   dataType: string
+  brand: string
   calories: number
   protein: number
   carbs: number
@@ -71,7 +72,7 @@ export default function IngredientPicker({ onAdd }: Props) {
     if (!selected || !grams.trim()) return
     const g = parseFloat(grams)
     if (!Number.isFinite(g) || g <= 0) return
-    const ingredient = `[fdc:${selected.fdcId}] ${g}g ${selected.description}`
+    const ingredient = `[fdc:${selected.fdcId}] ${g}g ${selected.description}${selected.brand ? ` (${selected.brand})` : ''}`
     onAdd(ingredient)
     setQuery('')
     setSelected(null)
@@ -110,6 +111,7 @@ export default function IngredientPicker({ onAdd }: Props) {
                 food.dataType === 'Foundation' ? 'Foundation'
                 : food.dataType === 'SR Legacy' ? 'SR Legacy'
                 : food.dataType === 'Survey (FNDDS)' ? 'Survey'
+                : food.dataType === 'Branded' ? 'Brand label'
                 : food.dataType || 'USDA'
               return (
                 <li key={food.fdcId}>
@@ -127,6 +129,9 @@ export default function IngredientPicker({ onAdd }: Props) {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                       <p style={{ fontFamily: 'var(--font-hanken)', fontWeight: 600, fontSize: '0.88rem', color: 'var(--admin-on-surface)', margin: 0 }}>
                         {food.description}
+                        {food.brand && (
+                          <span style={{ fontWeight: 400, color: 'var(--admin-on-surface-variant)' }}> — {food.brand}</span>
+                        )}
                       </p>
                       {/* USDA verified checkmark */}
                       <span title="USDA FoodData Central verified" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, borderRadius: '50%', backgroundColor: '#2e7d32', flexShrink: 0 }}>

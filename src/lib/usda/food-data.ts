@@ -2,6 +2,8 @@ type FoodSearchResult = {
   fdcId: number
   description: string
   dataType?: string
+  brandOwner?: string
+  brandName?: string
   foodNutrients?: Array<{
     nutrientId?: number
     nutrientName?: string
@@ -239,6 +241,7 @@ export type UsdaFoodOption = {
   fdcId: number
   description: string
   dataType: string
+  brand: string
   calories: number
   protein: number
   carbs: number
@@ -254,8 +257,8 @@ export async function searchFoodsForPicker(query: string, apiKey: string): Promi
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       query,
-      pageSize: 10,
-      dataType: ['Foundation', 'SR Legacy', 'Survey (FNDDS)'],
+      pageSize: 25,
+      dataType: ['Foundation', 'SR Legacy', 'Survey (FNDDS)', 'Branded'],
     }),
   })
 
@@ -273,7 +276,7 @@ export async function searchFoodsForPicker(query: string, apiKey: string): Promi
   const cookWords = ['cooked', 'baked', 'grilled', 'roasted', 'boiled', 'steamed', 'broiled', 'sauteed']
   const wantsCooked = cookWords.some((w) => queryTokens.includes(w))
 
-  return foods
+  const scored = foods
     .map((food) => {
       const description = food.description.toLowerCase()
       const tokenScore = queryTokens.reduce((s, t) => s + (description.includes(t) ? 4 : 0), 0)
@@ -283,23 +286,40 @@ export async function searchFoodsForPicker(query: string, apiKey: string): Promi
       const rawPenalty = wantsCooked && /\b(raw|uncooked|dehydrated)\b/.test(description) ? -20 : 0
       const dryPenalty = wantsCooked && /\bdry\b/.test(description) ? -20 : 0
       const processedPenalty = /\b(flour|powder|flakes?|mix|concentrate|instant|freeze.dried)\b/.test(description) ? -20 : 0
-      const dataTypeScore = food.dataType === 'Foundation' ? 3 : food.dataType === 'SR Legacy' ? 2 : 1
-      const score = tokenScore + cookedScore + notCookedPenalty + rawPenalty + dryPenalty + processedPenalty + dataTypeScore
+      // Lab-analyzed generics outrank label-reported branded products in ties.
+      const dataTypeScore = food.dataType === 'Foundation' ? 3 : food.dataType === 'SR Legacy' ? 2 : food.dataType === 'Branded' ? 0 : 1
+      const brandTokens = `${food.brandName ?? ''} ${food.brandOwner ?? ''}`.toLowerCase()
+      const brandScore = food.dataType === 'Branded'
+        ? queryTokens.reduce((s, t) => s + (brandTokens.includes(t) ? 4 : 0), 0)
+        : 0
+      const score = tokenScore + brandScore + cookedScore + notCookedPenalty + rawPenalty + dryPenalty + processedPenalty + dataTypeScore
       const macros = macrosPer100g(food)
       return { food, score, macros }
     })
-    .filter(({ score }) => score > 0)
+    .filter(({ score, macros }) => score > 0
+      && (macros.calories > 0 || macros.protein > 0 || macros.carbs > 0 || macros.fats > 0))
     .sort((a, b) => b.score - a.score)
-    .slice(0, 8)
-    .map(({ food, macros }) => ({
+    .slice(0, 10)
+
+  // Branded search rows can carry mis-normalized nutrients; pull the label-corrected
+  // per-100g values from the detail endpoint so the preview matches the saved math.
+  return Promise.all(scored.map(async ({ food, macros }) => {
+    let corrected = macros
+    if (food.dataType === 'Branded') {
+      const detail = await fetchFoodById(food.fdcId, apiKey).catch(() => null)
+      if (detail) corrected = macrosPer100g(detail)
+    }
+    return {
       fdcId: food.fdcId,
       description: food.description,
       dataType: food.dataType ?? '',
-      calories: Math.round(macros.calories),
-      protein: Math.round(macros.protein * 10) / 10,
-      carbs: Math.round(macros.carbs * 10) / 10,
-      fats: Math.round(macros.fats * 10) / 10,
-    }))
+      brand: food.brandName || food.brandOwner || '',
+      calories: Math.round(corrected.calories),
+      protein: Math.round(corrected.protein * 10) / 10,
+      carbs: Math.round(corrected.carbs * 10) / 10,
+      fats: Math.round(corrected.fats * 10) / 10,
+    }
+  }))
 }
 
 async function fetchFoodById(fdcId: number, apiKey: string): Promise<FoodSearchResult | null> {
@@ -318,10 +338,36 @@ async function fetchFoodById(fdcId: number, apiKey: string): Promise<FoodSearchR
     unitName: n.unitName,
   }))
 
+  // Some Branded records carry per-serving label values where per-100g data should be.
+  // The manufacturer label (labelNutrients ÷ servingSize) is the ground truth, so for
+  // Branded foods recompute per-100g from it and let those values win the ID lookup.
+  if (data.dataType === 'Branded') {
+    type LabelNutrients = Partial<Record<'calories' | 'protein' | 'carbohydrates' | 'fat', { value?: number }>>
+    const label = (data.labelNutrients ?? {}) as LabelNutrients
+    const servingSize = Number(data.servingSize)
+    const servingUnit = String(data.servingSizeUnit ?? '').toLowerCase()
+    if (Number.isFinite(servingSize) && servingSize > 0 && (servingUnit === 'g' || servingUnit === 'ml' || servingUnit === 'grm' || servingUnit === 'mlt')) {
+      const per100 = (value: number | undefined) =>
+        typeof value === 'number' ? (value * 100) / servingSize : undefined
+      const overrides: Array<{ nutrientId: number; value: number | undefined }> = [
+        { nutrientId: 1008, value: per100(label.calories?.value) },
+        { nutrientId: 1003, value: per100(label.protein?.value) },
+        { nutrientId: 1005, value: per100(label.carbohydrates?.value) },
+        { nutrientId: 1004, value: per100(label.fat?.value) },
+      ]
+      for (const { nutrientId, value } of overrides) {
+        if (value === undefined) continue
+        foodNutrients.unshift({ nutrientId, nutrientName: undefined, value, unitName: undefined })
+      }
+    }
+  }
+
   return {
     fdcId: data.fdcId as number,
     description: data.description as string,
     dataType: data.dataType as string | undefined,
+    brandOwner: data.brandOwner as string | undefined,
+    brandName: data.brandName as string | undefined,
     foodNutrients,
   }
 }

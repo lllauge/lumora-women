@@ -27,6 +27,132 @@ const EMPTY_RECIPE = {
 function joinLines(arr: string[]) { return arr.join('\n') }
 function splitLines(s: string) { return s.split('\n').map(l => l.trim()).filter(Boolean) }
 
+const label: React.CSSProperties = {
+  fontFamily: 'var(--font-hanken)',
+  fontSize: '0.72rem',
+  fontWeight: 700,
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+  color: 'var(--admin-on-surface-variant)',
+  display: 'block',
+  marginBottom: 4,
+}
+
+// Module-scope component: defining this inside the page remounts the whole
+// form on every keystroke, dropping input focus while typing.
+function RecipeForm({
+  draft,
+  onChange,
+  onSave,
+  saving: isSaving,
+  isNew,
+  onCancel,
+}: {
+  draft: typeof EMPTY_RECIPE
+  onChange: (patch: Partial<typeof EMPTY_RECIPE>) => void
+  onSave: () => void
+  saving: boolean
+  isNew?: boolean
+  onCancel?: () => void
+}) {
+  return (
+    <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12 }}>
+        <label>
+          <span style={label}>Recipe Name</span>
+          <input className="admin-input" value={draft.name} onChange={e => onChange({ name: e.target.value })} placeholder="e.g. Sheet Pan Chicken Thighs" />
+        </label>
+        <label>
+          <span style={label}>Meal Type</span>
+          <select className="admin-input" value={draft.meal_type} onChange={e => onChange({ meal_type: e.target.value })}>
+            <option value="breakfast">Breakfast</option>
+            <option value="lunch">Lunch</option>
+            <option value="dinner">Dinner</option>
+            <option value="snack">Snack</option>
+          </select>
+        </label>
+        <label>
+          <span style={label}>Family Servings</span>
+          <input className="admin-input" type="number" min="1" value={draft.family_servings} onChange={e => onChange({ family_servings: e.target.value })} placeholder="4" />
+        </label>
+      </div>
+
+      <div>
+        <span style={label}>Ingredients — full family recipe amounts</span>
+        <div style={{ marginTop: 6 }}>
+          <IngredientPicker
+            onAdd={ing => onChange({ ingredients: [...draft.ingredients, ing] })}
+          />
+        </div>
+        {draft.ingredients.length > 0 && (
+          <ul style={{ margin: '8px 0 0', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {draft.ingredients.map((ing, i) => {
+              const display = ing.replace(/^\[fdc:\d+\]\s*/, '')
+              return (
+                <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: 'var(--admin-surface-low)', borderRadius: 7, fontFamily: 'var(--font-hanken)', fontSize: '0.84rem' }}>
+                  <span style={{ color: '#2e7d32', fontSize: '0.7rem' }}>✓</span>
+                  <span style={{ flex: 1, color: 'var(--admin-on-surface-variant)' }}>{display}</span>
+                  <button
+                    type="button"
+                    onClick={() => onChange({ ingredients: draft.ingredients.filter((_, j) => j !== i) })}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--admin-on-surface-variant)', padding: '0 4px', fontSize: '1rem' }}
+                    aria-label="Remove"
+                  >×</button>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </div>
+
+      <details>
+        <summary style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.78rem', color: 'var(--admin-on-surface-variant)', cursor: 'pointer', userSelect: 'none' }}>
+          Instructions &amp; Notes (optional)
+        </summary>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 10 }}>
+          <label>
+            <span style={label}>Instructions (one per line)</span>
+            <textarea
+              className="admin-input"
+              rows={4}
+              value={joinLines(draft.instructions)}
+              onChange={e => onChange({ instructions: splitLines(e.target.value) })}
+              style={{ resize: 'vertical' }}
+            />
+          </label>
+          <label>
+            <span style={label}>Notes</span>
+            <textarea
+              className="admin-input"
+              rows={4}
+              value={draft.notes}
+              onChange={e => onChange({ notes: e.target.value })}
+              style={{ resize: 'vertical' }}
+            />
+          </label>
+        </div>
+      </details>
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+        {isNew && onCancel && (
+          <button type="button" className="admin-btn-ghost" onClick={onCancel}>
+            Cancel
+          </button>
+        )}
+        <button
+          type="button"
+          className="admin-btn-primary"
+          disabled={isSaving || !draft.name.trim()}
+          onClick={onSave}
+          style={{ background: '#C9A84C', color: '#162814', border: 'none', fontWeight: 700 }}
+        >
+          {isSaving ? 'Saving…' : isNew ? 'Add to Library' : 'Save Recipe'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function RecipeLibraryPage() {
   const [recipes, setRecipes] = useState<LibraryRecipe[]>([])
   const [loading, setLoading] = useState(true)
@@ -134,128 +260,6 @@ export default function RecipeLibraryPage() {
     }
   }
 
-  const label: React.CSSProperties = {
-    fontFamily: 'var(--font-hanken)',
-    fontSize: '0.72rem',
-    fontWeight: 700,
-    letterSpacing: '0.08em',
-    textTransform: 'uppercase',
-    color: 'var(--admin-on-surface-variant)',
-    display: 'block',
-    marginBottom: 4,
-  }
-
-  function RecipeForm({
-    draft,
-    onChange,
-    onSave,
-    saving: isSaving,
-    isNew,
-  }: {
-    draft: typeof EMPTY_RECIPE
-    onChange: (patch: Partial<typeof EMPTY_RECIPE>) => void
-    onSave: () => void
-    saving: boolean
-    isNew?: boolean
-  }) {
-    return (
-      <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12 }}>
-          <label>
-            <span style={label}>Recipe Name</span>
-            <input className="admin-input" value={draft.name} onChange={e => onChange({ name: e.target.value })} placeholder="e.g. Sheet Pan Chicken Thighs" />
-          </label>
-          <label>
-            <span style={label}>Meal Type</span>
-            <select className="admin-input" value={draft.meal_type} onChange={e => onChange({ meal_type: e.target.value })}>
-              <option value="breakfast">Breakfast</option>
-              <option value="lunch">Lunch</option>
-              <option value="dinner">Dinner</option>
-              <option value="snack">Snack</option>
-            </select>
-          </label>
-          <label>
-            <span style={label}>Family Servings</span>
-            <input className="admin-input" type="number" min="1" value={draft.family_servings} onChange={e => onChange({ family_servings: e.target.value })} placeholder="4" />
-          </label>
-        </div>
-
-        <div>
-          <span style={label}>Ingredients — full family recipe amounts</span>
-          <div style={{ marginTop: 6 }}>
-            <IngredientPicker
-              onAdd={ing => onChange({ ingredients: [...draft.ingredients, ing] })}
-            />
-          </div>
-          {draft.ingredients.length > 0 && (
-            <ul style={{ margin: '8px 0 0', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {draft.ingredients.map((ing, i) => {
-                const display = ing.replace(/^\[fdc:\d+\]\s*/, '')
-                return (
-                  <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: 'var(--admin-surface-low)', borderRadius: 7, fontFamily: 'var(--font-hanken)', fontSize: '0.84rem' }}>
-                    <span style={{ color: '#2e7d32', fontSize: '0.7rem' }}>✓</span>
-                    <span style={{ flex: 1, color: 'var(--admin-on-surface-variant)' }}>{display}</span>
-                    <button
-                      type="button"
-                      onClick={() => onChange({ ingredients: draft.ingredients.filter((_, j) => j !== i) })}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--admin-on-surface-variant)', padding: '0 4px', fontSize: '1rem' }}
-                      aria-label="Remove"
-                    >×</button>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-        </div>
-
-        <details>
-          <summary style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.78rem', color: 'var(--admin-on-surface-variant)', cursor: 'pointer', userSelect: 'none' }}>
-            Instructions &amp; Notes (optional)
-          </summary>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 10 }}>
-            <label>
-              <span style={label}>Instructions (one per line)</span>
-              <textarea
-                className="admin-input"
-                rows={4}
-                value={joinLines(draft.instructions)}
-                onChange={e => onChange({ instructions: splitLines(e.target.value) })}
-                style={{ resize: 'vertical' }}
-              />
-            </label>
-            <label>
-              <span style={label}>Notes</span>
-              <textarea
-                className="admin-input"
-                rows={4}
-                value={draft.notes}
-                onChange={e => onChange({ notes: e.target.value })}
-                style={{ resize: 'vertical' }}
-              />
-            </label>
-          </div>
-        </details>
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          {isNew && (
-            <button type="button" className="admin-btn-ghost" onClick={() => setAddingNew(false)}>
-              Cancel
-            </button>
-          )}
-          <button
-            type="button"
-            className="admin-btn-primary"
-            disabled={isSaving || !draft.name.trim()}
-            onClick={onSave}
-            style={{ background: '#C9A84C', color: '#162814', border: 'none', fontWeight: 700 }}
-          >
-            {isSaving ? 'Saving…' : isNew ? 'Add to Library' : 'Save Recipe'}
-          </button>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div style={{ maxWidth: 900, margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
@@ -296,6 +300,7 @@ export default function RecipeLibraryPage() {
             onSave={createRecipe}
             saving={newSaving}
             isNew
+            onCancel={() => setAddingNew(false)}
           />
         </div>
       )}

@@ -136,10 +136,21 @@ export function calculateMacroTargets(inputs: MacroCalculationInputs): Calculate
   const adjustment = goalCalorieAdjustments[inputs.planGoal] ?? goalCalorieAdjustments.recomposition
   const calories = roundToNearest(Math.max(1200, maintenanceCalories * (1 + adjustment)), 25)
 
-  const protein = roundToNearest(weightLb, 5)
-  const fats = roundToNearest(Math.max(45, (calories * 0.28) / 9), 5)
-  const carbs = roundToNearest(Math.max(80, (calories - protein * 4 - fats * 9) / 4), 5)
-  const fiber = Math.max(35, Math.round(calories / 100))
+  // Protein: 1g per lb of goal weight (or current weight if no lower goal),
+  // bounded so protein stays between 60g and 40% of calories.
+  const targetWeightLb = parseWeightPounds(inputs.targetWeight)
+  const proteinReferenceLb = targetWeightLb && targetWeightLb < weightLb ? targetWeightLb : weightLb
+  const proteinCap = (calories * 0.4) / 4
+  const protein = roundToNearest(Math.min(Math.max(60, proteinReferenceLb), proteinCap), 5)
+
+  // Fat: 28% of calories, never below 40g.
+  const fats = roundToNearest(Math.max(40, (calories * 0.28) / 9), 5)
+
+  // Carbs are the exact remainder so 4·protein + 4·carbs + 9·fat = calories.
+  const carbs = Math.max(0, Math.round((calories - protein * 4 - fats * 9) / 4))
+
+  // ~14g fiber per 1,000 calories (Dietary Guidelines), kept in a practical range.
+  const fiber = Math.min(38, Math.max(20, Math.round((calories * 14) / 1000)))
   const steps = inputs.steps.trim() || (inputs.activityLevel === 'mostly_sedentary' ? '6,000-8,000/day' : '8,000-10,000/day')
 
   return {

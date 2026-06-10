@@ -192,6 +192,62 @@ function parseMealMacroLine(value: string) {
   }
 }
 
+function cleanIngredientLine(line: string) {
+  return line.replace(/^\[fdc:\d+\]\s*/, '').trim()
+}
+
+// Every meal-slot usage of a recipe means the full dish gets cooked once,
+// so the grocery list aggregates full-recipe ingredients per usage.
+function buildGroceryList(plan: CoachingPlanDraft): string[] {
+  const cookCounts = new Map<string, number>()
+  for (const day of plan.mealPlan) {
+    for (const meal of [day.breakfast, day.lunch, day.dinner, ...day.snacks]) {
+      if (meal.recipeName) cookCounts.set(meal.recipeName, (cookCounts.get(meal.recipeName) ?? 0) + 1)
+    }
+  }
+
+  const gramTotals = new Map<string, { label: string; grams: number }>()
+  const otherCounts = new Map<string, { label: string; count: number }>()
+  for (const [recipeName, times] of cookCounts) {
+    const recipe = plan.recipes.find((r) => r.name === recipeName)
+    if (!recipe) continue
+    for (const raw of recipe.ingredients) {
+      const line = cleanIngredientLine(raw)
+      if (!line) continue
+      const gramMatch = line.match(/^(\d+(?:\.\d+)?)\s*g\s+(.+)$/i)
+      if (gramMatch) {
+        const label = gramMatch[2].trim()
+        const key = label.toLowerCase()
+        const existing = gramTotals.get(key)
+        gramTotals.set(key, { label, grams: (existing?.grams ?? 0) + Number(gramMatch[1]) * times })
+      } else {
+        const key = line.toLowerCase()
+        const existing = otherCounts.get(key)
+        otherCounts.set(key, { label: line, count: (existing?.count ?? 0) + times })
+      }
+    }
+  }
+
+  return [
+    ...[...gramTotals.values()].map(({ label, grams }) => `${Math.round(grams)}g ${label}`),
+    ...[...otherCounts.values()].map(({ label, count }) => (count > 1 ? `${label} (×${count})` : label)),
+  ]
+}
+
+// Auto-created per-slot recipe copies look like "Name (d2-lunch)" — drop them once no slot uses them.
+function removeOrphanSlotRecipes(plan: CoachingPlanDraft): CoachingPlanDraft {
+  const referenced = new Set<string>()
+  for (const day of plan.mealPlan) {
+    for (const meal of [day.breakfast, day.lunch, day.dinner, ...day.snacks]) {
+      if (meal.recipeName) referenced.add(meal.recipeName)
+    }
+  }
+  return {
+    ...plan,
+    recipes: plan.recipes.filter((r) => !/\(d\d+-(?:breakfast|lunch|dinner|snack\d+)\)$/.test(r.name) || referenced.has(r.name)),
+  }
+}
+
 function dayMacroTotal(day: CoachingPlanDraft['mealPlan'][number]) {
   const meals = [day.breakfast, day.lunch, day.dinner, ...day.snacks]
   const raw = meals.reduce((total, meal) => {
@@ -292,33 +348,6 @@ export default function CoachingPlanEditor({
     setPlanningInputs((current) => ({ ...current, [key]: value }))
   }
 
-  function updateMeal(dayIndex: number, mealKey: 'breakfast' | 'lunch' | 'dinner', updates: Partial<CoachingPlanDraft['mealPlan'][number]['breakfast']>) {
-    const mealPlan = [...plan.mealPlan]
-    const day = mealPlan[dayIndex]
-    mealPlan[dayIndex] = { ...day, [mealKey]: { ...day[mealKey], ...updates } }
-    setPlan((current) => ({ ...current, mealPlan }))
-  }
-
-  function applyRecipeToMeal(dayIndex: number, mealKey: 'breakfast' | 'lunch' | 'dinner', recipeName: string) {
-    const recipe = plan.recipes.find((item) => item.name === recipeName)
-    if (!recipe) {
-      updateMeal(dayIndex, mealKey, { recipeName })
-      return
-    }
-
-    updateMeal(dayIndex, mealKey, {
-      name: recipe.name,
-      recipeName: recipe.name,
-      description: [
-        recipe.clientServingGrams ? `Client portion: ${recipe.clientServingGrams}.` : '',
-        recipe.clientServingMeasure ? `${recipe.clientServingMeasure}.` : '',
-        recipe.familyServings ? `Serves ${recipe.familyServings}.` : '',
-        recipe.notes,
-      ].filter(Boolean).join(' '),
-      macros: recipeMacroLabel(recipe),
-    })
-  }
-
   function applyLibraryRecipeToMeal(dayIndex: number, mealKey: 'breakfast' | 'lunch' | 'dinner', libRecipeName: string) {
     const libRecipe = libraryRecipes.find(r => r.name === libRecipeName)
     setPlan(current => {
@@ -385,7 +414,7 @@ export default function CoachingPlanEditor({
       const sharedName = meal.recipeName || ''
       const slotRecipeName = sharedName ? `${sharedName} (${slotKey})` : `Custom ${mealKey} (${slotKey})`
 
-      let newRecipes = [...current.recipes]
+      const newRecipes = [...current.recipes]
       // If this slot doesn't yet have its own copy, clone the shared recipe (or start fresh)
       if (!newRecipes.some(r => r.name === slotRecipeName)) {
         const source = newRecipes.find(r => r.name === sharedName)
@@ -428,7 +457,7 @@ export default function CoachingPlanEditor({
       const sharedName = snack.recipeName || ''
       const slotRecipeName = sharedName ? `${sharedName} (${slotKey})` : `Custom Snack (${slotKey})`
 
-      let newRecipes = [...current.recipes]
+      const newRecipes = [...current.recipes]
       if (!newRecipes.some(r => r.name === slotRecipeName)) {
         const source = newRecipes.find(r => r.name === sharedName)
         newRecipes.push(source
@@ -481,20 +510,58 @@ export default function CoachingPlanEditor({
     setError('')
     setMessage('')
 
+    nextPlan = removeOrphanSlotRecipes(nextPlan)
+
+    // Map each recipe to the meal slot where it's actually used (first use wins),
+    // so portions size to the right meal and multiple snacks share the snack budget.
+    const pcts = {
+      breakfast: (firstNumber(planningInputs.breakfastPct) || 35) / 100,
+      lunch: (firstNumber(planningInputs.lunchPct) || 30) / 100,
+      dinner: (firstNumber(planningInputs.dinnerPct) || 25) / 100,
+      snack: (firstNumber(planningInputs.snackPct) || 10) / 100,
+    }
+    const slotPctByRecipe = new Map<string, number>()
+    for (const day of nextPlan.mealPlan) {
+      for (const mealKey of ['breakfast', 'lunch', 'dinner'] as const) {
+        const name = day[mealKey].recipeName
+        if (name && !slotPctByRecipe.has(name)) slotPctByRecipe.set(name, pcts[mealKey])
+      }
+      const snackCount = Math.max(1, day.snacks.filter((s) => s.recipeName).length)
+      for (const snack of day.snacks) {
+        if (snack.recipeName && !slotPctByRecipe.has(snack.recipeName)) {
+          slotPctByRecipe.set(snack.recipeName, pcts.snack / snackCount)
+        }
+      }
+    }
+
     // Auto-calculate USDA macros for any recipe that has ingredients
     const dailyCalories = firstNumber(nextPlan.macroTargets.calories)
+    const individualPlanStyle = planningInputs.mealPlanStyle === 'individual_only'
     const recipesToCalc = nextPlan.recipes
       .map((recipe, index) => ({ recipe, index }))
       .filter(({ recipe }) => recipe.ingredients.length > 0)
+    const skippedRecipes: string[] = []
 
     if (recipesToCalc.length > 0) {
       const results = await Promise.all(recipesToCalc.map(async ({ recipe, index }) => {
+        // Family recipes (serves more than 1) get the client's portion carved out
+        // to her meal calorie target. Individual recipes are eaten as entered.
+        const familyCount = firstNumber(recipe.familyServings || recipe.servings)
+        const isFamily = !individualPlanStyle && familyCount > 1
+        const slotPct = slotPctByRecipe.get(recipe.name)
+        const targetCalories = isFamily && dailyCalories
+          ? (slotPct !== undefined
+            ? dailyCalories * slotPct
+            : mealCalorieTarget(recipe.mealType, dailyCalories, planningInputs))
+          : undefined
+
         const res = await fetch('/api/admin/coaching/nutrition', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             ingredients: recipe.ingredients,
-            targetCalories: dailyCalories ? mealCalorieTarget(recipe.mealType, dailyCalories, planningInputs) : undefined,
+            clientServingMultiplier: isFamily ? undefined : '1',
+            targetCalories,
             familyServings: recipe.familyServings || recipe.servings,
           }),
         })
@@ -504,8 +571,12 @@ export default function CoachingPlanEditor({
 
       const updatedRecipes = [...nextPlan.recipes]
       for (const { index, nutrition } of results) {
-        if (!nutrition) continue
         const r = updatedRecipes[index]
+        // Never overwrite macros with zeros when USDA matched nothing (e.g. cup/tbsp units).
+        if (!nutrition || nutrition.ingredients.length === 0 || !nutrition.totalRecipe.calories) {
+          skippedRecipes.push(r.name)
+          continue
+        }
         updatedRecipes[index] = {
           ...r,
           clientServingMultiplier: nutrition.clientServingMultiplier.toFixed(2),
@@ -546,8 +617,14 @@ export default function CoachingPlanEditor({
           snacks: day.snacks.map(updateMealMacros),
         })),
       }
-      setPlan(nextPlan)
     }
+
+    // Fill the grocery list from the recipes in the meal plan when it's empty.
+    if (nextPlan.groceryList.length === 0) {
+      const generated = buildGroceryList(nextPlan)
+      if (generated.length > 0) nextPlan = { ...nextPlan, groceryList: generated }
+    }
+    setPlan(nextPlan)
 
     const response = await fetch('/api/admin/coaching/plans', {
       method: 'POST',
@@ -565,7 +642,9 @@ export default function CoachingPlanEditor({
     } else {
       if (result.plan) setPlan(result.plan)
       if (result.planningInputs) setPlanningInputs(result.planningInputs)
-      setMessage('Plan saved.')
+      setMessage(skippedRecipes.length
+        ? `Plan saved, but USDA macros were skipped for: ${skippedRecipes.join(', ')}. Use gram-based ingredient lines (e.g. "150g cooked chicken breast") so macros calculate.`
+        : 'Plan saved.')
       router.refresh()
     }
 
@@ -949,9 +1028,17 @@ export default function CoachingPlanEditor({
                   {(() => {
                     const total = dayMacroTotal(day)
                     const hasDayMacros = total.calories || total.protein || total.carbs || total.fats
+                    const dailyTarget = firstNumber(plan.macroTargets.calories)
+                    const diff = dailyTarget ? total.calories - dailyTarget : 0
+                    const offTarget = dailyTarget > 0 && Math.abs(diff) > dailyTarget * 0.1
                     return hasDayMacros ? (
                       <div style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.75rem', color: 'var(--admin-on-surface-variant)', marginTop: 2 }}>
-                        {total.calories} cal · {total.protein}g protein · {total.carbs}g carbs · {total.fats}g fat
+                        {total.calories} cal{dailyTarget ? ` of ${dailyTarget} target` : ''} · {total.protein}g protein · {total.carbs}g carbs · {total.fats}g fat
+                        {offTarget && (
+                          <span style={{ color: '#B42318', fontWeight: 700 }}>
+                            {' '}· {diff > 0 ? `${diff} over` : `${Math.abs(diff)} under`}
+                          </span>
+                        )}
                       </div>
                     ) : null
                   })()}
@@ -1090,7 +1177,7 @@ export default function CoachingPlanEditor({
         <summary style={{ listStyle: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', cursor: 'pointer', userSelect: 'none' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <SectionNum n={5} done={plan.groceryList.length > 0} />
-            <SectionTitle title="Grocery List" subtitle="Auto-generated from recipes on save, or edit manually" />
+            <SectionTitle title="Grocery List" subtitle="Fills in from the meal plan's recipes on save when empty — clear it to regenerate, or edit manually" />
           </div>
           <ChevronDown size={16} style={{ color: 'var(--admin-on-surface-variant)', flexShrink: 0 }} />
         </summary>

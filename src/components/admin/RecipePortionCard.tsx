@@ -118,10 +118,16 @@ export default function RecipePortionCard({ recipe }: { recipe: Recipe }) {
   if (!recipe.clientServingMultiplier || !recipe.clientServingGrams) return null
 
   const weighIngredients = parseWeighItIngredients(recipe.clientServingBreakdown)
-  const totalCal = firstNum(recipe.calories)
-  const totalProtein = firstNum(recipe.protein)
-  const totalCarbs = firstNum(recipe.carbs)
-  const totalFats = firstNum(recipe.fats)
+  // When ingredient rows exist, total them directly so the table is internally consistent.
+  const sumRows = (pick: (ing: WeighItIngredient) => number) =>
+    Math.round(weighIngredients.reduce((sum, ing) => sum + pick(ing), 0) * 10) / 10
+  const totalCal = weighIngredients.length > 0 ? Math.round(sumRows((i) => i.calories)) : firstNum(recipe.calories)
+  const totalProtein = weighIngredients.length > 0 ? sumRows((i) => i.protein) : firstNum(recipe.protein)
+  const totalCarbs = weighIngredients.length > 0 ? sumRows((i) => i.carbs) : firstNum(recipe.carbs)
+  const totalFats = weighIngredients.length > 0 ? sumRows((i) => i.fats) : firstNum(recipe.fats)
+  const totalGrams = weighIngredients.length > 0
+    ? `${Math.round(sumRows((i) => i.grams))}g`
+    : recipe.clientServingGrams
 
   const btnBase: React.CSSProperties = {
     padding: '0.3rem 0.75rem',
@@ -219,7 +225,7 @@ export default function RecipePortionCard({ recipe }: { recipe: Recipe }) {
                 {totalCal > 0 && (
                   <tr style={{ borderTop: '2px solid #C9A84C' }}>
                     <td style={{ padding: '0.4rem 0.5rem', color: '#162814', fontWeight: 700 }}>Total</td>
-                    <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', color: '#162814', fontWeight: 700 }}>{recipe.clientServingGrams}</td>
+                    <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', color: '#162814', fontWeight: 700 }}>{totalGrams}</td>
                     <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', color: '#162814', fontWeight: 700 }}>{totalCal}</td>
                     <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', color: '#162814', fontWeight: 700 }}>{totalProtein}g</td>
                     <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', color: '#162814', fontWeight: 700 }}>{totalCarbs}g</td>

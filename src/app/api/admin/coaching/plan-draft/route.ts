@@ -51,13 +51,15 @@ function firstNumber(value: string | undefined) {
   return match ? Number(match[0]) : 0
 }
 
-function mealCalorieTarget(mealType: string, dailyCalories: number) {
+// Same defaults as the plan editor so draft numbers don't shift on save.
+function mealCalorieTarget(mealType: string, dailyCalories: number, planningInputs: Record<string, string>) {
+  const pct = (key: string, fallback: number) => (firstNumber(planningInputs[key]) || fallback) / 100
   const type = mealType.toLowerCase()
-  if (type.includes('breakfast')) return dailyCalories * 0.25
-  if (type.includes('lunch')) return dailyCalories * 0.3
-  if (type.includes('dinner')) return dailyCalories * 0.35
-  if (type.includes('snack')) return dailyCalories * 0.1
-  return dailyCalories * 0.3
+  if (type.includes('breakfast')) return dailyCalories * pct('breakfastPct', 35)
+  if (type.includes('lunch')) return dailyCalories * pct('lunchPct', 30)
+  if (type.includes('dinner')) return dailyCalories * pct('dinnerPct', 25)
+  if (type.includes('snack')) return dailyCalories * pct('snackPct', 10)
+  return dailyCalories * pct('lunchPct', 30)
 }
 
 function recipeMacroLabel(recipe: CoachingPlanDraft['recipes'][number]) {
@@ -69,7 +71,7 @@ function recipeMacroLabel(recipe: CoachingPlanDraft['recipes'][number]) {
   ].filter(Boolean).join(', ')
 }
 
-async function addUsdaServingMathToDraft(plan: CoachingPlanDraft) {
+async function addUsdaServingMathToDraft(plan: CoachingPlanDraft, planningInputs: Record<string, string>) {
   const apiKey = getUsdaApiKey()
   if (apiKey.source === 'DEMO_KEY') {
     return plan
@@ -78,14 +80,21 @@ async function addUsdaServingMathToDraft(plan: CoachingPlanDraft) {
   const dailyCalories = firstNumber(plan.macroTargets.calories)
   if (!dailyCalories) return plan
 
+  const individualPlanStyle = planningInputs.mealPlanStyle === 'individual_only'
+
   const recipes = await Promise.all(plan.recipes.map(async (recipe) => {
     if (recipe.ingredients.length === 0) return recipe
+
+    // Family recipes (serves >1) get the client's portion carved out to her meal
+    // calorie target; individual recipes are eaten exactly as written.
+    const familyCount = firstNumber(recipe.familyServings || recipe.servings)
+    const isFamily = !individualPlanStyle && familyCount > 1
 
     try {
       const nutrition = await calculateRecipeNutritionFromUsda({
         ingredients: recipe.ingredients,
-        clientServingMultiplier: recipe.clientServingMultiplier,
-        targetCalories: mealCalorieTarget(recipe.mealType, dailyCalories),
+        clientServingMultiplier: recipe.clientServingMultiplier || (isFamily ? undefined : '1'),
+        targetCalories: isFamily ? mealCalorieTarget(recipe.mealType, dailyCalories, planningInputs) : undefined,
         familyServings: recipe.familyServings || recipe.servings,
         apiKey: apiKey.key,
       })
@@ -339,7 +348,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `AI draft did not match the plan format: ${issues}` }, { status: 502 })
   }
 
-  const planWithUsdaServingMath = await addUsdaServingMathToDraft(plan.data)
+  const planWithUsdaServingMath = await addUsdaServingMathToDraft(plan.data, parsed.data.planningInputs ?? {})
 
   return NextResponse.json({ plan: planWithUsdaServingMath })
 }

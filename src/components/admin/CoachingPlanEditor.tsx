@@ -1090,6 +1090,9 @@ export default function CoachingPlanEditor({
                           onChange={(e) => applyLibraryRecipeToMeal(dayIndex, mealKey, e.target.value)}
                         >
                           <option value="">— no recipe —</option>
+                          {meal.recipeName && !libraryRecipes.some((r) => r.name === meal.recipeName) && (
+                            <option value={meal.recipeName}>Custom: {meal.recipeName.replace(/\s*\(d\d+-[a-z]+\d*\)$/, '')}</option>
+                          )}
                           {libraryRecipes.map((r) => (
                             <option key={r.id} value={r.name}>{r.name}</option>
                           ))}
@@ -1136,6 +1139,9 @@ export default function CoachingPlanEditor({
                               onChange={(e) => applyLibraryRecipeToSnack(dayIndex, snackIndex, e.target.value)}
                             >
                               <option value="">— no snack —</option>
+                              {snack.recipeName && !libraryRecipes.some((r) => r.name === snack.recipeName) && (
+                                <option value={snack.recipeName}>Custom: {snack.recipeName.replace(/\s*\(d\d+-[a-z]+\d*\)$/, '')}</option>
+                              )}
                               {libraryRecipes.map((r) => (
                                 <option key={r.id} value={r.name}>{r.name}</option>
                               ))}

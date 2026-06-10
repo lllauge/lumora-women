@@ -380,8 +380,11 @@ export default function CoachingPlanEditor({
 
   function applyCustomMealToSlot(dayIndex: number, mealKey: 'breakfast' | 'lunch' | 'dinner' | 'snack', slotKey: string, snackIndex?: number) {
     const slot = customSlots[slotKey]
-    if (!slot || !slot.name.trim() || slot.ingredients.length === 0) return
-    const recipeName = slot.name.trim()
+    if (!slot || slot.ingredients.length === 0) {
+      setError('Add at least one ingredient before saving to the plan.')
+      return
+    }
+    const recipeName = slot.name.trim() || `Custom ${mealKey.charAt(0).toUpperCase() + mealKey.slice(1)}`
     setPlan(current => {
       let newRecipes = current.recipes
       if (!current.recipes.some(r => r.name === recipeName)) {
@@ -951,8 +954,9 @@ export default function CoachingPlanEditor({
                               value={meal.recipeName}
                               onChange={(e) => {
                                 if (e.target.value === '__custom__') {
-                                  setCustomSlots(prev => ({ ...prev, [slotKey]: { name: '', ingredients: [] } }))
-                                  updateMeal(dayIndex, mealKey, { recipeName: '__custom__', name: '', macros: '', description: '' })
+                                  const defaultName = `Custom ${mealKey.charAt(0).toUpperCase() + mealKey.slice(1)}`
+                                  setCustomSlots(prev => ({ ...prev, [slotKey]: { name: defaultName, ingredients: [] } }))
+                                  updateMeal(dayIndex, mealKey, { recipeName: '__custom__', name: defaultName, macros: '', description: '' })
                                 } else {
                                   applyLibraryRecipeToMeal(dayIndex, mealKey, e.target.value)
                                 }
@@ -990,7 +994,7 @@ export default function CoachingPlanEditor({
                             <div style={{ display: 'flex', gap: 6 }}>
                               <button type="button" className="admin-btn-primary" style={{ fontSize: '0.75rem', padding: '5px 10px', background: '#C9A84C', color: '#162814', border: 'none', fontWeight: 700, flex: 1 }}
                                 onClick={() => applyCustomMealToSlot(dayIndex, mealKey, slotKey)}>
-                                Apply
+                                Save to Plan
                               </button>
                               <button type="button" className="admin-btn-ghost" style={{ fontSize: '0.75rem', padding: '5px 8px' }}
                                 onClick={() => { setCustomSlots(prev => { const n = { ...prev }; delete n[slotKey]; return n }); updateMeal(dayIndex, mealKey, { recipeName: '', name: '', macros: '', description: '' }) }}>
@@ -1030,10 +1034,10 @@ export default function CoachingPlanEditor({
                                 value={snack.recipeName}
                                 onChange={(e) => {
                                   if (e.target.value === '__custom__') {
-                                    setCustomSlots(prev => ({ ...prev, [slotKey]: { name: '', ingredients: [] } }))
+                                    setCustomSlots(prev => ({ ...prev, [slotKey]: { name: 'Custom Snack', ingredients: [] } }))
                                     const mealPlan = [...plan.mealPlan]
                                     const snacks = [...(day.snacks.length === 0 ? [{ name: '', recipeName: '', description: '', macros: '' }] : day.snacks)]
-                                    snacks[snackIndex] = { name: '', recipeName: '__custom__', description: '', macros: '' }
+                                    snacks[snackIndex] = { name: 'Custom Snack', recipeName: '__custom__', description: '', macros: '' }
                                     mealPlan[dayIndex] = { ...day, snacks }
                                     setPlan(c => ({ ...c, mealPlan }))
                                   } else {
@@ -1081,7 +1085,7 @@ export default function CoachingPlanEditor({
                               <div style={{ display: 'flex', gap: 6 }}>
                                 <button type="button" className="admin-btn-primary" style={{ fontSize: '0.75rem', padding: '5px 10px', background: '#C9A84C', color: '#162814', border: 'none', fontWeight: 700, flex: 1 }}
                                   onClick={() => applyCustomMealToSlot(dayIndex, 'snack', slotKey, snackIndex)}>
-                                  Apply
+                                  Save to Plan
                                 </button>
                                 <button type="button" className="admin-btn-ghost" style={{ fontSize: '0.75rem', padding: '5px 8px' }}
                                   onClick={() => {

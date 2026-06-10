@@ -33,9 +33,29 @@ export default function IngredientPicker({ onAdd }: Props) {
   const [selected, setSelected] = useState<UsdaFoodOption | null>(null)
   const [grams, setGrams] = useState('')
   const [open, setOpen] = useState(false)
+  // Ancestor cards use overflow:hidden for rounded corners, which clips an
+  // absolutely-positioned list — so the dropdown is fixed to the viewport
+  // and anchored to the input's measured position instead.
+  const [anchor, setAnchor] = useState<{ top: number; left: number; width: number } | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const anchorRef = useRef<HTMLDivElement>(null)
   const gramsRef = useRef<HTMLInputElement>(null)
   const debouncedQuery = useDebounce(query, 350)
+
+  useEffect(() => {
+    if (!open) return
+    const update = () => {
+      const rect = anchorRef.current?.getBoundingClientRect()
+      if (rect) setAnchor({ top: rect.bottom, left: rect.left, width: rect.width })
+    }
+    update()
+    window.addEventListener('scroll', update, true)
+    window.addEventListener('resize', update)
+    return () => {
+      window.removeEventListener('scroll', update, true)
+      window.removeEventListener('resize', update)
+    }
+  }, [open])
 
   useEffect(() => {
     if (debouncedQuery.length < 2) { setResults([]); setOpen(false); return }
@@ -85,7 +105,7 @@ export default function IngredientPicker({ onAdd }: Props) {
 
   return (
     <div ref={containerRef} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <div style={{ position: 'relative' }}>
+      <div ref={anchorRef} style={{ position: 'relative' }}>
         <input
           className="admin-input"
           placeholder="Search USDA foods, e.g. chicken breast cooked…"
@@ -99,12 +119,12 @@ export default function IngredientPicker({ onAdd }: Props) {
             Searching…
           </span>
         )}
-        {open && results.length > 0 && (
+        {open && anchor && results.length > 0 && (
           <ul style={{
-            position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
+            position: 'fixed', top: anchor.top + 2, left: anchor.left, width: anchor.width, zIndex: 1000,
             backgroundColor: 'var(--admin-surface)', border: '1px solid var(--admin-outline)',
-            borderRadius: 8, marginTop: 2, padding: 0, listStyle: 'none',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.12)', maxHeight: 320, overflowY: 'auto',
+            borderRadius: 8, margin: 0, padding: 0, listStyle: 'none',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.12)', maxHeight: Math.min(320, window.innerHeight - anchor.top - 16), overflowY: 'auto',
           }}>
             {results.map((food, idx) => {
               const dataTypeLabel =
@@ -153,11 +173,11 @@ export default function IngredientPicker({ onAdd }: Props) {
             })}
           </ul>
         )}
-        {open && !loading && results.length === 0 && debouncedQuery.length >= 2 && (
+        {open && anchor && !loading && results.length === 0 && debouncedQuery.length >= 2 && (
           <div style={{
-            position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
+            position: 'fixed', top: anchor.top + 2, left: anchor.left, width: anchor.width, zIndex: 1000,
             backgroundColor: 'var(--admin-surface)', border: '1px solid var(--admin-outline)',
-            borderRadius: 8, marginTop: 2, padding: '0.75rem 0.9rem',
+            borderRadius: 8, padding: '0.75rem 0.9rem',
             fontFamily: 'var(--font-hanken)', fontSize: '0.85rem', color: 'var(--admin-on-surface-variant)',
           }}>
             No USDA results for "{debouncedQuery}". Try a simpler term like "chicken breast" or "white rice".

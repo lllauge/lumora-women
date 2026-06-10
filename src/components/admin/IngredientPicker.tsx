@@ -47,6 +47,8 @@ export default function IngredientPicker({ onAdd }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const anchorRef = useRef<HTMLDivElement>(null)
   const gramsRef = useRef<HTMLInputElement>(null)
+  const selectedFdcRef = useRef<number | null>(null)
+  const amountRef = useRef('')
   const debouncedQuery = useDebounce(query, 350)
 
   useEffect(() => {
@@ -87,10 +89,7 @@ export default function IngredientPicker({ onAdd }: Props) {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  function selectFood(food: UsdaFoodOption) {
-    setSelected(food)
-    setQuery(food.description)
-    setOpen(false)
+  function applyDefaultUnit(food: UsdaFoodOption) {
     // Count-style measures ("1 large", "1 medium") default to counting;
     // weighed foods (egg whites, chicken, rice) default to grams.
     const weighedFood = /egg,?\s*white|liquid egg/i.test(food.description)
@@ -98,7 +97,33 @@ export default function IngredientPicker({ onAdd }: Props) {
       ? -1
       : (food.measures ?? []).findIndex((m) => /^1\s+(large|medium|small|extra large|jumbo|slice|piece|egg|banana|apple)\b/i.test(m.label))
     setMeasureIdx(countMeasure)
-    setAmount(countMeasure >= 0 ? '1' : '')
+    const defaultAmount = countMeasure >= 0 ? '1' : ''
+    setAmount(defaultAmount)
+    amountRef.current = defaultAmount
+  }
+
+  function selectFood(food: UsdaFoodOption) {
+    selectedFdcRef.current = food.fdcId
+    setSelected(food)
+    setQuery(food.description)
+    setOpen(false)
+    applyDefaultUnit(food)
+
+    // Search results rarely include household measures — fetch them for this food.
+    if ((food.measures ?? []).length === 0) {
+      fetch(`/api/admin/coaching/usda-search?fdcId=${food.fdcId}`)
+        .then((r) => r.json())
+        .then((data: { measures?: UsdaFoodMeasure[] }) => {
+          const measures = data.measures ?? []
+          if (measures.length === 0 || selectedFdcRef.current !== food.fdcId) return
+          const withMeasures = { ...food, measures }
+          setSelected(withMeasures)
+          // Don't disturb anything she already typed while measures loaded.
+          if (!amountRef.current.trim()) applyDefaultUnit(withMeasures)
+        })
+        .catch(() => {})
+    }
+
     setTimeout(() => gramsRef.current?.focus(), 50)
   }
 
@@ -119,7 +144,9 @@ export default function IngredientPicker({ onAdd }: Props) {
     onAdd(ingredient)
     setQuery('')
     setSelected(null)
+    selectedFdcRef.current = null
     setAmount('')
+    amountRef.current = ''
     setMeasureIdx(-1)
     setResults([])
   }
@@ -133,7 +160,7 @@ export default function IngredientPicker({ onAdd }: Props) {
           className="admin-input"
           placeholder="Search USDA foods, e.g. chicken breast cooked…"
           value={query}
-          onChange={(e) => { setQuery(e.target.value); setSelected(null) }}
+          onChange={(e) => { setQuery(e.target.value); setSelected(null); selectedFdcRef.current = null }}
           onFocus={() => results.length > 0 && setOpen(true)}
           autoComplete="off"
         />
@@ -220,7 +247,7 @@ export default function IngredientPicker({ onAdd }: Props) {
               step="any"
               placeholder={activeMeasure ? 'e.g. 2' : 'e.g. 150'}
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              onChange={(e) => { setAmount(e.target.value); amountRef.current = e.target.value }}
               onKeyDown={(e) => e.key === 'Enter' && addIngredient()}
             />
           </label>

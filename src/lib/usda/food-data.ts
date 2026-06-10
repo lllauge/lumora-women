@@ -366,6 +366,46 @@ export async function searchFoodsForPicker(query: string, apiKey: string): Promi
   }))
 }
 
+// Household measures live in the per-food detail response (foodPortions), not in
+// search results — SR Legacy/Foundation foods come back from search with no measures.
+export async function getFoodMeasuresById(fdcId: number, apiKey: string): Promise<UsdaFoodMeasure[]> {
+  const response = await fetch(`https://api.nal.usda.gov/fdc/v1/food/${fdcId}?api_key=${apiKey}`)
+  if (!response.ok) return []
+  const data = await response.json() as Record<string, unknown>
+
+  type DetailPortion = {
+    amount?: number
+    gramWeight?: number
+    modifier?: string
+    portionDescription?: string
+    measureUnit?: { name?: string }
+  }
+  const portions = (data.foodPortions ?? []) as DetailPortion[]
+  const measures: UsdaFoodMeasure[] = []
+  for (const p of portions) {
+    if (typeof p.gramWeight !== 'number' || p.gramWeight <= 0) continue
+    const unitName = p.measureUnit?.name && !/undetermined/i.test(p.measureUnit.name) ? p.measureUnit.name : ''
+    const described = (p.portionDescription ?? '').trim()
+    const label = (described && !/quantity not specified/i.test(described) ? described : '')
+      || [p.amount ?? '', unitName, (p.modifier ?? '').trim()].filter(Boolean).join(' ').trim()
+    if (!label || /quantity not specified/i.test(label)) continue
+    measures.push({ label, grams: Math.round(p.gramWeight * 10) / 10 })
+  }
+
+  if (measures.length === 0 && data.dataType === 'Branded') {
+    const servingSize = Number(data.servingSize)
+    const unit = String(data.servingSizeUnit ?? '').toLowerCase()
+    if (Number.isFinite(servingSize) && servingSize > 0 && (unit === 'g' || unit === 'ml' || unit === 'grm' || unit === 'mlt')) {
+      measures.push({
+        label: String(data.householdServingFullText ?? '').trim() || '1 serving',
+        grams: Math.round(servingSize * 10) / 10,
+      })
+    }
+  }
+
+  return measures.slice(0, 8)
+}
+
 async function fetchFoodById(fdcId: number, apiKey: string): Promise<FoodSearchResult | null> {
   const url = `https://api.nal.usda.gov/fdc/v1/food/${fdcId}?api_key=${apiKey}`
   const response = await fetch(url)

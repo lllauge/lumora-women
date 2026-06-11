@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { Leaf, ShoppingBasket, UtensilsCrossed } from 'lucide-react'
-import { getPortalContext, todayMealDayIndex } from '@/lib/coaching-engagement'
+import { getPortalContext, todayMealDayIndex, clientVisibleRecipes, withGrams } from '@/lib/coaching-engagement'
 import GroceryChecklist from '@/components/coaching/GroceryChecklist'
 import type { CoachingPlanDraft } from '@/lib/coaching-plan-schema'
 
@@ -17,13 +17,14 @@ export default async function CoachingPlanPage() {
   const { client, plan } = await getPortalContext()
   const t = plan.macroTargets
   const todayIdx = todayMealDayIndex(plan)
+  const visibleRecipes = clientVisibleRecipes(plan)
 
   const targets = [
     t.calories.trim() && { label: 'Calories', value: t.calories.trim() },
-    t.protein.trim() && { label: 'Protein', value: `${t.protein.trim()}g` },
-    t.carbs.trim() && { label: 'Carbs', value: `${t.carbs.trim()}g` },
-    t.fats.trim() && { label: 'Fats', value: `${t.fats.trim()}g` },
-    t.fiber.trim() && { label: 'Fiber', value: `${t.fiber.trim()}g` },
+    t.protein.trim() && { label: 'Protein', value: withGrams(t.protein) },
+    t.carbs.trim() && { label: 'Carbs', value: withGrams(t.carbs) },
+    t.fats.trim() && { label: 'Fats', value: withGrams(t.fats) },
+    t.fiber.trim() && { label: 'Fiber', value: withGrams(t.fiber) },
     t.water.trim() && { label: 'Water', value: t.water.trim() },
     t.steps.trim() && { label: 'Steps', value: t.steps.trim() },
     t.workoutTarget.trim() && { label: 'Movement', value: t.workoutTarget.trim() },
@@ -95,24 +96,24 @@ export default async function CoachingPlanPage() {
       )}
 
       {/* Recipes */}
-      {plan.recipes.length > 0 && (
+      {visibleRecipes.length > 0 && (
         <section aria-label="Recipes" style={{ marginBottom: '2rem' }}>
           <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontFamily: 'var(--font-display)', fontSize: '1.125rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>
             <UtensilsCrossed style={{ width: '1rem', height: '1rem', color: 'var(--botanical-green)' }} aria-hidden="true" />
             Your Recipes
           </h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
-            {plan.recipes.map((recipe, i) => (
-              <details key={i} id={`recipe-${i}`} style={cardStyle}>
+            {visibleRecipes.map(({ recipe, index }) => (
+              <details key={index} id={`recipe-${index}`} style={cardStyle}>
                 <summary style={{ cursor: 'pointer', padding: '0.875rem 1.125rem', minHeight: '48px' }}>
                   <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                    {recipe.name.trim() || `Recipe ${i + 1}`}
+                    {recipe.name.trim() || `Recipe ${index + 1}`}
                   </span>
                   <span style={{ display: 'block', fontFamily: 'var(--font-sans)', fontSize: '0.78125rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>
                     {[
                       recipe.mealType.trim(),
                       recipe.calories.trim() && `${recipe.calories.trim()} cal`,
-                      recipe.protein.trim() && `${recipe.protein.trim()}g protein`,
+                      recipe.protein.trim() && `${withGrams(recipe.protein)} protein`,
                     ].filter(Boolean).join(' · ')}
                   </span>
                 </summary>
@@ -212,10 +213,10 @@ function RecipeDetail({ recipe }: { recipe: CoachingPlanDraft['recipes'][number]
           recipe.familyServings.trim() && isFamily && `Serves ${recipe.familyServings.trim()}`,
           [recipe.calories, recipe.protein, recipe.carbs, recipe.fats].some((v) => v.trim()) &&
             `Per portion: ${[
-              recipe.calories.trim() && `${recipe.calories.trim()} cal`,
-              recipe.protein.trim() && `${recipe.protein.trim()}P`,
-              recipe.carbs.trim() && `${recipe.carbs.trim()}C`,
-              recipe.fats.trim() && `${recipe.fats.trim()}F`,
+              recipe.calories.trim() && `${recipe.calories.trim().replace(/\s*k?cal$/i, '')} cal`,
+              recipe.protein.trim() && `${recipe.protein.trim().replace(/\s*g$/i, '')}P`,
+              recipe.carbs.trim() && `${recipe.carbs.trim().replace(/\s*g$/i, '')}C`,
+              recipe.fats.trim() && `${recipe.fats.trim().replace(/\s*g$/i, '')}F`,
             ].filter(Boolean).join(' / ')}`,
         ].filter(Boolean).join(' · ')}
       </p>

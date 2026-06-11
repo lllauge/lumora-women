@@ -62,6 +62,13 @@ export function weekDates(isoDate: string): string[] {
   return Array.from({ length: 7 }, (_, i) => shiftDate(monday, i))
 }
 
+/** "130" → "130g", but "130g" stays "130g" — values may already carry a unit. */
+export function withGrams(value: string): string {
+  const trimmed = value.trim()
+  if (!trimmed) return ''
+  return /[a-z]$/i.test(trimmed) ? trimmed : `${trimmed}g`
+}
+
 /**
  * Daily habits generated from the plan's macro targets. Only targets Laura
  * actually set become habits, capped at 5 so the list never overwhelms.
@@ -69,11 +76,29 @@ export function weekDates(isoDate: string): string[] {
 export function habitsFromPlan(plan: CoachingPlanDraft): Habit[] {
   const t = plan.macroTargets
   const habits: Habit[] = [{ key: 'meals', label: 'Ate my planned meals' }]
-  if (t.protein.trim()) habits.push({ key: 'protein', label: `Hit ${t.protein.trim()}g protein` })
+  if (t.protein.trim()) habits.push({ key: 'protein', label: `Hit ${withGrams(t.protein)} protein` })
   if (t.water.trim()) habits.push({ key: 'water', label: `Drank ${t.water.trim()} water` })
   if (t.steps.trim()) habits.push({ key: 'steps', label: `${t.steps.trim()} steps` })
   if (t.workoutTarget.trim()) habits.push({ key: 'workout', label: 'Got my movement in' })
   return habits.slice(0, 5)
+}
+
+/**
+ * Recipes the client should see: only ones referenced by a meal slot in her
+ * week. Plans accumulate leftover recipes as Laura experiments in the editor,
+ * and those should stay invisible. Original indexes are kept so recipe anchor
+ * links stay stable.
+ */
+export function clientVisibleRecipes(plan: CoachingPlanDraft): { recipe: CoachingPlanDraft['recipes'][number]; index: number }[] {
+  const referenced = new Set<string>()
+  for (const day of plan.mealPlan) {
+    for (const meal of [day.breakfast, day.lunch, day.dinner, ...day.snacks]) {
+      if (meal.recipeName.trim()) referenced.add(meal.recipeName.trim())
+    }
+  }
+  const all = plan.recipes.map((recipe, index) => ({ recipe, index }))
+  if (referenced.size === 0) return all
+  return all.filter(({ recipe }) => referenced.has(recipe.name.trim()))
 }
 
 function winsCount(log: DailyLog | undefined, habits: Habit[]): number {

@@ -19,6 +19,7 @@ export default async function AdminAppLayout({
 
   let adminName = 'Admin'
   let adminEmail = 'admin@lumorawomen.com'
+  let unreadMessages = 0
 
   if (supabaseConfigured) {
     let session: Awaited<ReturnType<typeof getVerifiedAdminUser>>
@@ -41,10 +42,17 @@ export default async function AdminAppLayout({
       .join(' ')
       .trim()
     adminName = fullName || (user.email ?? '').split('@')[0] || 'Admin'
+
+    const { count } = await supabase
+      .from('coaching_messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('sender', 'client')
+      .is('read_by_coach_at', null)
+    unreadMessages = count ?? 0
   }
 
   return (
-    <AdminShellClient adminName={adminName} adminEmail={adminEmail}>
+    <AdminShellClient adminName={adminName} adminEmail={adminEmail} unreadMessages={unreadMessages}>
       {children}
     </AdminShellClient>
   )

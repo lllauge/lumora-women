@@ -1395,3 +1395,116 @@ blockquote, .pull-quote {
     font-size: 3.25rem;
   }
 }
+
+/* ── Coaching client portal ──────────────────────────────────────────────── */
+.portal-layout {
+  display: flex;
+  min-height: 100vh;
+  background: var(--page-bg);
+}
+.portal-sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: #1E3220;
+  display: flex;
+  flex-direction: column;
+  padding: 2rem 0;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+.portal-main {
+  flex: 1;
+  min-width: 0;
+  padding: 3rem 2.5rem;
+  max-width: 900px;
+}
+.portal-tabbar {
+  display: none;
+}
+.portal-mobile-header {
+  display: none;
+}
+.portal-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+.portal-week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+.portal-milestone-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+@media (min-width: 768px) and (max-width: 1023px) {
+  .portal-sidebar { width: 200px; }
+  .portal-main { padding: 2rem 1.5rem; }
+}
+@media (max-width: 767px) {
+  .portal-sidebar { display: none; }
+  .portal-main { padding: 1.25rem 1rem 6.5rem; }
+  .portal-mobile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.875rem 1rem;
+    background: #162814;
+    position: sticky;
+    top: 0;
+    z-index: 40;
+  }
+  .portal-layout { flex-direction: column; }
+  .portal-tabbar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    background: #162814;
+    border-top: 1px solid rgba(200, 220, 192, 0.15);
+    padding: 0.375rem 0.25rem calc(0.375rem + env(safe-area-inset-bottom));
+  }
+  .portal-tabbar a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-height: 48px;
+    padding: 0.25rem 0;
+    font-family: var(--font-sans);
+    font-size: 0.6875rem;
+    text-decoration: none;
+    color: rgba(200, 220, 192, 0.8);
+  }
+  .portal-tabbar a[aria-current="page"] {
+    color: #FFFFFF;
+    font-weight: 600;
+  }
+  .portal-milestone-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ── Admin messages inbox ────────────────────────────────────────────────── */
+.admin-msg-grid {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+@media (max-width: 1023px) {
+  .admin-msg-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .admin-msg-grid[data-thread-open="true"] .admin-msg-list { display: none; }
+  .admin-msg-grid[data-thread-open="false"] .admin-msg-thread { display: none; }
+}
+.admin-msg-back { display: none; }
+@media (max-width: 1023px) {
+  .admin-msg-back { display: inline-flex; }
+}

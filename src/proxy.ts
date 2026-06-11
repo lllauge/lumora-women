@@ -63,7 +63,13 @@ export async function proxy(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   // ── Student-side gates ────────────────────────────────────────────────────
-  if (path.startsWith('/dashboard') || path.startsWith('/lesson') || path.startsWith('/coaching/onboarding')) {
+  const isCoachingPortal =
+    path.startsWith('/coaching/onboarding') ||
+    path.startsWith('/coaching/today') ||
+    path.startsWith('/coaching/plan') ||
+    path.startsWith('/coaching/progress') ||
+    path.startsWith('/coaching/coach')
+  if (path.startsWith('/dashboard') || path.startsWith('/lesson') || isCoachingPortal) {
     if (!user) {
       const url = request.nextUrl.clone()
       url.pathname = '/login'

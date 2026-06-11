@@ -973,6 +973,20 @@ export default function CoachingPlanEditor({
             </select>
           </label>
         </div>
+        <p
+          role="status"
+          style={{
+            fontFamily: 'var(--font-hanken)', fontSize: '0.8125rem', fontWeight: 600, margin: 0,
+            padding: '8px 16px',
+            color: plan.status === 'published' ? '#1b5e20' : '#7A5505',
+            background: plan.status === 'published' ? '#e8f5e9' : '#FDF6E3',
+            borderBottom: '1px solid var(--admin-outline-variant)',
+          }}
+        >
+          {plan.status === 'published'
+            ? 'Live — your client can see this plan in her coaching portal.'
+            : 'Hidden from your client — only “Published” plans appear in her coaching portal.'}
+        </p>
         <div style={{ ...sBody, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
           <TextArea
             label="Client Notes (shown to client)"

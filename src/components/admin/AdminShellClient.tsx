@@ -6,7 +6,7 @@ import Link from 'next/link'
 import {
   LayoutDashboard, GraduationCap, PenLine, ShoppingBag,
   Users, HeartHandshake, Mail, Receipt, Settings, LogOut, Bell, HelpCircle,
-  Menu, X, BookOpen, type LucideIcon,
+  Menu, X, BookOpen, MessageCircle, type LucideIcon,
 } from 'lucide-react'
 import { signOutAdmin } from '@/app/actions/admin-auth'
 
@@ -28,6 +28,7 @@ const navSections: NavSection[] = [
     items: [
       { label: 'Students',       href: '/admin/students',   icon: Users },
       { label: 'Coaching',       href: '/admin/coaching',   icon: HeartHandshake },
+      { label: 'Messages',       href: '/admin/messages',   icon: MessageCircle },
       { label: 'Recipe Library', href: '/admin/recipes',    icon: BookOpen },
       { label: 'Email List',     href: '/admin/email-list', icon: Mail },
     ],
@@ -41,6 +42,7 @@ const SEGMENT_TITLES: Record<string, string> = {
   'courses':    'Course Manager',
   'blog':       'Blog Manager',
   'coaching':   'Coaching',
+  'messages':   'Messages',
   'recipes':    'Recipe Library',
   'students':   'Student Manager',
   'email-list': 'Email List',
@@ -64,10 +66,12 @@ function getPageTitle(pathname: string | null): string {
 export default function AdminShellClient({
   adminName,
   adminEmail,
+  unreadMessages = 0,
   children,
 }: {
   adminName: string
   adminEmail: string
+  unreadMessages?: number
   children: React.ReactNode
 }) {
   const pathname = usePathname()
@@ -126,6 +130,18 @@ export default function AdminShellClient({
                     >
                       <Icon className="lucide" />
                       <span>{item.label}</span>
+                      {item.href === '/admin/messages' && unreadMessages > 0 && (
+                        <span
+                          aria-label={`${unreadMessages} unread`}
+                          style={{
+                            marginLeft: 'auto', background: 'var(--gold-dark)', color: '#1A2818',
+                            fontFamily: 'var(--font-hanken)', fontSize: '0.6875rem', fontWeight: 700,
+                            borderRadius: '999px', padding: '0.0625rem 0.4375rem', lineHeight: 1.5,
+                          }}
+                        >
+                          {unreadMessages > 99 ? '99+' : unreadMessages}
+                        </span>
+                      )}
                     </Link>
                   )
                 })}

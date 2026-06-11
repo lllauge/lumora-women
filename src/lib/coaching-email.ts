@@ -41,6 +41,46 @@ function checkoutEmailHtml(input: { firstName?: string; checkoutUrl: string; amo
   `
 }
 
+export async function sendClientMessageNotification(input: {
+  clientName: string
+  clientId: string
+  intro: string
+}) {
+  const resendKey = process.env.RESEND_API_KEY
+  if (!resendKey) {
+    return { ok: false, error: 'RESEND_API_KEY is not configured.' }
+  }
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://lumorawomen.com'
+  const inboxUrl = `${siteUrl}/admin/messages?client=${encodeURIComponent(input.clientId)}`
+  const resend = new Resend(resendKey)
+  const name = escapeHtml(input.clientName)
+  const intro = escapeHtml(input.intro)
+
+  const { error } = await resend.emails.send({
+    from: 'Lumora Women <hello@lumorawomen.com>',
+    to: 'hello@lumorawomen.com',
+    subject: `Coaching: ${input.clientName} — new message`,
+    html: `
+      <div style="font-family: Arial, sans-serif; background:#F8F6F0; padding:32px;">
+        <div style="max-width:580px; margin:0 auto; background:#FFFFFF; border-radius:16px; padding:36px; border:1px solid #E5E0D6;">
+          <h1 style="font-family: Georgia, serif; color:#1A2818; margin:0 0 14px; font-size:24px;">${name} is waiting on you</h1>
+          <p style="color:#3A4A38; font-size:16px; line-height:1.7; margin:0 0 22px;">${intro}</p>
+          <a href="${inboxUrl}" style="display:inline-block; background:#3A4B36; color:#FFFFFF; text-decoration:none; padding:14px 22px; border-radius:999px; font-weight:700;">
+            Open Messages
+          </a>
+        </div>
+      </div>
+    `,
+    text: [`${input.intro}`, '', `Open messages: ${inboxUrl}`].join('\n'),
+  })
+
+  if (error) {
+    return { ok: false, error: error.message }
+  }
+  return { ok: true, error: null }
+}
+
 export async function sendCoachingCheckoutEmail(input: {
   to: string
   firstName?: string

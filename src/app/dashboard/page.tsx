@@ -103,7 +103,15 @@ async function getCoachingClient(userId: string, email: string | undefined) {
       .is('user_id', null)
   }
 
-  return data
+  if (!data) return null
+
+  const { count: publishedPlans } = await supabase
+    .from('coaching_plans')
+    .select('id', { count: 'exact', head: true })
+    .eq('coaching_client_id', data.id)
+    .eq('status', 'published')
+
+  return { ...data, hasPublishedPlan: (publishedPlans ?? 0) > 0 }
 }
 
 export default async function DashboardPage() {
@@ -238,13 +246,21 @@ export default async function DashboardPage() {
                     1:1 Coaching
                   </h2>
                   <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-                    {coachingClient.onboarding_status === 'submitted'
-                      ? 'Your onboarding has been submitted.'
-                      : 'Complete your onboarding so your plan can be created.'}
+                    {coachingClient.hasPublishedPlan
+                      ? 'Your personalized plan is ready — check off today’s wins.'
+                      : coachingClient.onboarding_status === 'submitted'
+                        ? 'Your onboarding has been submitted.'
+                        : 'Complete your onboarding so your plan can be created.'}
                   </p>
                 </div>
-                <Link href="/coaching/onboarding" className="btn-primary" style={{ borderRadius: '0.5rem', padding: '0.75rem 1.25rem' }}>
-                  {coachingClient.onboarding_status === 'submitted' ? 'View Status' : 'Start Onboarding'}
+                <Link
+                  href={coachingClient.hasPublishedPlan ? '/coaching/today' : '/coaching/onboarding'}
+                  className="btn-primary"
+                  style={{ borderRadius: '0.5rem', padding: '0.75rem 1.25rem' }}
+                >
+                  {coachingClient.hasPublishedPlan
+                    ? 'Open My Coaching'
+                    : coachingClient.onboarding_status === 'submitted' ? 'View Status' : 'Start Onboarding'}
                 </Link>
               </div>
             </div>

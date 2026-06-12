@@ -62,6 +62,11 @@ export function weekDates(isoDate: string): string[] {
   return Array.from({ length: 7 }, (_, i) => shiftDate(monday, i))
 }
 
+/** Hide the editor's internal slot suffix ("Custom breakfast (d1-breakfast)" → "Custom breakfast"). */
+export function displayRecipeName(name: string): string {
+  return name.replace(/\s*\(d\d+-(?:breakfast|lunch|dinner|snack\d*)\)\s*$/i, '').trim() || name.trim()
+}
+
 /** "130" → "130g", but "130g" stays "130g" — values may already carry a unit. */
 export function withGrams(value: string): string {
   const trimmed = value.trim()

@@ -1509,3 +1509,36 @@ blockquote, .pull-quote {
 @media (max-width: 1023px) {
   .admin-msg-back { display: inline-flex; }
 }
+
+/* ── Coaching portal cards & disclosure rows ─────────────────────────────── */
+.portal-card {
+  background: #FFFFFF;
+  border: 1px solid rgba(200, 220, 192, 0.35);
+  border-radius: 1rem;
+  overflow: hidden;
+}
+.portal-gold-line {
+  height: 3px;
+  background: linear-gradient(to right, #F0D060 0%, #C8980A 25%, #E8C040 50%, #A87808 75%, #D4AC30 100%);
+}
+.portal-details summary {
+  list-style: none;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.portal-details summary::-webkit-details-marker {
+  display: none;
+}
+.portal-details summary:hover {
+  background: rgba(234, 244, 226, 0.55);
+}
+.portal-details .portal-chevron {
+  transition: transform 0.15s;
+  flex-shrink: 0;
+}
+.portal-details[open] .portal-chevron {
+  transform: rotate(180deg);
+}
+.portal-details[open] > summary {
+  background: rgba(234, 244, 226, 0.4);
+}

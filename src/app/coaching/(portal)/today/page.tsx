@@ -4,6 +4,7 @@ import { Flame, Target, ChevronRight } from 'lucide-react'
 import {
   getPortalContext, getDailyLogs, habitsFromPlan, currentStreak,
   weekConsistency, coachingToday, coachingWeekday, planWeekNumber, todayMealDayIndex,
+  displayRecipeName,
 } from '@/lib/coaching-engagement'
 import DailyWins from '@/components/coaching/DailyWins'
 import type { CoachingPlanDraft } from '@/lib/coaching-plan-schema'
@@ -119,7 +120,7 @@ function MealCard({
           {slot}{meal.macros.trim() ? ` · ${meal.macros.trim()}` : ''}
         </p>
         <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-          {meal.name.trim() || meal.description.trim()}
+          {displayRecipeName(meal.name) || meal.description.trim()}
         </p>
         {meal.name.trim() && meal.description.trim() && (
           <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-secondary)', marginTop: '0.125rem' }}>

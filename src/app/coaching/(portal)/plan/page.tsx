@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
-import { Leaf, ShoppingBasket, UtensilsCrossed } from 'lucide-react'
-import { getPortalContext, todayMealDayIndex, clientVisibleRecipes, withGrams } from '@/lib/coaching-engagement'
+import { Leaf, ShoppingBasket, UtensilsCrossed, CalendarDays, ChevronDown } from 'lucide-react'
+import { getPortalContext, todayMealDayIndex, clientVisibleRecipes, withGrams, displayRecipeName } from '@/lib/coaching-engagement'
 import GroceryChecklist from '@/components/coaching/GroceryChecklist'
 import type { CoachingPlanDraft } from '@/lib/coaching-plan-schema'
 
@@ -8,10 +8,23 @@ export const metadata: Metadata = {
   title: 'My Plan | Lumora Women Coaching',
 }
 
-const cardStyle: React.CSSProperties = {
-  background: '#FFFFFF', borderRadius: '1rem',
-  border: '1px solid rgba(200,220,192,0.35)', overflow: 'hidden',
+function SectionHeader({ icon, title, subtitle }: { icon: React.ReactNode; title: string; subtitle?: string }) {
+  return (
+    <div style={{ marginBottom: '0.875rem' }}>
+      <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontFamily: 'var(--font-display)', fontSize: '1.125rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+        {icon}
+        {title}
+      </h2>
+      {subtitle && (
+        <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+          {subtitle}
+        </p>
+      )}
+    </div>
+  )
 }
+
+const headerIcon: React.CSSProperties = { width: '1rem', height: '1rem', color: 'var(--botanical-green)' }
 
 export default async function CoachingPlanPage() {
   const { client, plan } = await getPortalContext()
@@ -19,8 +32,7 @@ export default async function CoachingPlanPage() {
   const todayIdx = todayMealDayIndex(plan)
   const visibleRecipes = clientVisibleRecipes(plan)
 
-  const targets = [
-    t.calories.trim() && { label: 'Calories', value: t.calories.trim() },
+  const secondaryTargets = [
     t.protein.trim() && { label: 'Protein', value: withGrams(t.protein) },
     t.carbs.trim() && { label: 'Carbs', value: withGrams(t.carbs) },
     t.fats.trim() && { label: 'Fats', value: withGrams(t.fats) },
@@ -38,7 +50,7 @@ export default async function CoachingPlanPage() {
 
       {/* Note from Laura */}
       {plan.clientNotes.trim() && (
-        <div style={{ background: 'var(--section-tint)', borderRadius: '1rem', padding: '1.125rem 1.25rem', marginBottom: '1.5rem' }}>
+        <div style={{ background: 'var(--section-tint)', borderRadius: '1rem', padding: '1.125rem 1.25rem', marginBottom: '2rem' }}>
           <p style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', fontWeight: 600, color: '#3F6936', marginBottom: '0.375rem' }}>
             <Leaf style={{ width: '0.875rem', height: '0.875rem' }} aria-hidden="true" /> A note from Laura
           </p>
@@ -49,16 +61,26 @@ export default async function CoachingPlanPage() {
       )}
 
       {/* Daily targets */}
-      {targets.length > 0 && (
-        <section aria-label="Daily targets" style={{ marginBottom: '2rem' }}>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.125rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>
-            Your Daily Targets
-          </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '0.625rem' }}>
-            {targets.map((target) => (
-              <div key={target.label} style={{ background: '#FFFFFF', border: '1px solid rgba(200,220,192,0.35)', borderRadius: '0.75rem', padding: '0.75rem 0.875rem' }}>
-                <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.125rem' }}>{target.label}</p>
-                <p style={{ fontFamily: 'var(--font-sans)', fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', overflowWrap: 'anywhere' }}>{target.value}</p>
+      {(t.calories.trim() || secondaryTargets.length > 0) && (
+        <section aria-label="Daily targets" style={{ marginBottom: '2.25rem' }}>
+          <SectionHeader
+            icon={<Leaf style={headerIcon} aria-hidden="true" />}
+            title="Your Daily Targets"
+            subtitle="The numbers your week is built around."
+          />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '0.625rem' }}>
+            {t.calories.trim() && (
+              <div style={{ background: 'var(--section-sand)', borderRadius: '0.875rem', padding: '0.875rem 1rem' }}>
+                <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 600, color: '#7A5505', marginBottom: '0.125rem' }}>Calories</p>
+                <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>{t.calories.trim()}</p>
+              </div>
+            )}
+            {secondaryTargets.map((target) => (
+              <div key={target.label} style={{ background: 'var(--section-tint)', borderRadius: '0.875rem', padding: '0.875rem 1rem' }}>
+                <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 600, color: '#3F6936', marginBottom: '0.125rem' }}>{target.label}</p>
+                <p style={{ fontFamily: 'var(--font-display)', fontSize: target.value.length > 10 ? '0.9375rem' : '1.25rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3, overflowWrap: 'anywhere' }}>
+                  {target.value}
+                </p>
               </div>
             ))}
           </div>
@@ -67,26 +89,33 @@ export default async function CoachingPlanPage() {
 
       {/* Weekly meal plan */}
       {plan.mealPlan.length > 0 && (
-        <section aria-label="Weekly meal plan" style={{ marginBottom: '2rem' }}>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.125rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>
-            Your Week
-          </h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+        <section aria-label="Weekly meal plan" style={{ marginBottom: '2.25rem' }}>
+          <SectionHeader
+            icon={<CalendarDays style={headerIcon} aria-hidden="true" />}
+            title="Your Week"
+            subtitle="Tap a day to see every meal."
+          />
+          <div className="portal-card">
+            <div className="portal-gold-line" aria-hidden="true" />
             {plan.mealPlan.map((day, i) => (
-              <details key={i} open={i === todayIdx} style={cardStyle}>
+              <details key={i} className="portal-details" open={i === todayIdx} style={{ borderTop: i === 0 ? 'none' : '1px solid rgba(200,220,192,0.3)' }}>
                 <summary style={{
-                  cursor: 'pointer', padding: '0.875rem 1.125rem', fontFamily: 'var(--font-sans)',
-                  fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-primary)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: '48px',
+                  padding: '0.9375rem 1.25rem', minHeight: '52px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem',
                 }}>
-                  <span>{day.day.trim() || `Day ${i + 1}`}</span>
-                  {i === todayIdx && (
-                    <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.6875rem', fontWeight: 700, color: '#3F6936', background: 'var(--section-tint)', borderRadius: '999px', padding: '0.25rem 0.625rem' }}>
-                      TODAY
-                    </span>
-                  )}
+                  <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                    {day.day.trim() || `Day ${i + 1}`}
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+                    {i === todayIdx && (
+                      <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.6875rem', fontWeight: 700, color: '#7A5505', background: 'var(--section-sand)', borderRadius: '999px', padding: '0.25rem 0.625rem' }}>
+                        TODAY
+                      </span>
+                    )}
+                    <ChevronDown className="portal-chevron" style={{ width: '1.125rem', height: '1.125rem', color: 'var(--botanical-green)' }} aria-hidden="true" />
+                  </span>
                 </summary>
-                <div style={{ padding: '0 1.125rem 1rem', borderTop: '1px solid rgba(200,220,192,0.3)' }}>
+                <div style={{ padding: '0.25rem 1.25rem 1rem' }}>
                   <DayMeals day={day} />
                 </div>
               </details>
@@ -97,27 +126,41 @@ export default async function CoachingPlanPage() {
 
       {/* Recipes */}
       {visibleRecipes.length > 0 && (
-        <section aria-label="Recipes" style={{ marginBottom: '2rem' }}>
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontFamily: 'var(--font-display)', fontSize: '1.125rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>
-            <UtensilsCrossed style={{ width: '1rem', height: '1rem', color: 'var(--botanical-green)' }} aria-hidden="true" />
-            Your Recipes
-          </h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
-            {visibleRecipes.map(({ recipe, index }) => (
-              <details key={index} id={`recipe-${index}`} style={cardStyle}>
-                <summary style={{ cursor: 'pointer', padding: '0.875rem 1.125rem', minHeight: '48px' }}>
-                  <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                    {recipe.name.trim() || `Recipe ${index + 1}`}
+        <section aria-label="Recipes" style={{ marginBottom: '2.25rem' }}>
+          <SectionHeader
+            icon={<UtensilsCrossed style={headerIcon} aria-hidden="true" />}
+            title="Your Recipes"
+            subtitle="Tap a recipe for your portion, ingredients, and steps."
+          />
+          <div className="portal-card">
+            <div className="portal-gold-line" aria-hidden="true" />
+            {visibleRecipes.map(({ recipe, index }, position) => (
+              <details key={index} id={`recipe-${index}`} className="portal-details" style={{ borderTop: position === 0 ? 'none' : '1px solid rgba(200,220,192,0.3)' }}>
+                <summary style={{
+                  padding: '0.9375rem 1.25rem', minHeight: '52px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem',
+                }}>
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ display: 'block', fontFamily: 'var(--font-sans)', fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      {displayRecipeName(recipe.name) || `Recipe ${index + 1}`}
+                    </span>
+                    <span style={{ display: 'block', fontFamily: 'var(--font-sans)', fontSize: '0.78125rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>
+                      {[
+                        recipe.calories.trim() && `${recipe.calories.trim().replace(/\s*k?cal$/i, '')} cal`,
+                        recipe.protein.trim() && `${withGrams(recipe.protein)} protein`,
+                      ].filter(Boolean).join(' · ')}
+                    </span>
                   </span>
-                  <span style={{ display: 'block', fontFamily: 'var(--font-sans)', fontSize: '0.78125rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>
-                    {[
-                      recipe.mealType.trim(),
-                      recipe.calories.trim() && `${recipe.calories.trim()} cal`,
-                      recipe.protein.trim() && `${withGrams(recipe.protein)} protein`,
-                    ].filter(Boolean).join(' · ')}
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', flexShrink: 0 }}>
+                    {recipe.mealType.trim() && (
+                      <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.6875rem', fontWeight: 700, color: '#3F6936', background: 'var(--section-tint)', borderRadius: '999px', padding: '0.25rem 0.625rem', textTransform: 'capitalize' }}>
+                        {recipe.mealType.trim()}
+                      </span>
+                    )}
+                    <ChevronDown className="portal-chevron" style={{ width: '1.125rem', height: '1.125rem', color: 'var(--botanical-green)' }} aria-hidden="true" />
                   </span>
                 </summary>
-                <div style={{ padding: '0 1.125rem 1.125rem', borderTop: '1px solid rgba(200,220,192,0.3)' }}>
+                <div style={{ padding: '0 1.25rem 1.25rem' }}>
                   <RecipeDetail recipe={recipe} />
                 </div>
               </details>
@@ -129,12 +172,16 @@ export default async function CoachingPlanPage() {
       {/* Grocery list */}
       {plan.groceryList.length > 0 && (
         <section aria-label="Grocery list">
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontFamily: 'var(--font-display)', fontSize: '1.125rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>
-            <ShoppingBasket style={{ width: '1rem', height: '1rem', color: 'var(--botanical-green)' }} aria-hidden="true" />
-            Grocery List
-          </h2>
-          <div style={{ ...cardStyle, padding: '1rem 1.125rem' }}>
-            <GroceryChecklist items={plan.groceryList} storageKey={`lumora-grocery-${client.id}`} />
+          <SectionHeader
+            icon={<ShoppingBasket style={headerIcon} aria-hidden="true" />}
+            title="Grocery List"
+            subtitle="Check items off as you shop — it remembers between visits."
+          />
+          <div className="portal-card">
+            <div className="portal-gold-line" aria-hidden="true" />
+            <div style={{ padding: '1rem 1.25rem' }}>
+              <GroceryChecklist items={plan.groceryList} storageKey={`lumora-grocery-${client.id}`} />
+            </div>
           </div>
         </section>
       )}
@@ -154,11 +201,11 @@ function DayMeals({ day }: { day: CoachingPlanDraft['mealPlan'][number] }) {
     <div>
       {rows.map((row, i) => (
         <div key={i} style={{ padding: '0.75rem 0', borderTop: i === 0 ? 'none' : '1px solid rgba(200,220,192,0.25)' }}>
-          <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--botanical-green)', marginBottom: '0.125rem' }}>
+          <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 600, color: '#3F6936', marginBottom: '0.125rem' }}>
             {row.slot}{row.meal.macros.trim() ? ` · ${row.meal.macros.trim()}` : ''}
           </p>
           <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-            {row.meal.name.trim() || row.meal.description.trim()}
+            {displayRecipeName(row.meal.name) || row.meal.description.trim()}
           </p>
           {row.meal.name.trim() && row.meal.description.trim() && (
             <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-secondary)', marginTop: '0.125rem' }}>
@@ -189,7 +236,7 @@ function RecipeDetail({ recipe }: { recipe: CoachingPlanDraft['recipes'][number]
   return (
     <div>
       {(recipe.clientServing.trim() || recipe.clientServingGrams.trim()) && (
-        <div style={{ background: 'var(--section-tint)', borderRadius: '0.75rem', padding: '0.75rem 0.875rem', marginTop: '1rem' }}>
+        <div style={{ background: 'var(--section-tint)', borderRadius: '0.75rem', padding: '0.75rem 0.875rem', marginTop: '0.5rem' }}>
           <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 700, color: '#3F6936', marginBottom: '0.125rem' }}>
             {isFamily ? 'YOUR PORTION (family recipe)' : 'YOUR PORTION'}
           </p>

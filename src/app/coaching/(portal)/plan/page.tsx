@@ -331,15 +331,21 @@ function RecipeDetail({ recipe }: { recipe: CoachingPlanDraft['recipes'][number]
           {(() => {
             const fraction = portionFraction(recipe.clientServingMultiplier)
             if (!fraction) return null
+            const grams = recipe.clientServingGrams.trim()
+            const serving = fraction.qualifier
+              ? `a ${fraction.qualifier} ${fraction.label}`
+              : `about ${fraction.label}`
             return (
               <p style={{
                 fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-secondary)',
                 marginTop: '0.625rem', paddingTop: '0.625rem', borderTop: '1px solid rgba(200,220,192,0.6)',
               }}>
                 <span style={{ fontWeight: 700, color: '#3F6936' }}>No scale? </span>
-                {fraction === 'the whole recipe'
+                {fraction.label === 'the whole recipe'
                   ? 'This whole recipe is your portion — enjoy all of it.'
-                  : `Cook the full recipe, then serve yourself about ${fraction} of it.`}
+                  : `Cook the full recipe, then serve yourself ${serving} of it${
+                      fraction.qualifier === 'generous' ? ' — a little over is right' : fraction.qualifier === 'scant' ? ' — a little under is right' : ''
+                    }.${grams ? ` That matches your ${withGrams(grams)} portion, so your macros stay on track.` : ''}`}
               </p>
             )
           })()}

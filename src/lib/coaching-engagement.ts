@@ -110,18 +110,29 @@ const FRACTIONS: [number, string][] = [
   [2 / 5, '⅖'], [3 / 8, '⅜'], [1 / 3, '⅓'], [1 / 4, '¼'], [1 / 5, '⅕'], [1 / 6, '⅙'], [1 / 8, '⅛'],
 ]
 
+export type PortionFraction = { label: string; qualifier: 'generous' | 'scant' | null }
+
 /**
  * The client's portion as an easy fraction of the cooked dish ("¼", "half"),
- * for nights she doesn't want to weigh food. Null when the multiplier isn't
- * close to a kitchen-friendly fraction.
+ * for nights she doesn't want to weigh food. The fraction must stay close to
+ * her true serving multiplier so the no-scale portion still hits her macros:
+ * within 3% reads as exact; up to 12% off gets a "generous"/"scant" steer;
+ * anything further from a kitchen fraction shows nothing.
  */
-export function portionFraction(multiplierValue: string): string | null {
+export function portionFraction(multiplierValue: string): PortionFraction | null {
   const multiplier = parseFloat(multiplierValue)
   if (!Number.isFinite(multiplier) || multiplier <= 0 || multiplier > 1.02) return null
+  let best: { label: string; deviation: number } | null = null
   for (const [value, label] of FRACTIONS) {
-    if (Math.abs(multiplier - value) / value <= 0.08) return label
+    const deviation = (multiplier - value) / value
+    if (!best || Math.abs(deviation) < Math.abs(best.deviation)) best = { label, deviation }
   }
-  return null
+  if (!best || Math.abs(best.deviation) > 0.12) return null
+  if (best.label === 'the whole recipe' && Math.abs(best.deviation) > 0.03) return null
+  return {
+    label: best.label,
+    qualifier: Math.abs(best.deviation) <= 0.03 ? null : best.deviation > 0 ? 'generous' : 'scant',
+  }
 }
 
 /** True when a stored portion string is clean enough to show a client. */

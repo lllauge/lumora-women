@@ -40,14 +40,17 @@ export default async function CoachingPlanPage() {
   const todayWins = todayLogs.find((l) => l.log_date === today)?.wins ?? {}
 
   const secondaryTargets = [
-    t.protein.trim() && { label: 'Protein', value: withGrams(t.protein), winKey: 'protein' },
-    t.carbs.trim() && { label: 'Carbs', value: withGrams(t.carbs) },
-    t.fats.trim() && { label: 'Fats', value: withGrams(t.fats) },
-    t.fiber.trim() && { label: 'Fiber', value: withGrams(t.fiber) },
     t.water.trim() && { label: 'Water', value: t.water.trim(), winKey: 'water' },
     t.steps.trim() && { label: 'Steps', value: t.steps.trim(), winKey: 'steps' },
     t.workoutTarget.trim() && { label: 'Movement', value: t.workoutTarget.trim(), winKey: 'workout' },
   ].filter(Boolean) as { label: string; value: string; winKey?: string }[]
+
+  const macros = [
+    t.protein.trim() && { label: 'Protein', value: withGrams(t.protein) },
+    t.carbs.trim() && { label: 'Carbs', value: withGrams(t.carbs) },
+    t.fats.trim() && { label: 'Fats', value: withGrams(t.fats) },
+    t.fiber.trim() && { label: 'Fiber', value: withGrams(t.fiber) },
+  ].filter(Boolean) as { label: string; value: string }[]
 
   return (
     <div>
@@ -73,7 +76,7 @@ export default async function CoachingPlanPage() {
           <SectionHeader
             icon={<Leaf style={headerIcon} aria-hidden="true" />}
             title="Your Daily Targets"
-            subtitle="The numbers your week is built around."
+            subtitle="Your everyday habits — check them off on the Today tab."
           />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '0.625rem' }}>
             {t.calories.trim() && (
@@ -132,6 +135,23 @@ export default async function CoachingPlanPage() {
           />
           <div className="portal-card">
             <div className="portal-gold-line" aria-hidden="true" />
+            {macros.length > 0 && (
+              <div style={{
+                display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.375rem 1.25rem',
+                background: 'var(--section-tint)', padding: '0.75rem 1.25rem',
+                borderBottom: '1px solid rgba(200,220,192,0.3)',
+              }}>
+                <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 700, color: '#3F6936' }}>
+                  YOUR DAILY MACROS
+                </span>
+                {macros.map((macro) => (
+                  <span key={macro.label} style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-primary)' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>{macro.label} </span>
+                    <span style={{ fontWeight: 700 }}>{macro.value}</span>
+                  </span>
+                ))}
+              </div>
+            )}
             {plan.mealPlan.map((day, i) => (
               <details key={i} className="portal-details" open={i === todayIdx} style={{ borderTop: i === 0 ? 'none' : '1px solid rgba(200,220,192,0.3)' }}>
                 <summary style={{

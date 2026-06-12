@@ -4,7 +4,7 @@ import { Flame, Target, ChevronRight } from 'lucide-react'
 import {
   getPortalContext, getDailyLogs, habitsFromPlan, currentStreak,
   weekConsistency, coachingToday, coachingWeekday, planWeekNumber, todayMealDayIndex,
-  displayRecipeName,
+  displayRecipeName, cleanMealDescription, portionSummaryLine,
 } from '@/lib/coaching-engagement'
 import DailyWins from '@/components/coaching/DailyWins'
 import type { CoachingPlanDraft } from '@/lib/coaching-plan-schema'
@@ -30,6 +30,10 @@ export default async function CoachingTodayPage() {
   const recipeAnchor = (recipeName: string) => {
     const idx = plan.recipes.findIndex((r) => r.name === recipeName)
     return idx >= 0 ? `/coaching/plan#recipe-${idx}` : '/coaching/plan'
+  }
+  const weighOutFor = (recipeName: string) => {
+    const recipe = recipeName.trim() ? plan.recipes.find((r) => r.name === recipeName) : undefined
+    return recipe ? portionSummaryLine(recipe) : undefined
   }
 
   return (
@@ -84,11 +88,11 @@ export default async function CoachingTodayPage() {
           </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
-            <MealCard slot="Breakfast" meal={mealDay.breakfast} anchor={recipeAnchor} />
-            <MealCard slot="Lunch" meal={mealDay.lunch} anchor={recipeAnchor} />
-            <MealCard slot="Dinner" meal={mealDay.dinner} anchor={recipeAnchor} />
+            <MealCard slot="Breakfast" meal={mealDay.breakfast} anchor={recipeAnchor} weighOut={weighOutFor(mealDay.breakfast.recipeName)} />
+            <MealCard slot="Lunch" meal={mealDay.lunch} anchor={recipeAnchor} weighOut={weighOutFor(mealDay.lunch.recipeName)} />
+            <MealCard slot="Dinner" meal={mealDay.dinner} anchor={recipeAnchor} weighOut={weighOutFor(mealDay.dinner.recipeName)} />
             {mealDay.snacks.map((snack, i) => (
-              <MealCard key={i} slot={mealDay.snacks.length > 1 ? `Snack ${i + 1}` : 'Snack'} meal={snack} anchor={recipeAnchor} />
+              <MealCard key={i} slot={mealDay.snacks.length > 1 ? `Snack ${i + 1}` : 'Snack'} meal={snack} anchor={recipeAnchor} weighOut={weighOutFor(snack.recipeName)} />
             ))}
             {mealDay.notes.trim() && (
               <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-muted)', padding: '0 0.25rem' }}>
@@ -103,13 +107,15 @@ export default async function CoachingTodayPage() {
 }
 
 function MealCard({
-  slot, meal, anchor,
+  slot, meal, anchor, weighOut,
 }: {
   slot: string
   meal: MealEntry
   anchor: (recipeName: string) => string
+  weighOut?: string
 }) {
   if (!meal.name.trim() && !meal.description.trim()) return null
+  const description = cleanMealDescription(meal.description)
   const content = (
     <div style={{
       background: '#FFFFFF', borderRadius: '1rem', border: '1px solid rgba(200,220,192,0.35)',
@@ -120,11 +126,17 @@ function MealCard({
           {slot}{meal.macros.trim() ? ` · ${meal.macros.trim()}` : ''}
         </p>
         <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-          {displayRecipeName(meal.name) || meal.description.trim()}
+          {displayRecipeName(meal.name) || description || displayRecipeName(meal.recipeName)}
         </p>
-        {meal.name.trim() && meal.description.trim() && (
+        {meal.name.trim() && description && (
           <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-secondary)', marginTop: '0.125rem' }}>
-            {meal.description}
+            {description}
+          </p>
+        )}
+        {weighOut && (
+          <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+            <span style={{ fontWeight: 700, color: '#3F6936' }}>Your portion: </span>
+            {weighOut}
           </p>
         )}
       </div>
@@ -135,7 +147,11 @@ function MealCard({
   )
 
   return meal.recipeName.trim() ? (
-    <Link href={anchor(meal.recipeName)} aria-label={`${slot}: ${meal.name || meal.recipeName} — view recipe`} style={{ textDecoration: 'none' }}>
+    <Link
+      href={anchor(meal.recipeName)}
+      aria-label={`${slot}: ${displayRecipeName(meal.name) || displayRecipeName(meal.recipeName)} — view recipe`}
+      style={{ textDecoration: 'none' }}
+    >
       {content}
     </Link>
   ) : content

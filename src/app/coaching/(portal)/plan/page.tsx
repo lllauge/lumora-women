@@ -4,6 +4,7 @@ import { Leaf, ShoppingBasket, UtensilsCrossed, CalendarDays, ChevronDown, Check
 import {
   getPortalContext, todayMealDayIndex, clientVisibleRecipes, withGrams, displayRecipeName,
   getDailyLogs, coachingToday, cleanIngredientText, clientPortionLines, isClientReadable, portionFraction,
+  cleanMealDescription, portionSummaryLine,
 } from '@/lib/coaching-engagement'
 import GroceryChecklist from '@/components/coaching/GroceryChecklist'
 import type { CoachingPlanDraft } from '@/lib/coaching-plan-schema'
@@ -171,7 +172,7 @@ export default async function CoachingPlanPage() {
                   </span>
                 </summary>
                 <div style={{ padding: '0.25rem 1.25rem 1rem' }}>
-                  <DayMeals day={day} />
+                  <DayMeals day={day} recipes={plan.recipes} />
                 </div>
               </details>
             ))}
@@ -244,7 +245,7 @@ export default async function CoachingPlanPage() {
   )
 }
 
-function DayMeals({ day }: { day: CoachingPlanDraft['mealPlan'][number] }) {
+function DayMeals({ day, recipes }: { day: CoachingPlanDraft['mealPlan'][number]; recipes: CoachingPlanDraft['recipes'] }) {
   const rows = [
     { slot: 'Breakfast', meal: day.breakfast },
     { slot: 'Lunch', meal: day.lunch },
@@ -254,21 +255,34 @@ function DayMeals({ day }: { day: CoachingPlanDraft['mealPlan'][number] }) {
 
   return (
     <div>
-      {rows.map((row, i) => (
-        <div key={i} style={{ padding: '0.75rem 0', borderTop: i === 0 ? 'none' : '1px solid rgba(200,220,192,0.25)' }}>
-          <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 600, color: '#3F6936', marginBottom: '0.125rem' }}>
-            {row.slot}{row.meal.macros.trim() ? ` · ${row.meal.macros.trim()}` : ''}
-          </p>
-          <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-            {displayRecipeName(row.meal.name) || row.meal.description.trim()}
-          </p>
-          {row.meal.name.trim() && row.meal.description.trim() && (
-            <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-secondary)', marginTop: '0.125rem' }}>
-              {row.meal.description}
+      {rows.map((row, i) => {
+        const recipe = row.meal.recipeName.trim()
+          ? recipes.find((r) => r.name === row.meal.recipeName)
+          : undefined
+        const weighOut = recipe ? portionSummaryLine(recipe) : ''
+        const description = cleanMealDescription(row.meal.description)
+        return (
+          <div key={i} style={{ padding: '0.75rem 0', borderTop: i === 0 ? 'none' : '1px solid rgba(200,220,192,0.25)' }}>
+            <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 600, color: '#3F6936', marginBottom: '0.125rem' }}>
+              {row.slot}{row.meal.macros.trim() ? ` · ${row.meal.macros.trim()}` : ''}
             </p>
-          )}
-        </div>
-      ))}
+            <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+              {displayRecipeName(row.meal.name) || description || displayRecipeName(row.meal.recipeName)}
+            </p>
+            {row.meal.name.trim() && description && (
+              <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-secondary)', marginTop: '0.125rem' }}>
+                {description}
+              </p>
+            )}
+            {weighOut && (
+              <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                <span style={{ fontWeight: 700, color: '#3F6936' }}>Your portion: </span>
+                {weighOut}
+              </p>
+            )}
+          </div>
+        )
+      })}
       {day.notes.trim() && (
         <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-muted)', paddingTop: '0.5rem' }}>
           {day.notes}

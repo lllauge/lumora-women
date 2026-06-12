@@ -62,9 +62,35 @@ export function weekDates(isoDate: string): string[] {
   return Array.from({ length: 7 }, (_, i) => shiftDate(monday, i))
 }
 
-/** Hide the editor's internal slot suffix ("Custom breakfast (d1-breakfast)" → "Custom breakfast"). */
+/**
+ * Hide the editor's internal slot suffix ("Custom breakfast (d1-breakfast)" →
+ * "Custom breakfast"). Saved plans can accumulate the suffix more than once,
+ * so strip repeatedly.
+ */
 export function displayRecipeName(name: string): string {
-  return name.replace(/\s*\(d\d+-(?:breakfast|lunch|dinner|snack\d*)\)\s*$/i, '').trim() || name.trim()
+  const suffix = /\s*\(d\d+-(?:breakfast|lunch|dinner|snack\d*)\)\s*$/i
+  let cleaned = name.trim()
+  while (suffix.test(cleaned)) cleaned = cleaned.replace(suffix, '').trim()
+  return cleaned || name.trim()
+}
+
+/**
+ * Meal descriptions written by the plan editor for the coach ("Client
+ * portion: 250g. Plate by the ingredient weights below…") are hidden from
+ * clients; real food descriptions pass through.
+ */
+export function cleanMealDescription(value: string): string {
+  const v = value.trim()
+  if (!v) return ''
+  if (/\[fdc:|details:|client portion:|plate by the ingredient|total client serving/i.test(v)) return ''
+  return v
+}
+
+/** Compact one-line weigh-out summary: "50g sweet potato · 150g egg". */
+export function portionSummaryLine(recipe: CoachingPlanDraft['recipes'][number]): string {
+  const lines = clientPortionLines(recipe).filter((line) => line.grams !== null)
+  if (lines.length === 0) return ''
+  return lines.map((line) => `${line.grams}g ${line.name}`).join(' · ')
 }
 
 const FDC_TOKEN = /\[fdc:\d+\]\s*/gi

@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { Leaf, ShoppingBasket, UtensilsCrossed, CalendarDays, ChevronDown, Check } from 'lucide-react'
 import {
   getPortalContext, todayMealDayIndex, clientVisibleRecipes, withGrams, displayRecipeName,
-  getDailyLogs, coachingToday,
+  getDailyLogs, coachingToday, cleanIngredientText, clientPortionLines, isClientReadable,
 } from '@/lib/coaching-engagement'
 import GroceryChecklist from '@/components/coaching/GroceryChecklist'
 import type { CoachingPlanDraft } from '@/lib/coaching-plan-schema'
@@ -287,23 +287,46 @@ function RecipeDetail({ recipe }: { recipe: CoachingPlanDraft['recipes'][number]
     fontFamily: 'var(--font-sans)', fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.6,
   }
   const isFamily = Number(recipe.familyServings) > 1
+  const portionLines = clientPortionLines(recipe).filter((line) => line.grams !== null)
+  const headline = [
+    recipe.clientServingGrams.trim() && withGrams(recipe.clientServingGrams),
+    isClientReadable(recipe.clientServingMeasure) && recipe.clientServingMeasure.trim(),
+    isClientReadable(recipe.clientServing) && cleanIngredientText(recipe.clientServing),
+  ].filter(Boolean) as string[]
 
   return (
     <div>
-      {(recipe.clientServing.trim() || recipe.clientServingGrams.trim()) && (
+      {(headline.length > 0 || portionLines.length > 0) && (
         <div style={{ background: 'var(--section-tint)', borderRadius: '0.75rem', padding: '0.75rem 0.875rem', marginTop: '0.5rem' }}>
           <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 700, color: '#3F6936', marginBottom: '0.125rem' }}>
             {isFamily ? 'YOUR PORTION (family recipe)' : 'YOUR PORTION'}
           </p>
-          <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-            {[
-              recipe.clientServing.trim(),
-              recipe.clientServingGrams.trim() && `${recipe.clientServingGrams.trim()}g`,
-              recipe.clientServingMeasure.trim(),
-            ].filter(Boolean).join(' · ')}
-          </p>
-          {recipe.clientServingBreakdown.trim() && (
-            <p style={{ ...bodyText, fontSize: '0.8125rem', marginTop: '0.25rem' }}>{recipe.clientServingBreakdown}</p>
+          {headline.length > 0 && (
+            <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+              {headline.join(' · ')}
+            </p>
+          )}
+          {portionLines.length > 0 && (
+            <div style={{ marginTop: '0.5rem' }}>
+              <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
+                Weigh out your serving:
+              </p>
+              <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                {portionLines.map((line, i) => (
+                  <li key={i} style={{ display: 'flex', gap: '0.625rem', alignItems: 'baseline', padding: '0.1875rem 0' }}>
+                    <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-primary)', minWidth: '3.25rem', textAlign: 'right' }}>
+                      {line.grams}g
+                    </span>
+                    <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                      {line.name}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {isClientReadable(recipe.clientServingBreakdown) && (
+            <p style={{ ...bodyText, fontSize: '0.8125rem', marginTop: '0.375rem' }}>{cleanIngredientText(recipe.clientServingBreakdown)}</p>
           )}
         </div>
       )}
@@ -325,10 +348,10 @@ function RecipeDetail({ recipe }: { recipe: CoachingPlanDraft['recipes'][number]
 
       {recipe.ingredients.length > 0 && (
         <>
-          <h3 style={sectionTitle}>Ingredients</h3>
+          <h3 style={sectionTitle}>{isFamily ? 'Ingredients (full family recipe)' : 'Ingredients'}</h3>
           <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
             {recipe.ingredients.map((ing, i) => (
-              <li key={i} style={{ ...bodyText, marginBottom: '0.25rem' }}>{ing}</li>
+              <li key={i} style={{ ...bodyText, marginBottom: '0.25rem' }}>{cleanIngredientText(ing)}</li>
             ))}
           </ul>
         </>

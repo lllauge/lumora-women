@@ -67,6 +67,50 @@ export function displayRecipeName(name: string): string {
   return name.replace(/\s*\(d\d+-(?:breakfast|lunch|dinner|snack\d*)\)\s*$/i, '').trim() || name.trim()
 }
 
+const FDC_TOKEN = /\[fdc:\d+\]\s*/gi
+
+/** Strip internal food-database tokens and collapse whitespace for client display. */
+export function cleanIngredientText(value: string): string {
+  return value.replace(FDC_TOKEN, '').replace(/\s+/g, ' ').trim()
+}
+
+/** Leading gram amount of an ingredient line ("50g Sweet potato…" → 50). */
+export function ingredientGrams(value: string): number | null {
+  const match = cleanIngredientText(value).match(/^(\d+(?:\.\d+)?)\s*g\b/i)
+  return match ? parseFloat(match[1]) : null
+}
+
+/** Ingredient name without the leading amount, trimmed to its first two comma segments. */
+export function shortIngredientName(value: string): string {
+  const withoutAmount = cleanIngredientText(value).replace(/^[\d.]+\s*(?:g|oz|lb|cups?|tbsp|tsp)\b\.?\s*/i, '')
+  const segments = withoutAmount.split(',').map((s) => s.trim()).filter(Boolean)
+  return segments.slice(0, 2).join(', ') || cleanIngredientText(value)
+}
+
+export type PortionLine = { grams: number | null; name: string }
+
+/**
+ * Per-ingredient weigh-out list for the client's portion: full-recipe gram
+ * amounts scaled by her serving multiplier (family recipes get her carved
+ * portion; individual recipes are eaten as entered, multiplier 1).
+ */
+export function clientPortionLines(recipe: CoachingPlanDraft['recipes'][number]): PortionLine[] {
+  const multiplier = parseFloat(recipe.clientServingMultiplier)
+  const factor = Number.isFinite(multiplier) && multiplier > 0 ? multiplier : 1
+  return recipe.ingredients
+    .map((ing) => {
+      const grams = ingredientGrams(ing)
+      return { grams: grams !== null ? Math.round(grams * factor) : null, name: shortIngredientName(ing) }
+    })
+    .filter((line) => line.name)
+}
+
+/** True when a stored portion string is clean enough to show a client. */
+export function isClientReadable(value: string): boolean {
+  const v = value.trim()
+  return v.length > 0 && v.length <= 90 && !/\[fdc:/i.test(v) && !/details:/i.test(v)
+}
+
 /** "130" → "130g", but "130g" stays "130g" — values may already carry a unit. */
 export function withGrams(value: string): string {
   const trimmed = value.trim()

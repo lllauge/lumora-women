@@ -37,7 +37,9 @@ export default function CheckInForm({ due }: { due: boolean }) {
   }
 
   return (
-    <div style={{ background: 'var(--section-tint)', borderRadius: '1rem', padding: '1rem 1.125rem' }}>
+    <div className="portal-card">
+    <div className="portal-gold-line" aria-hidden="true" />
+    <div style={{ padding: '1rem 1.125rem' }}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -111,6 +113,7 @@ export default function CheckInForm({ due }: { due: boolean }) {
           </button>
         </form>
       )}
+    </div>
     </div>
   )
 }

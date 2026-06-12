@@ -155,16 +155,21 @@ export default async function CoachingProgressPage() {
         </h2>
 
         {weights.length < 2 && recentLogs.length === 0 ? (
-          <div style={{ background: '#FFFFFF', borderRadius: '1rem', border: '1px solid rgba(200,220,192,0.35)', padding: '1.5rem', textAlign: 'center' }}>
-            <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-              Your trend will appear here after your first couple of check-ins.
-            </p>
-            <Link href="/coaching/coach" className="btn-primary" style={{ borderRadius: '0.5rem', padding: '0.625rem 1.25rem', display: 'inline-block' }}>
-              Do your first check-in
-            </Link>
+          <div className="portal-card" style={{ textAlign: 'center' }}>
+            <div className="portal-gold-line" aria-hidden="true" />
+            <div style={{ padding: '1.5rem' }}>
+              <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                Your trend will appear here after your first couple of check-ins.
+              </p>
+              <Link href="/coaching/coach" className="btn-primary" style={{ borderRadius: '0.5rem', padding: '0.625rem 1.25rem', display: 'inline-block' }}>
+                Do your first check-in
+              </Link>
+            </div>
           </div>
         ) : (
-          <div style={{ background: '#FFFFFF', borderRadius: '1rem', border: '1px solid rgba(200,220,192,0.35)', padding: '1.125rem 1.25rem' }}>
+          <div className="portal-card">
+            <div className="portal-gold-line" aria-hidden="true" />
+            <div style={{ padding: '1.125rem 1.25rem' }}>
             {weightChange !== null && (
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                 <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Weight</span>
@@ -191,6 +196,7 @@ export default async function CoachingProgressPage() {
                 ))}
               </div>
             )}
+            </div>
           </div>
         )}
       </section>

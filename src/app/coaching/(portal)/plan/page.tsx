@@ -1,6 +1,10 @@
 import type { Metadata } from 'next'
-import { Leaf, ShoppingBasket, UtensilsCrossed, CalendarDays, ChevronDown } from 'lucide-react'
-import { getPortalContext, todayMealDayIndex, clientVisibleRecipes, withGrams, displayRecipeName } from '@/lib/coaching-engagement'
+import Link from 'next/link'
+import { Leaf, ShoppingBasket, UtensilsCrossed, CalendarDays, ChevronDown, Check } from 'lucide-react'
+import {
+  getPortalContext, todayMealDayIndex, clientVisibleRecipes, withGrams, displayRecipeName,
+  getDailyLogs, coachingToday,
+} from '@/lib/coaching-engagement'
 import GroceryChecklist from '@/components/coaching/GroceryChecklist'
 import type { CoachingPlanDraft } from '@/lib/coaching-plan-schema'
 
@@ -31,16 +35,19 @@ export default async function CoachingPlanPage() {
   const t = plan.macroTargets
   const todayIdx = todayMealDayIndex(plan)
   const visibleRecipes = clientVisibleRecipes(plan)
+  const today = coachingToday()
+  const todayLogs = await getDailyLogs(client.id, 7)
+  const todayWins = todayLogs.find((l) => l.log_date === today)?.wins ?? {}
 
   const secondaryTargets = [
-    t.protein.trim() && { label: 'Protein', value: withGrams(t.protein) },
+    t.protein.trim() && { label: 'Protein', value: withGrams(t.protein), winKey: 'protein' },
     t.carbs.trim() && { label: 'Carbs', value: withGrams(t.carbs) },
     t.fats.trim() && { label: 'Fats', value: withGrams(t.fats) },
     t.fiber.trim() && { label: 'Fiber', value: withGrams(t.fiber) },
-    t.water.trim() && { label: 'Water', value: t.water.trim() },
-    t.steps.trim() && { label: 'Steps', value: t.steps.trim() },
-    t.workoutTarget.trim() && { label: 'Movement', value: t.workoutTarget.trim() },
-  ].filter(Boolean) as { label: string; value: string }[]
+    t.water.trim() && { label: 'Water', value: t.water.trim(), winKey: 'water' },
+    t.steps.trim() && { label: 'Steps', value: t.steps.trim(), winKey: 'steps' },
+    t.workoutTarget.trim() && { label: 'Movement', value: t.workoutTarget.trim(), winKey: 'workout' },
+  ].filter(Boolean) as { label: string; value: string; winKey?: string }[]
 
   return (
     <div>
@@ -75,14 +82,42 @@ export default async function CoachingPlanPage() {
                 <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>{t.calories.trim()}</p>
               </div>
             )}
-            {secondaryTargets.map((target) => (
-              <div key={target.label} style={{ background: 'var(--section-tint)', borderRadius: '0.875rem', padding: '0.875rem 1rem' }}>
-                <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 600, color: '#3F6936', marginBottom: '0.125rem' }}>{target.label}</p>
-                <p style={{ fontFamily: 'var(--font-display)', fontSize: target.value.length > 10 ? '0.9375rem' : '1.25rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3, overflowWrap: 'anywhere' }}>
-                  {target.value}
-                </p>
-              </div>
-            ))}
+            {secondaryTargets.map((target) => {
+              const doneToday = !!(target.winKey && todayWins[target.winKey])
+              const card = (
+                <div style={{ background: 'var(--section-tint)', borderRadius: '0.875rem', padding: '0.875rem 1rem', height: '100%' }}>
+                  <p style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.375rem', fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 600, color: '#3F6936', marginBottom: '0.125rem' }}>
+                    {target.label}
+                    {doneToday && (
+                      <span
+                        aria-label="done today"
+                        style={{
+                          width: '1.125rem', height: '1.125rem', borderRadius: '50%', flexShrink: 0,
+                          background: 'var(--botanical-green)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}
+                      >
+                        <Check style={{ width: '0.6875rem', height: '0.6875rem', color: '#FFFFFF' }} aria-hidden="true" />
+                      </span>
+                    )}
+                  </p>
+                  <p style={{ fontFamily: 'var(--font-display)', fontSize: target.value.length > 10 ? '0.9375rem' : '1.25rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3, overflowWrap: 'anywhere' }}>
+                    {target.value}
+                  </p>
+                </div>
+              )
+              return target.winKey ? (
+                <Link
+                  key={target.label}
+                  href="/coaching/today"
+                  aria-label={`${target.label} target ${target.value}${doneToday ? ' — done today' : ''} — open Today's wins`}
+                  style={{ textDecoration: 'none' }}
+                >
+                  {card}
+                </Link>
+              ) : (
+                <div key={target.label}>{card}</div>
+              )
+            })}
           </div>
         </section>
       )}

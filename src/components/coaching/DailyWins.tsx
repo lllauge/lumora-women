@@ -44,7 +44,9 @@ export default function DailyWins({
         </span>
       </div>
 
-      <ul style={{ listStyle: 'none', margin: 0, padding: 0, background: '#FFFFFF', borderRadius: '1rem', border: '1px solid rgba(200,220,192,0.35)', overflow: 'hidden' }}>
+      <div className="portal-card">
+      <div className="portal-gold-line" aria-hidden="true" />
+      <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
         {habits.map((habit, i) => {
           const done = !!wins[habit.key]
           return (
@@ -84,6 +86,7 @@ export default function DailyWins({
           )
         })}
       </ul>
+      </div>
 
       {error && (
         <p role="alert" style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: '#A32D2D', marginTop: '0.5rem' }}>

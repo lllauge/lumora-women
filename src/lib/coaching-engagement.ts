@@ -105,6 +105,25 @@ export function clientPortionLines(recipe: CoachingPlanDraft['recipes'][number])
     .filter((line) => line.name)
 }
 
+const FRACTIONS: [number, string][] = [
+  [1, 'the whole recipe'], [3 / 4, '¾'], [2 / 3, '⅔'], [3 / 5, '⅗'], [1 / 2, 'half'],
+  [2 / 5, '⅖'], [3 / 8, '⅜'], [1 / 3, '⅓'], [1 / 4, '¼'], [1 / 5, '⅕'], [1 / 6, '⅙'], [1 / 8, '⅛'],
+]
+
+/**
+ * The client's portion as an easy fraction of the cooked dish ("¼", "half"),
+ * for nights she doesn't want to weigh food. Null when the multiplier isn't
+ * close to a kitchen-friendly fraction.
+ */
+export function portionFraction(multiplierValue: string): string | null {
+  const multiplier = parseFloat(multiplierValue)
+  if (!Number.isFinite(multiplier) || multiplier <= 0 || multiplier > 1.02) return null
+  for (const [value, label] of FRACTIONS) {
+    if (Math.abs(multiplier - value) / value <= 0.08) return label
+  }
+  return null
+}
+
 /** True when a stored portion string is clean enough to show a client. */
 export function isClientReadable(value: string): boolean {
   const v = value.trim()

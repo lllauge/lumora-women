@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { Leaf, ShoppingBasket, UtensilsCrossed, CalendarDays, ChevronDown, Check } from 'lucide-react'
 import {
   getPortalContext, todayMealDayIndex, clientVisibleRecipes, withGrams, displayRecipeName,
-  getDailyLogs, coachingToday, cleanIngredientText, clientPortionLines, isClientReadable,
+  getDailyLogs, coachingToday, cleanIngredientText, clientPortionLines, isClientReadable, portionFraction,
 } from '@/lib/coaching-engagement'
 import GroceryChecklist from '@/components/coaching/GroceryChecklist'
 import type { CoachingPlanDraft } from '@/lib/coaching-plan-schema'
@@ -328,6 +328,21 @@ function RecipeDetail({ recipe }: { recipe: CoachingPlanDraft['recipes'][number]
           {isClientReadable(recipe.clientServingBreakdown) && (
             <p style={{ ...bodyText, fontSize: '0.8125rem', marginTop: '0.375rem' }}>{cleanIngredientText(recipe.clientServingBreakdown)}</p>
           )}
+          {(() => {
+            const fraction = portionFraction(recipe.clientServingMultiplier)
+            if (!fraction) return null
+            return (
+              <p style={{
+                fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-secondary)',
+                marginTop: '0.625rem', paddingTop: '0.625rem', borderTop: '1px solid rgba(200,220,192,0.6)',
+              }}>
+                <span style={{ fontWeight: 700, color: '#3F6936' }}>No scale? </span>
+                {fraction === 'the whole recipe'
+                  ? 'This whole recipe is your portion — enjoy all of it.'
+                  : `Cook the full recipe, then serve yourself about ${fraction} of it.`}
+              </p>
+            )
+          })()}
         </div>
       )}
 

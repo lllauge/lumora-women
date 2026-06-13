@@ -86,11 +86,20 @@ export function cleanMealDescription(value: string): string {
   return v
 }
 
-/** Compact one-line weigh-out summary: "50g sweet potato · 150g egg". */
+/** Compact one-line weigh-out summary: "3 large eggs · 50g sweet potato (cooked)". */
 export function portionSummaryLine(recipe: CoachingPlanDraft['recipes'][number]): string {
-  const lines = clientPortionLines(recipe).filter((line) => line.grams !== null)
+  const lines = clientPortionLines(recipe).filter((line) => line.grams !== null || line.count)
   if (lines.length === 0) return ''
-  return lines.map((line) => `${line.grams}g ${line.name}`).join(' · ')
+  return lines.map((line) => {
+    if (line.count) {
+      const n = parseInt(line.count, 10)
+      const foodName = /egg/i.test(line.name) ? (n > 1 ? 'eggs' : 'egg') : line.name.split(',')[0].trim()
+      return `${line.count} ${foodName}`
+    }
+    const nameMentionsState = COOKED_WORDS.test(line.name) || RAW_WORDS.test(line.name)
+    const stateSuffix = nameMentionsState ? '' : line.state === 'raw' ? ' (raw)' : line.state === 'cooked' ? ' (cooked)' : ''
+    return `${line.grams}g ${line.name}${stateSuffix}`
+  }).join(' · ')
 }
 
 const FDC_TOKEN = /\[fdc:\d+\]\s*/gi
@@ -113,12 +122,34 @@ export function shortIngredientName(value: string): string {
   return segments.slice(0, 2).join(', ') || cleanIngredientText(value)
 }
 
-export type PortionLine = { grams: number | null; name: string }
+const COOKED_WORDS = /\b(cooked|baked|roasted|grilled|poached|boiled|steamed|toasted|saut[eé]ed|scrambled|fried)\b/i
+const RAW_WORDS = /\b(raw|uncooked|dry|dried)\b/i
+
+/** Whether the entry's weight refers to the food cooked or raw (from the USDA name). */
+export function ingredientWeighState(value: string): 'cooked' | 'raw' | null {
+  const v = cleanIngredientText(value)
+  if (COOKED_WORDS.test(v)) return 'cooked'
+  if (RAW_WORDS.test(v)) return 'raw'
+  return null
+}
+
+function ingredientCount(value: string): { n: number; unit: string } | null {
+  const match = cleanIngredientText(value).match(/\((\d+(?:\.\d+)?)\s*(extra-?large|large|medium|small)?\s*\)/i)
+  return match ? { n: parseFloat(match[1]), unit: match[2]?.toLowerCase() ?? '' } : null
+}
+
+export type PortionLine = {
+  grams: number | null
+  name: string
+  state: 'cooked' | 'raw' | null
+  count: string | null
+}
 
 /**
  * Per-ingredient weigh-out list for the client's portion: full-recipe gram
  * amounts scaled by her serving multiplier (family recipes get her carved
- * portion; individual recipes are eaten as entered, multiplier 1).
+ * portion; individual recipes are eaten as entered, multiplier 1). Counts
+ * like "(3 large)" carry through when they scale to a whole number.
  */
 export function clientPortionLines(recipe: CoachingPlanDraft['recipes'][number]): PortionLine[] {
   const multiplier = parseFloat(recipe.clientServingMultiplier)
@@ -126,9 +157,38 @@ export function clientPortionLines(recipe: CoachingPlanDraft['recipes'][number])
   return recipe.ingredients
     .map((ing) => {
       const grams = ingredientGrams(ing)
-      return { grams: grams !== null ? Math.round(grams * factor) : null, name: shortIngredientName(ing) }
+      const rawCount = ingredientCount(ing)
+      let count: string | null = null
+      if (rawCount) {
+        const scaled = rawCount.n * factor
+        if (Math.abs(scaled - Math.round(scaled)) < 0.01 && Math.round(scaled) >= 1) {
+          count = `${Math.round(scaled)}${rawCount.unit ? ` ${rawCount.unit}` : ''}`
+        }
+      }
+      return {
+        grams: grams !== null ? Math.round(grams * factor) : null,
+        name: shortIngredientName(ing),
+        state: ingredientWeighState(ing),
+        count,
+      }
     })
     .filter((line) => line.name)
+}
+
+/**
+ * Grocery items stay in raw shopping amounts; gram-led lines get a friendly
+ * pounds/ounces equivalent appended ("Chicken breast, raw — 680g (about 1.5 lb)").
+ */
+export function groceryDisplay(item: string): string {
+  const cleaned = cleanIngredientText(item)
+  const match = cleaned.match(/^(\d+(?:\.\d+)?)\s*g\b\s*(.+)$/i)
+  if (!match) return cleaned
+  const grams = parseFloat(match[1])
+  if (!Number.isFinite(grams) || grams <= 0) return cleaned
+  const friendly = grams >= 454
+    ? `${(Math.round((grams / 453.59) * 4) / 4).toFixed(2).replace(/\.?0+$/, '')} lb`
+    : `${(Math.round((grams / 28.35) * 2) / 2).toFixed(1).replace(/\.0$/, '')} oz`
+  return `${match[2].trim()} — ${Math.round(grams)}g (about ${friendly})`
 }
 
 const FRACTIONS: [number, string][] = [

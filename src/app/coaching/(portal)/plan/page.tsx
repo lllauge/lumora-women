@@ -4,7 +4,7 @@ import { Leaf, ShoppingBasket, UtensilsCrossed, CalendarDays, ChevronDown, Check
 import {
   getPortalContext, todayMealDayIndex, clientVisibleRecipes, withGrams, displayRecipeName,
   getDailyLogs, coachingToday, cleanIngredientText, clientPortionLines, isClientReadable, portionFraction,
-  cleanMealDescription, portionSummaryLine,
+  cleanMealDescription, portionSummaryLine, ingredientWeighState, groceryDisplay,
 } from '@/lib/coaching-engagement'
 import GroceryChecklist from '@/components/coaching/GroceryChecklist'
 import type { CoachingPlanDraft } from '@/lib/coaching-plan-schema'
@@ -236,7 +236,10 @@ export default async function CoachingPlanPage() {
           <div className="portal-card">
             <div className="portal-gold-line" aria-hidden="true" />
             <div style={{ padding: '1rem 1.25rem' }}>
-              <GroceryChecklist items={plan.groceryList} storageKey={`lumora-grocery-${client.id}`} />
+              <GroceryChecklist
+                items={plan.groceryList.map((item) => groceryDisplay(item))}
+                storageKey={`lumora-grocery-${client.id}`}
+              />
             </div>
           </div>
         </section>
@@ -326,17 +329,29 @@ function RecipeDetail({ recipe }: { recipe: CoachingPlanDraft['recipes'][number]
                 Weigh out your serving:
               </p>
               <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-                {portionLines.map((line, i) => (
-                  <li key={i} style={{ display: 'flex', gap: '0.625rem', alignItems: 'baseline', padding: '0.1875rem 0' }}>
-                    <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-primary)', minWidth: '3.25rem', textAlign: 'right' }}>
-                      {line.grams}g
-                    </span>
-                    <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                      {line.name}
-                    </span>
-                  </li>
-                ))}
+                {portionLines.map((line, i) => {
+                  const amount = line.count ? line.count : line.grams !== null ? `${line.grams}g` : ''
+                  return (
+                    <li key={i} style={{ display: 'flex', gap: '0.625rem', alignItems: 'baseline', padding: '0.1875rem 0' }}>
+                      <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-primary)', minWidth: '3.5rem', textAlign: 'right' }}>
+                        {amount}
+                      </span>
+                      <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                        {line.name}
+                        {!line.count && line.state === 'raw' && (
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}> · weigh raw</span>
+                        )}
+                        {!line.count && line.state === 'cooked' && (
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}> · weigh cooked</span>
+                        )}
+                      </span>
+                    </li>
+                  )
+                })}
               </ul>
+              <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem', fontStyle: 'italic' }}>
+                Tip: weigh each ingredient in the state it&apos;s listed — that&apos;s how your macros were calculated.
+              </p>
             </div>
           )}
           {isClientReadable(recipe.clientServingBreakdown) && (
@@ -383,11 +398,27 @@ function RecipeDetail({ recipe }: { recipe: CoachingPlanDraft['recipes'][number]
 
       {recipe.ingredients.length > 0 && (
         <>
-          <h3 style={sectionTitle}>{isFamily ? 'Ingredients (full family recipe)' : 'Ingredients'}</h3>
+          <h3 style={sectionTitle}>
+            {isFamily ? 'Shopping & prep (full family recipe)' : 'Shopping & prep'}
+          </h3>
+          <p style={{ ...bodyText, fontSize: '0.8125rem', fontStyle: 'italic', marginBottom: '0.5rem' }}>
+            These are the amounts to buy and prep — most items are listed raw, since that&apos;s how the recipe was built.
+          </p>
           <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
-            {recipe.ingredients.map((ing, i) => (
-              <li key={i} style={{ ...bodyText, marginBottom: '0.25rem' }}>{cleanIngredientText(ing)}</li>
-            ))}
+            {recipe.ingredients.map((ing, i) => {
+              const state = ingredientWeighState(ing)
+              return (
+                <li key={i} style={{ ...bodyText, marginBottom: '0.25rem' }}>
+                  {cleanIngredientText(ing)}
+                  {state === 'raw' && (
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}> · raw</span>
+                  )}
+                  {state === 'cooked' && (
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}> · cooked weight</span>
+                  )}
+                </li>
+              )
+            })}
           </ul>
         </>
       )}

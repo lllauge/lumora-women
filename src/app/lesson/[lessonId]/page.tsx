@@ -352,7 +352,7 @@ export default function LessonPage({
         <div style={{ padding: '1.25rem 1rem', borderBottom: '1px solid rgba(200,220,192,0.1)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Link
-              href={courseId ? `/courses/${courseId}` : '/dashboard'}
+              href="/dashboard"
               style={{
                 display: 'flex', alignItems: 'center', gap: '0.5rem',
                 textDecoration: 'none', marginBottom: '0.75rem',
@@ -362,7 +362,7 @@ export default function LessonPage({
               }}
             >
               <ChevronLeft className="w-3.5 h-3.5" aria-hidden="true" />
-              Back to course
+              My courses
             </Link>
             <button
               className="lesson-sidebar-close"

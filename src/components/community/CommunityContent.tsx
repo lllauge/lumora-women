@@ -122,23 +122,23 @@ export default function CommunityContent() {
   const perks = [
     {
       icon: <Users size={24} strokeWidth={1.5} />,
-      title: 'A Sisterhood That Gets It',
-      body: 'Connect with women navigating the same seasons, postpartum, hormones, burnout, and beyond. No judgment. Just real talk.',
+      title: 'Women on the Same Path',
+      body: 'Not a generic wellness group. A small community of women working through The Lumora Method together, learning their bodies, feeding themselves well, becoming who they are next.',
     },
     {
       icon: <MessageCircle size={24} strokeWidth={1.5} />,
-      title: 'Honest Conversations',
-      body: 'Ask the questions you\'re afraid to ask anywhere else. Our community is a judgment-free zone built on radical honesty and deep compassion.',
+      title: 'The Conversation Continues',
+      body: 'Bring your questions about hormones, meal timing, cortisol, postpartum, cravings, and energy. This is where the course keeps teaching, with women living the work alongside you.',
     },
     {
       icon: <Heart size={24} strokeWidth={1.5} />,
-      title: 'Shared Practices',
-      body: 'Weekly rituals, guided reflections, and seasonal wellness challenges to do together, because growth is sweeter when it\'s shared.',
+      title: 'Quiet Accountability',
+      body: 'Weekly check ins, seasonal resets, gentle nudges to eat, rest, and keep going. No shame, no pressure. Steady company for a long path.',
     },
     {
       icon: <Star size={24} strokeWidth={1.5} />,
-      title: 'Early Access & Perks',
-      body: 'Community members get first access to new courses, special pricing, and exclusive content from our founder and expert contributors.',
+      title: 'First Access, Always',
+      body: 'New lessons, protocols, courses, and writing from the founder land here first. Members see everything before anyone else.',
     },
   ]
 
@@ -254,7 +254,7 @@ export default function CommunityContent() {
               color: 'var(--text-primary)',
               marginBottom: '0.75rem',
             }}>
-              What You Gain by Joining
+              What&apos;s Inside the Community
             </h2>
             <div style={{ width: '4rem', height: '3px', background: 'linear-gradient(to right, #F0D060 0%, #C8980A 25%, #E8C040 50%, #A87808 75%, #D4AC30 100%)', margin: '0 auto' }} />
           </div>

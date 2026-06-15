@@ -88,6 +88,7 @@ function sanitizeCourseHtml(rawHtml: string) {
       const css = style.textContent
         ?.replace(/html\s*,\s*body/g, ':host')
         .replace(/(^|[\s{};])body(\s*[{,.#:])/g, '$1:host$2')
+        .replace(/(^|[\s{};,]):root(\s*[{,.#:])/g, '$1:host$2')
         .replace(/min-height:\s*100vh/g, 'min-height: 100%')
         .replace(/height:\s*100vh/g, 'min-height: 100%')
         ?? ''

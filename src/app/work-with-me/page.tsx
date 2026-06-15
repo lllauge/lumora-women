@@ -141,14 +141,11 @@ export default function WorkWithMePage() {
           <span style={{
               display: 'inline-block',
               fontFamily: 'var(--font-sans)',
-              fontSize: '0.6875rem',
-              fontWeight: 700,
+              fontSize: '0.75rem',
+              fontWeight: 600,
               letterSpacing: '0.2em',
               textTransform: 'uppercase' as const,
               color: '#F0D060',
-              background: 'rgba(200, 152, 10, 0.18)',
-              padding: '0.375rem 1rem',
-              borderRadius: '999px',
               marginBottom: '1.5rem',
             }}>
             Private 1:1 Mentorship

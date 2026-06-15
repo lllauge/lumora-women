@@ -13,7 +13,7 @@ const sections = [
     items: [
       {
         q: 'Where do I begin if I\'m brand new to Lumora Women?',
-        a: 'Start with our free foundational course, it\'s designed for exactly where you are right now. Head to the Start Here page for a guided roadmap that walks you through every step, from free course to community to deeper programs.',
+        a: 'Start with our free foundational course, it\'s designed for exactly where you are right now. From there, you can explore deeper paid programs, our community, and 1:1 coaching whenever you\'re ready.',
       },
       {
         q: 'Do I need to create an account to access anything?',

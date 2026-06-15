@@ -104,7 +104,7 @@ function Hero() {
                 Explore Courses
               </Link>
               <Link
-                href="/start-here"
+                href="/courses"
                 className="px-8 py-4 rounded-full text-sm transition-all duration-300"
                 style={{
                   background: 'transparent',

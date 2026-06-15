@@ -20,6 +20,7 @@ const blogPostSchema = z.object({
   body:               z.string().max(200_000).default(''),
   category:           z.string().max(120).nullable().optional().default(null),
   featured_image_url: z.string().max(2048).nullable().optional().default(null),
+  meta_description:   z.string().max(200).nullable().optional().default(null),
 }).superRefine((draft, ctx) => {
   if (!draft.slug) {
     ctx.addIssue({
@@ -130,6 +131,7 @@ export async function saveBlogPost(
     body:               sanitizeBlogHtml(draft.body ?? ''),
     category:           draft.category?.trim() || null,
     featured_image_url: draft.featured_image_url?.trim() || null,
+    meta_description:   draft.meta_description?.trim() || null,
     published,
   }
 

@@ -16,6 +16,7 @@ type BlogPost = {
   body: string | null
   category: string | null
   featured_image_url: string | null
+  meta_description: string | null
   published: boolean
   created_at: string
 }
@@ -44,7 +45,7 @@ async function loadPost(slug: string, preview: boolean): Promise<BlogPost | null
     const admin = await createAdminClient()
     const { data } = await admin
       .from('blog_posts')
-      .select('id, title, slug, body, category, featured_image_url, published, created_at')
+      .select('id, title, slug, body, category, featured_image_url, meta_description, published, created_at')
       .eq('slug', slug)
       .maybeSingle<BlogPost>()
     return data ?? null
@@ -64,11 +65,33 @@ async function loadPost(slug: string, preview: boolean): Promise<BlogPost | null
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { slug } = await params
   const post = await loadPost(slug, false)
-  if (!post) return { title: 'Blog Post | Lumora Women' }
+  if (!post) return { title: 'Blog Post' }
+
+  const description = post.meta_description?.trim()
+    || post.body?.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 155)
+    || 'A note from Lumora Women.'
+  const image = post.featured_image_url ?? undefined
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://lumorawomen.com'
+  const canonical = `${siteUrl.replace(/\/$/, '')}/blog/${post.slug}`
 
   return {
-    title: `${post.title} | Lumora Women`,
-    description: post.body?.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 155),
+    title: post.title,
+    description,
+    alternates: { canonical },
+    openGraph: {
+      type: 'article',
+      title: post.title,
+      description,
+      url: canonical,
+      siteName: 'Lumora Women',
+      images: image ? [{ url: image, alt: post.title }] : undefined,
+    },
+    twitter: {
+      card: image ? 'summary_large_image' : 'summary',
+      title: post.title,
+      description,
+      images: image ? [image] : undefined,
+    },
   }
 }
 

@@ -19,6 +19,7 @@ type BlogPostRow = {
   body: string | null
   category: string | null
   featured_image_url: string | null
+  meta_description: string | null
   published: boolean
   published_at?: string | null
   scheduled_at?: string | null
@@ -28,8 +29,8 @@ async function loadPost(postId: string, schedulingAvailable: boolean): Promise<B
   const supabase = await createClient()
 
   const columns = schedulingAvailable
-    ? 'id, title, slug, body, category, featured_image_url, published, published_at, scheduled_at'
-    : 'id, title, slug, body, category, featured_image_url, published'
+    ? 'id, title, slug, body, category, featured_image_url, meta_description, published, published_at, scheduled_at'
+    : 'id, title, slug, body, category, featured_image_url, meta_description, published'
 
   const { data, error } = await supabase
     .from('blog_posts')
@@ -46,6 +47,7 @@ async function loadPost(postId: string, schedulingAvailable: boolean): Promise<B
     body:               data.body ?? '',
     category:           data.category ?? null,
     featured_image_url: data.featured_image_url ?? null,
+    meta_description:   data.meta_description ?? null,
     published:          data.published,
     published_at:       data.published_at ?? null,
     scheduled_at:       data.scheduled_at ?? null,

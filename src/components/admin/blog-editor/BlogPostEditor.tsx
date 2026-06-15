@@ -21,6 +21,7 @@ export type BlogPostInitial = {
   body: string
   category: string | null
   featured_image_url: string | null
+  meta_description: string | null
   published: boolean
   /** May be null when v3 migration hasn't been run yet. */
   published_at: string | null
@@ -49,6 +50,7 @@ export default function BlogPostEditor({
   const [slugManuallyEdited, setSlugEdited]     = useState(!!initial.slug && mode === 'edit')
   const [category, setCategory]                 = useState(initial.category ?? '')
   const [featuredImage, setFeaturedImage]       = useState(initial.featured_image_url ?? '')
+  const [metaDescription, setMetaDescription]   = useState(initial.meta_description ?? '')
   const [body, setBody]                         = useState(initial.body)
   const [wordCount, setWordCount]               = useState(
     initial.body ? initial.body.replace(/<[^>]*>/g, ' ').split(/\s+/).filter(Boolean).length : 0
@@ -83,6 +85,7 @@ export default function BlogPostEditor({
       body,
       category: category.trim() || null,
       featured_image_url: featuredImage.trim() || null,
+      meta_description: metaDescription.trim() || null,
     }
   }
 
@@ -597,6 +600,47 @@ export default function BlogPostEditor({
               }}
             >
               Single text field today — a <code>tags</code> column can be added with a future schema migration.
+            </p>
+          </section>
+
+          {/* SEO description */}
+          <section className="admin-card p-5">
+            <p
+              className="uppercase mb-3"
+              style={{
+                fontFamily: 'var(--font-hanken)',
+                fontSize: '0.6875rem',
+                fontWeight: 700,
+                letterSpacing: '0.15em',
+                color: 'var(--admin-on-surface-variant)',
+              }}
+            >
+              SEO Description
+            </p>
+            <textarea
+              value={metaDescription}
+              onChange={(e) => setMetaDescription(e.target.value.slice(0, 200))}
+              placeholder="What shows up under your title in Google and social shares. Leave blank to auto-generate from the post."
+              rows={3}
+              maxLength={200}
+              style={{
+                width: '100%', background: 'var(--admin-surface-low)',
+                fontFamily: 'var(--font-hanken)', fontSize: '0.875rem',
+                padding: '0.625rem 0.75rem', borderRadius: '0.5rem',
+                border: '1px solid var(--admin-outline-variant)', resize: 'vertical',
+                lineHeight: 1.5,
+              }}
+            />
+            <p
+              className="mt-2"
+              style={{
+                fontFamily: 'var(--font-hanken)', fontSize: '0.7rem',
+                color: metaDescription.length > 160 ? '#A87808' : 'var(--admin-on-surface-variant)',
+                lineHeight: 1.4, display: 'flex', justifyContent: 'space-between', gap: '0.5rem',
+              }}
+            >
+              <span>Aim for 120–160 characters — Google shows about 160 in search results.</span>
+              <span style={{ fontWeight: 600, flexShrink: 0 }}>{metaDescription.length} / 200</span>
             </p>
           </section>
 

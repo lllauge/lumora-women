@@ -20,6 +20,7 @@ export default async function NewBlogPostPage() {
         body: '',
         category: null,
         featured_image_url: null,
+        meta_description: null,
         published: false,
         published_at: null,
         scheduled_at: null,

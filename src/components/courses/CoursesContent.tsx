@@ -34,7 +34,7 @@ export default function CoursesContent() {
       setNotifyStatus('ok')
       setNotifyEmail('')
     } else {
-      setNotifyError('error' in res ? res.error : 'Something went wrong.')
+      setNotifyError(('error' in res && res.error) ? res.error : 'Something went wrong.')
       setNotifyStatus('err')
     }
   }

@@ -75,10 +75,13 @@ const IFRAME_HEIGHT_SHIM = `
 `
 
 function prepareCourseHtml(rawHtml: string): string {
-  if (/<\/body>/i.test(rawHtml)) {
-    return rawHtml.replace(/<\/body>/i, `${IFRAME_HEIGHT_SHIM}</body>`)
+  const neutralized = rawHtml
+    .replace(/min-height\s*:\s*100vh/gi, 'min-height: 720px')
+    .replace(/height\s*:\s*100vh/gi, 'min-height: 720px')
+  if (/<\/body>/i.test(neutralized)) {
+    return neutralized.replace(/<\/body>/i, `${IFRAME_HEIGHT_SHIM}</body>`)
   }
-  return rawHtml + IFRAME_HEIGHT_SHIM
+  return neutralized + IFRAME_HEIGHT_SHIM
 }
 
 function HtmlEmbed({ url, title }: { url: string; title: string }) {

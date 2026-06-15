@@ -51,75 +51,41 @@ function protectedAssetUrl(url: string) {
   return `/api/course-assets?url=${encodeURIComponent(url)}`
 }
 
-function sanitizeCourseHtml(rawHtml: string) {
-  const doc = new DOMParser().parseFromString(rawHtml, 'text/html')
+const IFRAME_HEIGHT_SHIM = `
+<script>
+(function () {
+  function sendHeight() {
+    var h = Math.max(
+      document.documentElement.scrollHeight,
+      document.body ? document.body.scrollHeight : 0
+    );
+    window.parent.postMessage({ __lumoraHtmlHeight: h }, '*');
+  }
+  window.addEventListener('load', sendHeight);
+  window.addEventListener('resize', sendHeight);
+  document.addEventListener('click', function () { setTimeout(sendHeight, 50); }, true);
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(sendHeight).observe(document.documentElement);
+  } else {
+    setInterval(sendHeight, 500);
+  }
+  setTimeout(sendHeight, 0);
+})();
+</script>
+`
 
-  doc.querySelectorAll('script, iframe, object, embed, form, input, textarea, select, button, base, meta').forEach((node) => node.remove())
-
-  doc.querySelectorAll('*').forEach((node) => {
-    for (const attr of Array.from(node.attributes)) {
-      const name = attr.name.toLowerCase()
-      const value = attr.value.trim()
-
-      if (name.startsWith('on')) {
-        node.removeAttribute(attr.name)
-        continue
-      }
-
-      if ((name === 'href' || name === 'src') && /^javascript:/i.test(value)) {
-        node.removeAttribute(attr.name)
-      }
-    }
-  })
-
-  const fontLinks = Array.from(doc.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'))
-    .filter((link) => {
-      try {
-        return new URL(link.href).origin === 'https://fonts.googleapis.com'
-      } catch {
-        return false
-      }
-    })
-    .map((link) => `<link rel="stylesheet" href="${link.href}">`)
-    .join('')
-
-  const styles = Array.from(doc.querySelectorAll('style'))
-    .map((style) => {
-      const css = style.textContent
-        ?.replace(/html\s*,\s*body/g, ':host')
-        .replace(/(^|[\s{};])body(\s*[{,.#:])/g, '$1:host$2')
-        .replace(/(^|[\s{};,]):root(\s*[{,.#:])/g, '$1:host$2')
-        .replace(/min-height:\s*100vh/g, 'min-height: 100%')
-        .replace(/height:\s*100vh/g, 'min-height: 100%')
-        ?? ''
-      return `<style>${css}</style>`
-    })
-    .join('')
-
-  return `
-    <style>
-      :host {
-        display: block;
-        width: 100%;
-        min-height: 600px;
-        background: #FFFFFF;
-        color: #1A2818;
-        overflow: hidden;
-      }
-
-      * {
-        max-width: 100%;
-      }
-    </style>
-    ${fontLinks}
-    ${styles}
-    ${doc.body.innerHTML}
-  `
+function prepareCourseHtml(rawHtml: string): string {
+  if (/<\/body>/i.test(rawHtml)) {
+    return rawHtml.replace(/<\/body>/i, `${IFRAME_HEIGHT_SHIM}</body>`)
+  }
+  return rawHtml + IFRAME_HEIGHT_SHIM
 }
 
 function HtmlEmbed({ url, title }: { url: string; title: string }) {
-  const hostRef = useRef<HTMLDivElement | null>(null)
+  const iframeRef = useRef<HTMLIFrameElement | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [srcDoc, setSrcDoc] = useState<string>('')
+  const [height, setHeight] = useState<number>(600)
 
   useEffect(() => {
     let cancelled = false
@@ -142,10 +108,9 @@ function HtmlEmbed({ url, title }: { url: string; title: string }) {
         }
 
         const html = await response.text()
-        if (cancelled || !hostRef.current) return
+        if (cancelled) return
 
-        const shadow = hostRef.current.shadowRoot ?? hostRef.current.attachShadow({ mode: 'open' })
-        shadow.innerHTML = sanitizeCourseHtml(html)
+        setSrcDoc(prepareCourseHtml(html))
         setStatus('ready')
       } catch (error) {
         console.error('[lesson-html] failed to render HTML asset:', error)
@@ -160,18 +125,28 @@ function HtmlEmbed({ url, title }: { url: string; title: string }) {
     }
   }, [url])
 
+  useEffect(() => {
+    function onMessage(event: MessageEvent) {
+      if (event.source !== iframeRef.current?.contentWindow) return
+      const data = event.data as { __lumoraHtmlHeight?: number } | null
+      if (data && typeof data.__lumoraHtmlHeight === 'number') {
+        const next = Math.min(Math.max(data.__lumoraHtmlHeight, 400), 20000)
+        setHeight(next)
+      }
+    }
+    window.addEventListener('message', onMessage)
+    return () => window.removeEventListener('message', onMessage)
+  }, [])
+
   return (
     <div
-      ref={hostRef}
-      aria-label={title}
       style={{
         width: '100%',
-        minHeight: '600px',
         border: '1px solid rgba(200,220,192,0.35)',
         borderRadius: '0.75rem',
         background: '#FFFFFF',
         overflow: 'hidden',
-        display: 'block',
+        position: 'relative',
       }}
     >
       {status === 'loading' && (
@@ -185,6 +160,22 @@ function HtmlEmbed({ url, title }: { url: string; title: string }) {
             This guide could not be displayed inline. Use the download button above to open it.
           </p>
         </div>
+      )}
+      {status === 'ready' && (
+        <iframe
+          ref={iframeRef}
+          srcDoc={srcDoc}
+          title={title}
+          sandbox="allow-scripts allow-popups"
+          referrerPolicy="no-referrer"
+          style={{
+            width: '100%',
+            height: `${height}px`,
+            border: 'none',
+            display: 'block',
+            background: '#FFFFFF',
+          }}
+        />
       )}
     </div>
   )

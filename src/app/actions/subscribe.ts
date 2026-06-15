@@ -3,14 +3,12 @@
 import { createClient } from '@supabase/supabase-js'
 import { headers } from 'next/headers'
 import { checkRateLimit } from '@/lib/rate-limit'
-import { verifyHcaptcha } from '@/lib/hcaptcha'
 import { z } from 'zod'
 
 const SubscribeSchema = z.object({
-  email:         z.string().email('Please enter a valid email address.').max(254),
-  first_name:    z.string().max(100).optional(),
-  source:        z.string().max(50).optional(),
-  hcaptchaToken: z.string().optional(),
+  email:      z.string().email('Please enter a valid email address.').max(254),
+  first_name: z.string().max(100).optional(),
+  source:     z.string().max(50).optional(),
 })
 
 function getServiceClient() {
@@ -35,26 +33,18 @@ export async function subscribeToNewsletter(formData: FormData) {
   }
 
   // ── Validate input ─────────────────────────────────────────────────────────
-  const rawEmail      = (formData.get('email') as string)?.trim().toLowerCase()
-  const rawFirstName  = (formData.get('first_name') as string)?.trim()
-  const rawSource     = (formData.get('source') as string)?.trim()
-  const captchaToken  = (formData.get('hcaptchaToken') as string) ?? undefined
+  const rawEmail     = (formData.get('email') as string)?.trim().toLowerCase()
+  const rawFirstName = (formData.get('first_name') as string)?.trim()
+  const rawSource    = (formData.get('source') as string)?.trim()
 
   const parsed = SubscribeSchema.safeParse({
     email: rawEmail,
     first_name: rawFirstName,
     source: rawSource,
-    hcaptchaToken: captchaToken,
   })
 
   if (!parsed.success) {
     return { error: parsed.error.issues[0].message }
-  }
-
-  // ── hCaptcha verification ──────────────────────────────────────────────────
-  const captchaOk = await verifyHcaptcha(captchaToken ?? null)
-  if (!captchaOk) {
-    return { error: 'CAPTCHA verification failed. Please try again.' }
   }
 
   const { email, first_name, source } = parsed.data

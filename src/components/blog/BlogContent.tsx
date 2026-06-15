@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { subscribeToNewsletter } from '@/app/actions/subscribe'
 
 type Post = {
   id: string
@@ -114,12 +115,16 @@ export default function BlogContent() {
   async function handleSubscribe(e: React.FormEvent) {
     e.preventDefault()
     if (!email) return
-    const supabase = createClient()
-    const { error } = await supabase
-      .from('email_subscribers')
-      .upsert({ email, source: 'Blog Page' } as never, { onConflict: 'email' })
-    setSubStatus(error ? 'err' : 'ok')
-    if (!error) setEmail('')
+    const fd = new FormData()
+    fd.set('email', email)
+    fd.set('source', 'Blog Page')
+    const res = await subscribeToNewsletter(fd)
+    if ('success' in res && res.success) {
+      setSubStatus('ok')
+      setEmail('')
+    } else {
+      setSubStatus('err')
+    }
   }
 
   return (

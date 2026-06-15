@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/server'
 import CoachingCheckoutForm from '@/components/admin/CoachingCheckoutForm'
+import CoachingCompInviteForm from '@/components/admin/CoachingCompInviteForm'
 import { formatCurrency, formatShortDate } from '@/utils/format'
 
 export const metadata: Metadata = {
@@ -52,6 +53,8 @@ export default async function AdminCoachingPage() {
       </div>
 
       <CoachingCheckoutForm />
+
+      <CoachingCompInviteForm />
 
       <div className="admin-card overflow-hidden" style={{ borderRadius: '0.75rem' }}>
         <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--admin-outline-variant)' }}>

@@ -261,9 +261,10 @@ export function clientVisibleRecipes(plan: CoachingPlanDraft): { recipe: Coachin
       if (meal.recipeName.trim()) referenced.add(meal.recipeName.trim())
     }
   }
-  const all = plan.recipes.map((recipe, index) => ({ recipe, index }))
-  if (referenced.size === 0) return all
-  return all.filter(({ recipe }) => referenced.has(recipe.name.trim()))
+  if (referenced.size === 0) return []
+  return plan.recipes
+    .map((recipe, index) => ({ recipe, index }))
+    .filter(({ recipe }) => referenced.has(recipe.name.trim()))
 }
 
 function winsCount(log: DailyLog | undefined, habits: Habit[]): number {

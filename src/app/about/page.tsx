@@ -5,7 +5,7 @@ import FooterWrapper from '@/components/layout/FooterWrapper'
 
 export const metadata: Metadata = {
   title: 'About the Founder | Lumora Women',
-  description: 'Learn about the woman behind Lumora Women — a sanctuary built from necessity, not a business plan.',
+  description: 'Learn about the woman behind Lumora Women, a sanctuary built from necessity, not a business plan.',
 }
 
 const values = [
@@ -169,7 +169,7 @@ export default function AboutPage() {
                 lineHeight: 1.85,
               }}>
                 I traveled, I studied, and I listened. I found that wellness isn&apos;t about
-                fixing ourselves — it&apos;s about remembering who we are when we&apos;re not
+                fixing ourselves, it&apos;s about remembering who we are when we&apos;re not
                 trying to meet everyone else&apos;s expectations. This is the heart of Lumora.
               </p>
             </div>
@@ -359,7 +359,7 @@ export default function AboutPage() {
             lineHeight: 1.7,
             marginBottom: '2.5rem',
           }}>
-            Begin your journey with our free foundational course — a gift to every
+            Begin your journey with our free foundational course, a gift to every
             woman ready to come home to herself.
           </p>
           <Link

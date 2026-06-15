@@ -201,7 +201,7 @@ function CheckoutContent() {
             {[
               'Lifetime access to all lessons',
               'Downloadable worksheets and resources',
-              'Self-paced — go at your own speed',
+              'Self-paced, go at your own speed',
               'Community support',
             ].map((item) => (
               <li key={item} style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>

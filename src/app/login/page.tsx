@@ -158,7 +158,7 @@ function LoginForm() {
           />
         </div>
 
-        {/* hCaptcha — only rendered when site key is configured */}
+        {/* hCaptcha, only rendered when site key is configured */}
         {HCAPTCHA_SITE_KEY && (
           <HCaptcha
             ref={captchaRef}

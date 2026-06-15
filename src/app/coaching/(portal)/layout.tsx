@@ -10,7 +10,7 @@ export default function CoachingPortalLayout({ children }: { children: React.Rea
       <header className="portal-mobile-header">
         <Link
           href="/"
-          aria-label="Lumora Women — home"
+          aria-label="Lumora Women, home"
           className="gold-text"
           style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', fontWeight: 700, textDecoration: 'none' }}
         >
@@ -33,7 +33,7 @@ export default function CoachingPortalLayout({ children }: { children: React.Rea
       <aside className="portal-sidebar" aria-label="Coaching navigation">
         <Link
           href="/"
-          aria-label="Lumora Women — home"
+          aria-label="Lumora Women, home"
           style={{ display: 'block', padding: '0 1.5rem', marginBottom: '2.5rem', textDecoration: 'none' }}
         >
           <span

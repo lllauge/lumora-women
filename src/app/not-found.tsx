@@ -25,7 +25,7 @@ export default function NotFound() {
           }}
         >
           {/* Logo */}
-          <Link href="/" aria-label="Lumora Women — home" style={{ marginBottom: '3rem', textDecoration: 'none' }}>
+          <Link href="/" aria-label="Lumora Women, home" style={{ marginBottom: '3rem', textDecoration: 'none' }}>
             <span
               style={{
                 fontFamily: 'Libre Baskerville, Georgia, serif',

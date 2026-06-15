@@ -4,7 +4,7 @@ import FooterWrapper from '@/components/layout/FooterWrapper'
 
 export const metadata: Metadata = {
   title: 'Terms of Service | Lumora Women',
-  description: 'Lumora Women Terms of Service — please read before using our platform.',
+  description: 'Lumora Women Terms of Service, please read before using our platform.',
 }
 
 const sections = [
@@ -22,7 +22,7 @@ const sections = [
   },
   {
     title: 'Course Access and Enrollment',
-    body: `Upon purchase of a paid course, you receive a personal, non-transferable license to access that course content for personal use. Course content — including videos, downloads, and written materials — is protected by copyright and may not be shared, resold, or redistributed without written consent from Lumora Women.`,
+    body: `Upon purchase of a paid course, you receive a personal, non-transferable license to access that course content for personal use. Course content, including videos, downloads, and written materials, is protected by copyright and may not be shared, resold, or redistributed without written consent from Lumora Women.`,
   },
   {
     title: 'Payments and Refunds',
@@ -34,7 +34,7 @@ const sections = [
   },
   {
     title: 'Intellectual Property',
-    body: `All content on the Lumora Women platform — including text, images, videos, course materials, and branding — is the intellectual property of Lumora Women and protected under applicable copyright law. Unauthorized reproduction or distribution is prohibited and may result in legal action.`,
+    body: `All content on the Lumora Women platform, including text, images, videos, course materials, and branding, is the intellectual property of Lumora Women and protected under applicable copyright law. Unauthorized reproduction or distribution is prohibited and may result in legal action.`,
   },
   {
     title: 'Disclaimer of Warranties',

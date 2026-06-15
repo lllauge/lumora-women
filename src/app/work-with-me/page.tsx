@@ -11,7 +11,7 @@ const included = [
   'Weekly 1:1 sessions with our lead wellness practitioner',
   'Custom hormone & cycle mapping protocol',
   'Private Voxer access for daily support between sessions',
-  'Complete Lumora Women course library — unlimited access',
+  'Complete Lumora Women course library, unlimited access',
   'Personalized postpartum recovery blueprint',
   'Seasonal rituals and guided embodiment practices',
   'Lifetime alumni community membership',
@@ -24,15 +24,15 @@ const faqItems = [
   },
   {
     q: 'What does a typical week look like?',
-    a: 'Each week begins with a 60-minute 1:1 session — video call, voice, or hybrid depending on your preference. Between sessions, you have daily Voxer access for real-time support, questions, and accountability. You\'ll also receive weekly practice assignments tailored specifically to where you are.',
+    a: 'Each week begins with a 60-minute 1:1 session, video call, voice, or hybrid depending on your preference. Between sessions, you have daily Voxer access for real-time support, questions, and accountability. You\'ll also receive weekly practice assignments tailored specifically to where you are.',
   },
   {
     q: 'How is this different from the online courses?',
-    a: 'The courses give you the tools. This program gives you a guide who walks the path with you. Everything is customized — your protocol, your pace, your healing priorities. You\'re not following a pre-set curriculum; you\'re building your own.',
+    a: 'The courses give you the tools. This program gives you a guide who walks the path with you. Everything is customized, your protocol, your pace, your healing priorities. You\'re not following a pre-set curriculum; you\'re building your own.',
   },
   {
     q: 'Is there a payment plan?',
-    a: 'Yes. We offer a 3-month payment plan for the full program. Details are shared on the next page after you click enroll. We want this to be accessible — reach out if you need a different arrangement.',
+    a: 'Yes. We offer a 3-month payment plan for the full program. Details are shared on the next page after you click enroll. We want this to be accessible, reach out if you need a different arrangement.',
   },
   {
     q: 'What if I need to pause or reschedule?',
@@ -40,7 +40,7 @@ const faqItems = [
   },
   {
     q: 'Is there a guarantee?',
-    a: 'We don\'t offer refunds after the program begins due to the personalized, time-intensive nature of our work together. That said, we stand behind the quality of our support completely. If something isn\'t working, we adjust — we\'re in this together.',
+    a: 'We don\'t offer refunds after the program begins due to the personalized, time-intensive nature of our work together. That said, we stand behind the quality of our support completely. If something isn\'t working, we adjust, we\'re in this together.',
   },
 ]
 
@@ -278,7 +278,7 @@ export default function WorkWithMePage() {
                 'You\'re navigating postpartum challenges that feel bigger than a course can solve.',
                 'You want someone in your corner who truly understands the feminine body and spirit.',
                 'You\'ve done all the things and still don\'t feel like yourself.',
-                'You\'re ready to invest in a healing experience — not just information.',
+                'You\'re ready to invest in a healing experience, not just information.',
                 'You want a guide, not just content.',
               ].map((line) => (
                 <div key={line} style={{ display: 'flex', gap: '0.875rem', alignItems: 'flex-start' }}>
@@ -312,7 +312,7 @@ export default function WorkWithMePage() {
               lineHeight: 1.5,
               marginBottom: '2rem',
             }}>
-              &ldquo;You don&apos;t have to figure this out alone — and you don&apos;t have to rush it. Let&apos;s do this properly.&rdquo;
+              &ldquo;You don&apos;t have to figure this out alone, and you don&apos;t have to rush it. Let&apos;s do this properly.&rdquo;
             </p>
             <Link
               href="/contact"

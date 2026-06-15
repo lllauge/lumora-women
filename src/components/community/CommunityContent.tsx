@@ -57,7 +57,7 @@ function CommunitySignupForm() {
           color: 'var(--text-secondary)',
           lineHeight: 1.65,
         }}>
-          We&apos;re so glad you&apos;re here. Check your inbox for a warm welcome from us.
+          We&apos;re so glad you&apos;re here. Check your inbox for a warm welcome from us, and peek in your spam or promotions folder if you don&apos;t see it.
         </p>
       </div>
     )
@@ -123,7 +123,7 @@ export default function CommunityContent() {
     {
       icon: <Users size={24} strokeWidth={1.5} />,
       title: 'A Sisterhood That Gets It',
-      body: 'Connect with women navigating the same seasons — postpartum, hormones, burnout, and beyond. No judgment. Just real talk.',
+      body: 'Connect with women navigating the same seasons, postpartum, hormones, burnout, and beyond. No judgment. Just real talk.',
     },
     {
       icon: <MessageCircle size={24} strokeWidth={1.5} />,
@@ -133,7 +133,7 @@ export default function CommunityContent() {
     {
       icon: <Heart size={24} strokeWidth={1.5} />,
       title: 'Shared Practices',
-      body: 'Weekly rituals, guided reflections, and seasonal wellness challenges to do together — because growth is sweeter when it\'s shared.',
+      body: 'Weekly rituals, guided reflections, and seasonal wellness challenges to do together, because growth is sweeter when it\'s shared.',
     },
     {
       icon: <Star size={24} strokeWidth={1.5} />,
@@ -393,7 +393,7 @@ export default function CommunityContent() {
             borderRadius: '999px',
             marginBottom: '1.25rem',
           }}>
-            Join Today — It&apos;s Free
+            Join Today, It&apos;s Free
           </span>
 
           <h2 style={{

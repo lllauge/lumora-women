@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
         from: 'Lumora Women Contact <noreply@lumorawomen.com>',
         to: ADMIN_EMAIL,
         replyTo: email,
-        subject: `[Contact Form] ${subjectLabel[subject] ?? subject} — ${name}`,
+        subject: `[Contact Form] ${subjectLabel[subject] ?? subject}, ${name}`,
         text: [
           `Name: ${name}`,
           `Email: ${email}`,

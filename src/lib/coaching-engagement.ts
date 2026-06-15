@@ -188,7 +188,7 @@ export function groceryDisplay(item: string): string {
   const friendly = grams >= 454
     ? `${(Math.round((grams / 453.59) * 4) / 4).toFixed(2).replace(/\.?0+$/, '')} lb`
     : `${(Math.round((grams / 28.35) * 2) / 2).toFixed(1).replace(/\.0$/, '')} oz`
-  return `${match[2].trim()} — ${Math.round(grams)}g (about ${friendly})`
+  return `${match[2].trim()}, ${Math.round(grams)}g (about ${friendly})`
 }
 
 const FRACTIONS: [number, string][] = [

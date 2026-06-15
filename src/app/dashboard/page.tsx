@@ -141,7 +141,7 @@ export default async function DashboardPage() {
         {/* Logo */}
         <Link
           href="/"
-          aria-label="Lumora Women — home"
+          aria-label="Lumora Women, home"
           style={{
             display: 'block', padding: '0 1.5rem', marginBottom: '2.5rem',
             textDecoration: 'none',
@@ -247,7 +247,7 @@ export default async function DashboardPage() {
                   </h2>
                   <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
                     {coachingClient.hasPublishedPlan
-                      ? 'Your personalized plan is ready — check off today’s wins.'
+                      ? 'Your personalized plan is ready, check off today’s wins.'
                       : coachingClient.onboarding_status === 'submitted'
                         ? 'Your onboarding has been submitted.'
                         : 'Complete your onboarding so your plan can be created.'}
@@ -416,7 +416,7 @@ function EmptyEnrollments() {
         No courses yet
       </h3>
       <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-        Start your wellness journey — browse courses and enroll in one today.
+        Start your wellness journey, browse courses and enroll in one today.
       </p>
       <Link href="/courses" className="btn-primary" style={{ borderRadius: '0.5rem', padding: '0.75rem 2rem' }}>
         Browse Courses

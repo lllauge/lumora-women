@@ -53,14 +53,14 @@ export default function CheckInForm({ due }: { due: boolean }) {
           <NotebookPen style={{ width: '1rem', height: '1rem', color: 'var(--botanical-green)' }} aria-hidden="true" />
           <span>
             <span style={{ display: 'block', fontFamily: 'var(--font-sans)', fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-              {submitted ? 'Check-in sent — nice work!' : due ? 'Weekly check-in due' : 'Weekly check-in'}
+              {submitted ? 'Check-in sent, nice work!' : due ? 'Weekly check-in due' : 'Weekly check-in'}
             </span>
             <span style={{ display: 'block', fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-secondary)', marginTop: '0.125rem' }}>
               {submitted
                 ? 'Laura will review your week and reply here.'
                 : due
                   ? 'Weigh in and tell Laura how your week went.'
-                  : 'Already done this week — you can still log an extra one.'}
+                  : 'Already done this week, you can still log an extra one.'}
             </span>
           </span>
         </span>

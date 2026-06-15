@@ -175,7 +175,7 @@ export default async function BlogPostPage({
             <p className="blog-end-cta__eyebrow">Keep reading</p>
             <h2 className="blog-end-cta__heading">Enjoyed this article?</h2>
             <p className="blog-end-cta__body">
-              Get weekly insights on hormones, nutrition, and living well — delivered straight to your inbox.
+              Get weekly insights on hormones, nutrition, and living well, delivered straight to your inbox.
             </p>
             <Link href="/blog" className="blog-end-cta__link">
               Browse more articles

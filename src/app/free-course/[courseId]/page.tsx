@@ -156,9 +156,9 @@ export default function FreeCourseCapturePage({
   }
 
   const includes = [
-    'Immediate access — no waiting',
+    'Immediate access, no waiting',
     'All lessons, notes, and resources included',
-    'Self-paced — go at your own speed',
+    'Self-paced, go at your own speed',
   ]
 
   return (
@@ -186,7 +186,7 @@ export default function FreeCourseCapturePage({
           </div>
         ) : (
         <div className="w-full max-w-4xl grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
-          {/* Left — course info */}
+          {/* Left, course info */}
           <div>
             <div className="rounded-2xl aspect-video mb-6 flex items-center justify-center overflow-hidden" style={{ background: 'var(--sage-green-light)' }}>
               {course?.thumbnail_url ? (
@@ -222,7 +222,7 @@ export default function FreeCourseCapturePage({
             </ul>
           </div>
 
-          {/* Right — form */}
+          {/* Right, form */}
           <div className="rounded-2xl p-8" style={{ background: '#FFFFFF', border: '1px solid var(--outline-variant)', boxShadow: '0 4px 24px -4px rgba(61,43,36,0.10)' }}>
             {loggedInUserId ? (
               /* Already logged in — just enroll */
@@ -458,7 +458,7 @@ export default function FreeCourseCapturePage({
               className="btn-primary w-full"
               style={{ borderRadius: '0.5rem', padding: '0.9rem', minHeight: '44px' }}
             >
-              Got it — I&apos;ll check my email
+              Got it, I&apos;ll check my email
             </button>
           </div>
         </div>

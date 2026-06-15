@@ -3,6 +3,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { headers } from 'next/headers'
 import { checkRateLimit } from '@/lib/rate-limit'
+import { sendNewsletterWelcome } from '@/lib/newsletter-email'
 import { z } from 'zod'
 
 const SubscribeSchema = z.object({
@@ -53,6 +54,14 @@ export async function subscribeToNewsletter(formData: FormData) {
   const supabase = getServiceClient()
   const subscriber = { email, first_name: first_name ?? null }
 
+  const { data: existing } = await supabase
+    .from('email_subscribers')
+    .select('id')
+    .eq('email', email)
+    .maybeSingle()
+
+  const isNew = !existing
+
   const { error } = await supabase
     .from('email_subscribers')
     .upsert(
@@ -69,12 +78,19 @@ export async function subscribeToNewsletter(formData: FormData) {
           { onConflict: 'email', ignoreDuplicates: false }
         )
 
-      if (!retryError) {
-        return { success: true }
+      if (retryError) {
+        return { error: 'Something went wrong. Please try again.' }
       }
+    } else {
+      return { error: 'Something went wrong. Please try again.' }
     }
+  }
 
-    return { error: 'Something went wrong. Please try again.' }
+  if (isNew) {
+    const result = await sendNewsletterWelcome({ to: email, firstName: first_name ?? null })
+    if (!result.ok) {
+      console.error('[subscribe] welcome email failed:', result.error)
+    }
   }
 
   return { success: true }

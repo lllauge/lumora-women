@@ -4,7 +4,7 @@ import FooterWrapper from '@/components/layout/FooterWrapper'
 
 export const metadata: Metadata = {
   title: 'Privacy Policy | Lumora Women',
-  description: 'Lumora Women Privacy Policy — how we collect, use, and protect your information.',
+  description: 'Lumora Women Privacy Policy, how we collect, use, and protect your information.',
 }
 
 const sections = [

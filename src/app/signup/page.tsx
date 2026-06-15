@@ -128,7 +128,7 @@ export default function SignUpPage() {
         </div>
         <AuthInput label="Confirm Password" type="password" value={form.confirm} onChange={set('confirm')} error={errors.confirm} placeholder="Repeat your password" required autoComplete="new-password" />
 
-        {/* Age confirmation — required for legal contract compliance in California */}
+        {/* Age confirmation, required for legal contract compliance in California */}
         <div>
           <label
             htmlFor="age-confirm"
@@ -168,7 +168,7 @@ export default function SignUpPage() {
           )}
         </div>
 
-        {/* hCaptcha — only rendered when site key is configured */}
+        {/* hCaptcha, only rendered when site key is configured */}
         {HCAPTCHA_SITE_KEY && (
           <div>
             <HCaptcha

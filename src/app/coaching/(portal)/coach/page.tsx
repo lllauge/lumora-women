@@ -53,7 +53,7 @@ export default async function CoachingCoachPage() {
             Coach Laura
           </h1>
           <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-            Replies within 24 hours · Mon–Fri
+            Replies within 24 hours · Mon,Fri
           </p>
         </div>
       </div>
@@ -68,7 +68,7 @@ export default async function CoachingCoachPage() {
           <div style={{ background: '#FFFFFF', borderRadius: '1rem', border: '1px solid rgba(200,220,192,0.35)', padding: '1.5rem', textAlign: 'center' }}>
             <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
               This is your direct line to Laura. Questions about your plan, swaps,
-              rough days — send anything, anytime.
+              rough days, send anything, anytime.
             </p>
           </div>
         ) : (

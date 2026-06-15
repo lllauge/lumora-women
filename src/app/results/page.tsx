@@ -19,13 +19,13 @@ const stats = [
 
 const testimonials = [
   {
-    quote: 'I came to Lumora completely depleted after my second baby. Three months later, I feel like myself again — more than I have in years. The postpartum course gave me language for what I was experiencing and tools I actually use every day.',
+    quote: 'I came to Lumora completely depleted after my second baby. Three months later, I feel like myself again, more than I have in years. The postpartum course gave me language for what I was experiencing and tools I actually use every day.',
     name: 'Camille R.',
     detail: 'Postpartum Recovery, Los Angeles',
     initials: 'CR',
   },
   {
-    quote: 'I\'d tried so many wellness programs that felt performative and exhausting. Lumora was the first that actually felt like a rest. The community especially — I didn\'t know I needed that kind of witnessed support until I had it.',
+    quote: 'I\'d tried so many wellness programs that felt performative and exhausting. Lumora was the first that actually felt like a rest. The community especially, I didn\'t know I needed that kind of witnessed support until I had it.',
     name: 'Sarah M.',
     detail: 'Inner Circle Member, Chicago',
     initials: 'SM',
@@ -43,7 +43,7 @@ const testimonials = [
     initials: 'RK',
   },
   {
-    quote: 'What sets Lumora apart is the authenticity. You can tell this was built by a woman who actually went through it — not a wellness brand trying to sell you something. I trust this content with my healing.',
+    quote: 'What sets Lumora apart is the authenticity. You can tell this was built by a woman who actually went through it, not a wellness brand trying to sell you something. I trust this content with my healing.',
     name: 'Jessica P.',
     detail: 'Foundations Member, Toronto',
     initials: 'JP',
@@ -380,7 +380,7 @@ export default function ResultsPage() {
               lineHeight: 1.7,
               marginBottom: '2.5rem',
             }}>
-              Begin with our free foundational course — no credit card, no commitment,
+              Begin with our free foundational course, no credit card, no commitment,
               just you taking the first step toward yourself.
             </p>
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>

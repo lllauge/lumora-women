@@ -298,7 +298,7 @@ export default function CourseDetailContent({ courseId }: { courseId: string }) 
           </section>
         </div>
 
-        {/* Right column — sticky purchase card */}
+        {/* Right column, sticky purchase card */}
         <div className="course-detail-sidebar">
           <div
             style={{

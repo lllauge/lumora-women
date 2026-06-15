@@ -70,7 +70,7 @@ function ContactForm() {
         </h3>
         <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '1rem', color: 'var(--on-surface-variant)', lineHeight: 1.7, maxWidth: '26rem' }}>
           Thank you for reaching out. We&apos;ll get back to you within 24 hours on business days.
-          In the meantime, take a deep breath — you&apos;re in good hands.
+          In the meantime, take a deep breath, you&apos;re in good hands.
         </p>
       </div>
     )
@@ -148,7 +148,7 @@ export default function ContactContent() {
             Let&apos;s Talk
           </h1>
           <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '1.0625rem', color: 'var(--on-surface-variant)', lineHeight: 1.75 }}>
-            Whether you have a question about a course, need account help, or just want to say hello — we&apos;d love to hear from you.
+            Whether you have a question about a course, need account help, or just want to say hello, we&apos;d love to hear from you.
           </p>
         </div>
       </section>

@@ -13,7 +13,7 @@ const sections = [
     items: [
       {
         q: 'Where do I begin if I\'m brand new to Lumora Women?',
-        a: 'Start with our free foundational course — it\'s designed for exactly where you are right now. Head to the Start Here page for a guided roadmap that walks you through every step, from free course to community to deeper programs.',
+        a: 'Start with our free foundational course, it\'s designed for exactly where you are right now. Head to the Start Here page for a guided roadmap that walks you through every step, from free course to community to deeper programs.',
       },
       {
         q: 'Do I need to create an account to access anything?',
@@ -25,7 +25,7 @@ const sections = [
       },
       {
         q: 'What makes Lumora Women different from other wellness programs?',
-        a: 'We are built from lived experience, not a marketing playbook. Every course, every piece of content, every community conversation is designed to honor the actual rhythms of the feminine body and spirit — not the productivity culture that tells you to push through.',
+        a: 'We are built from lived experience, not a marketing playbook. Every course, every piece of content, every community conversation is designed to honor the actual rhythms of the feminine body and spirit, not the productivity culture that tells you to push through.',
       },
     ],
   },
@@ -35,7 +35,7 @@ const sections = [
     items: [
       {
         q: 'How do the online courses work?',
-        a: 'All courses are self-paced and available immediately after enrollment. You\'ll have access to video lessons, guided practices, and downloadable resources. Learn on your schedule — whether that\'s during nap time, early mornings, or late nights.',
+        a: 'All courses are self-paced and available immediately after enrollment. You\'ll have access to video lessons, guided practices, and downloadable resources. Learn on your schedule, whether that\'s during nap time, early mornings, or late nights.',
       },
       {
         q: 'Do the paid courses ever go on sale?',
@@ -43,7 +43,7 @@ const sections = [
       },
       {
         q: 'How long do I have access to a course after purchasing?',
-        a: 'You have lifetime access to all courses you enroll in. Come back anytime — whenever life allows.',
+        a: 'You have lifetime access to all courses you enroll in. Come back anytime, whenever life allows.',
       },
       {
         q: 'Can I get a refund if a course isn\'t the right fit?',
@@ -61,7 +61,7 @@ const sections = [
     items: [
       {
         q: 'What is the Lumora Women community?',
-        a: 'The Inner Circle is our private online community — a safe, nurturing space for members to share, ask questions, do group challenges, and support one another through their wellness journeys. It\'s completely free to join.',
+        a: 'The Inner Circle is our private online community, a safe, nurturing space for members to share, ask questions, do group challenges, and support one another through their wellness journeys. It\'s completely free to join.',
       },
       {
         q: 'Is the community moderated?',
@@ -83,7 +83,7 @@ const sections = [
       },
       {
         q: 'Can I access courses on my phone or tablet?',
-        a: 'Yes — our platform is fully optimized for mobile and tablet. You can watch lessons, read resources, and engage with the community from any device.',
+        a: 'Yes, our platform is fully optimized for mobile and tablet. You can watch lessons, read resources, and engage with the community from any device.',
       },
       {
         q: 'How do I update my email or account information?',

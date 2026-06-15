@@ -82,7 +82,7 @@ export default function Navbar({ showShop = false }: { showShop?: boolean }) {
           style={{ paddingTop: scrolled ? '0.5rem' : '1rem', paddingBottom: scrolled ? '0.5rem' : '1rem' }}
         >
           {/* Logo */}
-          <Link href="/" className="shrink-0" aria-label="Lumora Women — home">
+          <Link href="/" className="shrink-0" aria-label="Lumora Women, home">
             <span
               className="text-2xl tracking-tight gold-text"
               style={{
@@ -96,7 +96,7 @@ export default function Navbar({ showShop = false }: { showShop?: boolean }) {
             </span>
           </Link>
 
-          {/* Desktop nav links — center */}
+          {/* Desktop nav links, center */}
           <nav aria-label="Main navigation" className="hidden md:flex items-center gap-8">
             {navLinks.map((link) => {
               const active = isActive(link.href)
@@ -122,7 +122,7 @@ export default function Navbar({ showShop = false }: { showShop?: boolean }) {
             })}
           </nav>
 
-          {/* Desktop right — auth + CTA */}
+          {/* Desktop right, auth + CTA */}
           <div className="hidden md:flex items-center gap-3">
             {user ? (
               <Link

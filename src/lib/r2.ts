@@ -88,7 +88,7 @@ export async function uploadFileToR2(
     return {
       ok: false,
       error:
-        'Cloudflare R2 is not configured. Add R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, R2_PUBLIC_URL to .env.local — or paste an external URL instead. For production, also set R2_PUBLIC_BUCKET_NAME and R2_PRIVATE_BUCKET_NAME.',
+        'Cloudflare R2 is not configured. Add R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, R2_PUBLIC_URL to .env.local, or paste an external URL instead. For production, also set R2_PUBLIC_BUCKET_NAME and R2_PRIVATE_BUCKET_NAME.',
     }
   }
 

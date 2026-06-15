@@ -167,7 +167,7 @@ export async function runR2UploadTest(): Promise<R2TestResult> {
   }
   return {
     ok: true,
-    message: 'Upload succeeded — R2 credentials are working.',
+    message: 'Upload succeeded, R2 credentials are working.',
     url: result.url,
   }
 }

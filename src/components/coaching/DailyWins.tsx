@@ -95,7 +95,7 @@ export default function DailyWins({
       )}
       {doneCount === habits.length && (
         <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', color: 'var(--botanical-green)', fontWeight: 600, marginTop: '0.625rem' }}>
-          All wins for today — beautifully done. 🌿
+          All wins for today, beautifully done. 🌿
         </p>
       )}
     </section>

@@ -85,7 +85,7 @@ function Hero() {
           margin: '0 auto 2.5rem',
         }}>
           Every woman&apos;s journey to wellness looks different. We&apos;ve mapped out a simple
-          path so you can find exactly where you belong — and begin there.
+          path so you can find exactly where you belong, and begin there.
         </p>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
@@ -121,7 +121,7 @@ function Steps({ showShop }: { showShop: boolean }) {
       number: '01',
       badge: 'Free',
       title: 'Grab the Free Course',
-      body: 'Begin your journey with our foundational wellness course — completely free. No credit card required. Just you, showing up for yourself.',
+      body: 'Begin your journey with our foundational wellness course, completely free. No credit card required. Just you, showing up for yourself.',
       cta: 'Enroll for Free',
       href: '/free-course',
       accent: 'var(--sage-green-dark)',
@@ -154,7 +154,7 @@ function Steps({ showShop }: { showShop: boolean }) {
       number: '04',
       badge: 'Shop',
       title: 'Shop the Wellness Collection',
-      body: 'Curated tools, rituals, and resources to support your daily practice — handpicked for the modern woman on a healing path.',
+      body: 'Curated tools, rituals, and resources to support your daily practice, handpicked for the modern woman on a healing path.',
       cta: 'Shop the Collection',
       href: '/shop',
       accent: 'var(--deep-earth)',
@@ -548,7 +548,7 @@ function QuoteSection() {
           lineHeight: 1.5,
           marginBottom: '1.5rem',
         }}>
-          The bravest thing you can do is choose yourself — slowly, imperfectly, and every single day.
+          The bravest thing you can do is choose yourself, slowly, imperfectly, and every single day.
         </blockquote>
         <cite style={{
           fontFamily: 'var(--font-hanken)',
@@ -559,7 +559,7 @@ function QuoteSection() {
           color: 'var(--sage-green-tint)',
           fontStyle: 'normal',
         }}>
-          — Lumora Women
+         , Lumora Women
         </cite>
       </div>
     </section>
@@ -604,7 +604,7 @@ function Newsletter() {
           lineHeight: 1.7,
           marginBottom: '2rem',
         }}>
-          Seasonal rituals, course updates, and honest conversations about womanhood — straight to your inbox.
+          Seasonal rituals, course updates, and honest conversations about womanhood, straight to your inbox.
         </p>
 
         {/* Reuse EmailCaptureForm but wrap in a styled dark container */}

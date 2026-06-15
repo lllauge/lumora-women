@@ -204,7 +204,7 @@ export default function LessonPage({
   useEffect(() => {
     if (lesson) {
       const courseTitle = (lesson.modules as LessonData['modules']).courses.title
-      document.title = `${lesson.title} — ${courseTitle} | Lumora Women`
+      document.title = `${lesson.title}, ${courseTitle} | Lumora Women`
     }
   }, [lesson])
 
@@ -442,7 +442,7 @@ export default function LessonPage({
           </span>
         </div>
 
-        {/* Video area — only render when there is a video */}
+        {/* Video area, only render when there is a video */}
         {(loading || lesson?.video_url) && (
           <div style={{ background: '#000', aspectRatio: '16/9', maxHeight: '60vh', position: 'relative' }}>
             {loading ? (

@@ -47,7 +47,7 @@ export default function ForgotPasswordPage() {
             className="mb-6 leading-relaxed"
             style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9375rem', color: 'var(--on-surface-variant)' }}
           >
-            We sent a password reset link to <strong style={{ color: 'var(--deep-earth)' }}>{email}</strong>. Check your inbox — it expires in 1 hour.
+            We sent a password reset link to <strong style={{ color: 'var(--deep-earth)' }}>{email}</strong>. Check your inbox, it expires in 1 hour.
           </p>
           <Link
             href="/login"

@@ -132,7 +132,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (course.is_free) {
-    return NextResponse.json({ error: 'This course is free — no checkout needed.' }, { status: 400 })
+    return NextResponse.json({ error: 'This course is free, no checkout needed.' }, { status: 400 })
   }
 
   const priceInDollars = Number(course.price ?? 0)

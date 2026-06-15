@@ -54,7 +54,7 @@ function Hero() {
       <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-16 py-16 lg:py-28">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
 
-          {/* Left — text */}
+          {/* Left, text */}
           <div className="hero-copy space-y-6">
             <span
               className="inline-block text-xs uppercase mb-2 px-4 py-1.5 rounded-full"
@@ -120,7 +120,7 @@ function Hero() {
             </div>
           </div>
 
-          {/* Right — hero bloom video */}
+          {/* Right, hero bloom video */}
           <div className="hero-bloom-wrap relative">
             <div
               className="hero-bloom-frame aspect-[4/5] overflow-hidden editorial-shadow transform lg:rotate-2 hover:rotate-0 transition-transform duration-700"
@@ -563,7 +563,7 @@ function QuoteSection() {
           letterSpacing: '0.2em',
         }}
       >
-        — Lumora Women
+       , Lumora Women
       </cite>
     </section>
   )

@@ -47,7 +47,7 @@ export default function EmailCaptureForm() {
           You&apos;re in.
         </p>
         <p className="mt-2 text-sm" style={{ color: 'rgba(200,220,192,0.8)', fontFamily: 'var(--font-sans)' }}>
-          Check your inbox — something good is coming.
+          Check your inbox, something good is coming. If you don&apos;t see it, peek in your spam or promotions folder.
         </p>
       </div>
     )

@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 
 let cached: { value: boolean; expires: number } | null = null
-const CACHE_MS = 60 * 1000 // 60s — long enough to skip per-request reflection,
+const CACHE_MS = 60 * 1000 // 60s, long enough to skip per-request reflection,
                             // short enough that running v3.sql shows up quickly.
 
 /**

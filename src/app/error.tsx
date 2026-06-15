@@ -52,7 +52,7 @@ export default function GlobalError({
           }}
         >
           {/* Logo */}
-          <Link href="/" aria-label="Lumora Women — home" style={{ marginBottom: '3rem', textDecoration: 'none' }}>
+          <Link href="/" aria-label="Lumora Women, home" style={{ marginBottom: '3rem', textDecoration: 'none' }}>
             <span
               style={{
                 fontFamily: 'Libre Baskerville, Georgia, serif',
@@ -110,7 +110,7 @@ export default function GlobalError({
               marginBottom: '2.5rem',
             }}
           >
-            We&apos;re sorry — an unexpected error occurred. Please try again. If the problem persists, contact us at{' '}
+            We&apos;re sorry, an unexpected error occurred. Please try again. If the problem persists, contact us at{' '}
             <a
               href="mailto:hello@lumorawomen.com"
               style={{ color: '#4A7A40', textDecoration: 'underline' }}

@@ -77,7 +77,7 @@ export default async function CoachingPlanPage() {
           <SectionHeader
             icon={<Leaf style={headerIcon} aria-hidden="true" />}
             title="Your Daily Targets"
-            subtitle="Your everyday habits — check them off on the Today tab."
+            subtitle="Your everyday habits, check them off on the Today tab."
           />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '0.625rem' }}>
             {t.calories.trim() && (
@@ -113,7 +113,7 @@ export default async function CoachingPlanPage() {
                 <Link
                   key={target.label}
                   href="/coaching/today"
-                  aria-label={`${target.label} target ${target.value}${doneToday ? ' — done today' : ''} — open Today's wins`}
+                  aria-label={`${target.label} target ${target.value}${doneToday ? ', done today' : ''}, open Today's wins`}
                   style={{ textDecoration: 'none' }}
                 >
                   {card}
@@ -231,7 +231,7 @@ export default async function CoachingPlanPage() {
           <SectionHeader
             icon={<ShoppingBasket style={headerIcon} aria-hidden="true" />}
             title="Grocery List"
-            subtitle="Check items off as you shop — it remembers between visits."
+            subtitle="Check items off as you shop, it remembers between visits."
           />
           <div className="portal-card">
             <div className="portal-gold-line" aria-hidden="true" />
@@ -350,7 +350,7 @@ function RecipeDetail({ recipe }: { recipe: CoachingPlanDraft['recipes'][number]
                 })}
               </ul>
               <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem', fontStyle: 'italic' }}>
-                Tip: weigh each ingredient in the state it&apos;s listed — that&apos;s how your macros were calculated.
+                Tip: weigh each ingredient in the state it&apos;s listed, that&apos;s how your macros were calculated.
               </p>
             </div>
           )}
@@ -371,9 +371,9 @@ function RecipeDetail({ recipe }: { recipe: CoachingPlanDraft['recipes'][number]
               }}>
                 <span style={{ fontWeight: 700, color: '#3F6936' }}>No scale? </span>
                 {fraction.label === 'the whole recipe'
-                  ? 'This whole recipe is your portion — enjoy all of it.'
+                  ? 'This whole recipe is your portion, enjoy all of it.'
                   : `Cook the full recipe, then serve yourself ${serving} of it${
-                      fraction.qualifier === 'generous' ? ' — a little over is right' : fraction.qualifier === 'scant' ? ' — a little under is right' : ''
+                      fraction.qualifier === 'generous' ? ', a little over is right' : fraction.qualifier === 'scant' ? ', a little under is right' : ''
                     }.${grams ? ` That matches your ${withGrams(grams)} portion, so your macros stay on track.` : ''}`}
               </p>
             )
@@ -402,7 +402,7 @@ function RecipeDetail({ recipe }: { recipe: CoachingPlanDraft['recipes'][number]
             {isFamily ? 'Shopping & prep (full family recipe)' : 'Shopping & prep'}
           </h3>
           <p style={{ ...bodyText, fontSize: '0.8125rem', fontStyle: 'italic', marginBottom: '0.5rem' }}>
-            These are the amounts to buy and prep — most items are listed raw, since that&apos;s how the recipe was built.
+            These are the amounts to buy and prep, most items are listed raw, since that&apos;s how the recipe was built.
           </p>
           <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
             {recipe.ingredients.map((ing, i) => {

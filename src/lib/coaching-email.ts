@@ -60,7 +60,7 @@ export async function sendClientMessageNotification(input: {
   const { error } = await resend.emails.send({
     from: 'Lumora Women <hello@lumorawomen.com>',
     to: 'hello@lumorawomen.com',
-    subject: `Coaching: ${input.clientName} — new message`,
+    subject: `Coaching: ${input.clientName}, new message`,
     html: `
       <div style="font-family: Arial, sans-serif; background:#F8F6F0; padding:32px;">
         <div style="max-width:580px; margin:0 auto; background:#FFFFFF; border-radius:16px; padding:36px; border:1px solid #E5E0D6;">

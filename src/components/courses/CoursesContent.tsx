@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency } from '@/utils/format'
+import { subscribeToNewsletter } from '@/app/actions/subscribe'
 
 type Course = {
   id: string
@@ -17,6 +18,26 @@ type Course = {
 export default function CoursesContent() {
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
+  const [notifyEmail, setNotifyEmail] = useState('')
+  const [notifyStatus, setNotifyStatus] = useState<'idle' | 'loading' | 'ok' | 'err'>('idle')
+  const [notifyError, setNotifyError] = useState('')
+
+  async function handleNotify(e: React.FormEvent) {
+    e.preventDefault()
+    if (!notifyEmail) return
+    setNotifyStatus('loading')
+    const fd = new FormData()
+    fd.set('email', notifyEmail)
+    fd.set('source', 'Courses Page')
+    const res = await subscribeToNewsletter(fd)
+    if ('success' in res && res.success) {
+      setNotifyStatus('ok')
+      setNotifyEmail('')
+    } else {
+      setNotifyError('error' in res ? res.error : 'Something went wrong.')
+      setNotifyStatus('err')
+    }
+  }
 
   useEffect(() => {
     const supabase = createClient()
@@ -63,7 +84,7 @@ export default function CoursesContent() {
               color: 'rgba(200,220,192,0.8)', lineHeight: 1.7,
             }}
           >
-            Expert-led courses on postpartum recovery, pelvic health, nutrition, and more — created for women, by women who get it.
+            Expert-led courses on postpartum recovery, pelvic health, nutrition, and more, created for women, by women who get it.
           </p>
         </div>
       </section>
@@ -92,7 +113,7 @@ export default function CoursesContent() {
               No courses here yet
             </p>
             <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9375rem', color: 'var(--text-secondary)' }}>
-              Check back soon — new content is on the way.
+              Check back soon, new content is on the way.
             </p>
           </div>
         ) : (
@@ -128,30 +149,55 @@ export default function CoursesContent() {
               color: 'var(--text-secondary)', lineHeight: 1.7, marginBottom: '2rem',
             }}
           >
-            Be the first to know when new courses drop — plus get early access and member-only discounts.
+            Be the first to know when new courses drop, plus get early access and member-only discounts.
           </p>
-          <form
-            aria-label="Course notification sign-up"
-            style={{ display: 'flex', gap: '0.75rem', maxWidth: '28rem', margin: '0 auto', flexWrap: 'wrap' as const }}
-            onSubmit={(e) => e.preventDefault()}
-          >
-            <label htmlFor="courses-notify-email" className="sr-only">Email address</label>
-            <input
-              id="courses-notify-email"
-              type="email"
-              placeholder="your@email.com"
-              aria-required="true"
-              style={{
-                flex: 1, minWidth: 0, padding: '0.75rem 1rem', borderRadius: '0.5rem',
-                border: '1.5px solid rgba(200,220,192,0.45)', fontFamily: 'var(--font-sans)',
-                fontSize: '1rem', color: 'var(--text-primary)', background: '#FFFFFF',
-                minHeight: '44px',
-              }}
-            />
-            <button type="submit" className="btn-primary" style={{ borderRadius: '0.5rem', padding: '0.75rem 1.5rem', whiteSpace: 'nowrap' as const, minHeight: '44px' }}>
-              Notify Me
-            </button>
-          </form>
+          {notifyStatus === 'ok' ? (
+            <div role="status" aria-live="polite" style={{ textAlign: 'center' }}>
+              <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
+                You&apos;re on the list.
+              </p>
+              <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                Check your inbox for a welcome from us. If you don&apos;t see it, peek in your spam or promotions folder.
+              </p>
+            </div>
+          ) : (
+            <form
+              aria-label="Course notification sign-up"
+              style={{ display: 'flex', gap: '0.75rem', maxWidth: '28rem', margin: '0 auto', flexWrap: 'wrap' as const }}
+              onSubmit={handleNotify}
+            >
+              <label htmlFor="courses-notify-email" className="sr-only">Email address</label>
+              <input
+                id="courses-notify-email"
+                type="email"
+                value={notifyEmail}
+                onChange={(e) => setNotifyEmail(e.target.value)}
+                placeholder="your@email.com"
+                required
+                aria-required="true"
+                disabled={notifyStatus === 'loading'}
+                style={{
+                  flex: 1, minWidth: 0, padding: '0.75rem 1rem', borderRadius: '0.5rem',
+                  border: '1.5px solid rgba(200,220,192,0.45)', fontFamily: 'var(--font-sans)',
+                  fontSize: '1rem', color: 'var(--text-primary)', background: '#FFFFFF',
+                  minHeight: '44px',
+                }}
+              />
+              <button
+                type="submit"
+                className="btn-primary"
+                disabled={notifyStatus === 'loading'}
+                style={{ borderRadius: '0.5rem', padding: '0.75rem 1.5rem', whiteSpace: 'nowrap' as const, minHeight: '44px' }}
+              >
+                {notifyStatus === 'loading' ? 'Sending...' : 'Notify Me'}
+              </button>
+              {notifyStatus === 'err' && (
+                <p role="alert" style={{ flexBasis: '100%', fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: '#8B2C2C', textAlign: 'center', margin: 0 }}>
+                  {notifyError}
+                </p>
+              )}
+            </form>
+          )}
         </div>
       </section>
     </main>
@@ -165,7 +211,7 @@ function CourseCard({ course }: { course: Course }) {
   return (
     <Link href={href} style={{ display: 'block', textDecoration: 'none' }}>
       <article
-        aria-label={`${course.title} — ${priceLabel}`}
+        aria-label={`${course.title}, ${priceLabel}`}
         style={{
           borderRadius: '1rem', overflow: 'hidden', background: '#FFFFFF',
           border: '1px solid rgba(200,220,192,0.3)',

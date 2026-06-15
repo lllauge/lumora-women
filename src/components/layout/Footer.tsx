@@ -39,9 +39,9 @@ export default function Footer({ showShop = false }: { showShop?: boolean }) {
       <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-16 py-16 lg:py-20">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
 
-          {/* Column 1 — Brand */}
+          {/* Column 1, Brand */}
           <div className="lg:col-span-1">
-            <Link href="/" aria-label="Lumora Women — home">
+            <Link href="/" aria-label="Lumora Women, home">
               <span className="footer-logo" aria-hidden="true">Lumora</span>
             </Link>
             <p className="footer-description">
@@ -74,7 +74,7 @@ export default function Footer({ showShop = false }: { showShop?: boolean }) {
                   rel="noopener noreferrer"
                   target="_blank"
                 >
-                  {/* TikTok icon — lucide doesn't include it, using SVG */}
+                  {/* TikTok icon, lucide doesn't include it, using SVG */}
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                     <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.76a4.85 4.85 0 0 1-1.01-.07z"/>
                   </svg>
@@ -100,7 +100,7 @@ export default function Footer({ showShop = false }: { showShop?: boolean }) {
             <p className="footer-email">hello@lumorawomen.com</p>
           </div>
 
-          {/* Column 2 — Explore */}
+          {/* Column 2, Explore */}
           <div>
             <h2 className="footer-col-heading">Explore</h2>
             <ul className="space-y-3">
@@ -108,7 +108,7 @@ export default function Footer({ showShop = false }: { showShop?: boolean }) {
             </ul>
           </div>
 
-          {/* Column 3 — Support */}
+          {/* Column 3, Support */}
           <div>
             <h2 className="footer-col-heading">Support</h2>
             <ul className="space-y-3">
@@ -116,7 +116,7 @@ export default function Footer({ showShop = false }: { showShop?: boolean }) {
             </ul>
           </div>
 
-          {/* Column 4 — Legal */}
+          {/* Column 4, Legal */}
           <div>
             <h2 className="footer-col-heading">Legal</h2>
             <ul className="space-y-3">

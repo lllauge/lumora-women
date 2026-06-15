@@ -19,7 +19,7 @@ export default function GroceryChecklist({ items, storageKey }: { items: string[
     if (!loaded) return
     try {
       window.localStorage.setItem(storageKey, JSON.stringify(checked))
-    } catch { /* storage full or blocked — checkboxes still work for the session */ }
+    } catch { /* storage full or blocked, checkboxes still work for the session */ }
   }, [checked, loaded, storageKey])
 
   const doneCount = items.filter((_, i) => checked[i]).length

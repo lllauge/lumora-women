@@ -84,7 +84,7 @@ export default async function CoachingTodayPage() {
 
         {!mealDay ? (
           <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9rem', color: 'var(--text-secondary)', background: '#FFFFFF', borderRadius: '1rem', border: '1px solid rgba(200,220,192,0.35)', padding: '1.25rem' }}>
-            Your meal plan is being prepared — check back soon.
+            Your meal plan is being prepared, check back soon.
           </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
@@ -149,7 +149,7 @@ function MealCard({
   return meal.recipeName.trim() ? (
     <Link
       href={anchor(meal.recipeName)}
-      aria-label={`${slot}: ${displayRecipeName(meal.name) || displayRecipeName(meal.recipeName)} — view recipe`}
+      aria-label={`${slot}: ${displayRecipeName(meal.name) || displayRecipeName(meal.recipeName)}, view recipe`}
       style={{ textDecoration: 'none' }}
     >
       {content}

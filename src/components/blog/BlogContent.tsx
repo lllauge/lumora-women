@@ -438,9 +438,14 @@ export default function BlogContent() {
                 </p>
 
                 {subStatus === 'ok' ? (
-                  <p role="status" aria-live="polite" style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 600, color: 'var(--botanical-light)', textAlign: 'center' }}>
-                    ✓ You&apos;re on the list!
-                  </p>
+                  <div role="status" aria-live="polite" style={{ textAlign: 'center' }}>
+                    <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 600, color: 'var(--botanical-light)' }}>
+                      ✓ You&apos;re on the list!
+                    </p>
+                    <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', color: 'rgba(200,220,192,0.75)', marginTop: '0.5rem' }}>
+                      If you don&apos;t see our email, peek in your spam or promotions folder.
+                    </p>
+                  </div>
                 ) : (
                   <form onSubmit={handleSubscribe} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                     <label htmlFor="blog-newsletter-email" className="sr-only">Email address</label>

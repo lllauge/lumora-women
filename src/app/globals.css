@@ -1295,11 +1295,12 @@ blockquote, .pull-quote {
 }
 
 .blog-card-art {
-  object-position: center;
+  object-fit: contain !important;
+  object-position: center center !important;
+  background: var(--pale-botanical);
 }
 
 @media (max-width: 767px) {
-  .blog-card-art,
   .blog-hero-image {
     object-fit: contain !important;
     object-position: center center !important;

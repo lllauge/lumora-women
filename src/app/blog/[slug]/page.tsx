@@ -154,17 +154,6 @@ export default async function BlogPostPage({
           </div>
         </header>
 
-        {/* ── Featured image ────────────────────────────────────────── */}
-        {post.featured_image_url && (
-          <div className="blog-hero-image-wrap">
-            <img
-              src={post.featured_image_url}
-              alt=""
-              className="blog-hero-image"
-            />
-          </div>
-        )}
-
         {/* ── Article body ─────────────────────────────────────────── */}
         <div className="blog-article-body-wrap">
           <div

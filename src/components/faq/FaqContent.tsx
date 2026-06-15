@@ -69,7 +69,7 @@ const sections = [
       },
       {
         q: 'Can I join the community without purchasing a course?',
-        a: 'Yes. The community is free and open to any woman who resonates with the Lumora Women mission. Simply sign up on the Community page.',
+        a: 'No. The community is exclusive to members of The Lumora Method. Once you enroll, you get access as part of the program.',
       },
     ],
   },

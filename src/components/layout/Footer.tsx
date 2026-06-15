@@ -45,7 +45,7 @@ export default function Footer({ showShop = false }: { showShop?: boolean }) {
               <span className="footer-logo" aria-hidden="true">Lumora</span>
             </Link>
             <p className="footer-description">
-              An intimate wellness sanctuary for the intentional woman. Practical education for postpartum recovery, hormone health, and every season of womanhood.
+              Motherhood changes you completely. We help you bloom into who you become next.
             </p>
             <ul className="flex gap-4 mt-6 list-none p-0 m-0" aria-label="Lumora Women on social media">
               <li>

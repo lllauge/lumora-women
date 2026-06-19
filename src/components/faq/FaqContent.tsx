@@ -56,24 +56,6 @@ const sections = [
     ],
   },
   {
-    id: 'community',
-    label: 'Community',
-    items: [
-      {
-        q: 'What is the Lumora Women community?',
-        a: 'The Inner Circle is our private online community, a safe, nurturing space for members to share, ask questions, do group challenges, and support one another through their wellness journeys. It\'s completely free to join.',
-      },
-      {
-        q: 'Is the community moderated?',
-        a: 'Yes. We take the safety and warmth of our space seriously. Our community guidelines are rooted in respect, compassion, and zero tolerance for judgment or negativity. Members who violate these values are removed.',
-      },
-      {
-        q: 'Can I join the community without purchasing a course?',
-        a: 'No. The community is exclusive to members of The Lumora Method. Once you enroll, you get access as part of the program.',
-      },
-    ],
-  },
-  {
     id: 'account',
     label: 'Account & Technical',
     items: [

@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation'
 import { createAdminClient, createClient } from '@/lib/supabase/server'
+import { sendAdminSms } from '@/lib/admin-sms'
 
 function value(formData: FormData, key: string) {
   return String(formData.get(key) ?? '').trim()
@@ -101,6 +102,16 @@ export async function submitCoachingOnboarding(formData: FormData) {
     .from('coaching_clients')
     .update({ onboarding_status: 'submitted', status: 'plan_pending', updated_at: new Date().toISOString() })
     .eq('id', client.id)
+
+  const firstName = payload.personal.firstName || email
+  const lastName = payload.personal.lastName
+  const fullName = lastName ? `${firstName} ${lastName}` : firstName
+  const sms = await sendAdminSms(
+    `Lumora: ${fullName} just finished coaching onboarding. Time to build her plan.`
+  )
+  if (!sms.ok) {
+    console.error('[coaching-onboarding] admin SMS failed:', sms.reason)
+  }
 
   redirect('/coaching/onboarding?submitted=1')
 }

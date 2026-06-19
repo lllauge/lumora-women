@@ -2,6 +2,7 @@ import Stripe from 'stripe'
 import { z } from 'zod'
 import { createAdminClient } from '@/lib/supabase/server'
 import { getCourseStartPath, sendCourseAccessEmail } from '@/lib/course-access'
+import { sendAdminSms } from '@/lib/admin-sms'
 
 const CheckoutMetadataSchema = z.object({
   courseId: z.string().uuid(),
@@ -93,6 +94,24 @@ async function _fulfill(
       await sendCourseAccessEmail(supabase, { userId, courseId })
     } catch (err) {
       console.error('[stripe fulfillment] course access email failed:', err)
+    }
+
+    try {
+      const [{ data: courseRow }, { data: userRow }] = await Promise.all([
+        supabase.from('courses').select('title').eq('id', courseId).maybeSingle(),
+        supabase.from('users').select('first_name, last_name, email').eq('id', userId).maybeSingle(),
+      ])
+      const studentName = [userRow?.first_name, userRow?.last_name].filter(Boolean).join(' ') || userRow?.email || 'A new student'
+      const courseTitle = courseRow?.title || 'a course'
+      const amount = ((session.amount_total ?? 0) / 100).toFixed(2)
+      const sms = await sendAdminSms(
+        `Lumora: ${studentName} just bought ${courseTitle} for $${amount}.`
+      )
+      if (!sms.ok) {
+        console.error('[stripe fulfillment] admin SMS failed:', sms.reason)
+      }
+    } catch (err) {
+      console.error('[stripe fulfillment] admin SMS step failed:', err)
     }
   }
 

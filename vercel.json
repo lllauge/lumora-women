@@ -1,0 +1,5 @@
+{
+  "crons": [
+    { "path": "/api/admin/daily-pings", "schedule": "0 13 * * *" }
+  ]
+}

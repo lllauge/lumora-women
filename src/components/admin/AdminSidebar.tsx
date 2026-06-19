@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard,
+  Sunrise,
   GraduationCap,
   PenLine,
   ShoppingBag,
@@ -22,7 +23,10 @@ type NavSection = { heading?: string; items: NavItem[] }
 
 const navSections: NavSection[] = [
   {
-    items: [{ label: 'Overview', href: '/admin', icon: LayoutDashboard }],
+    items: [
+      { label: 'Overview', href: '/admin', icon: LayoutDashboard },
+      { label: 'Today', href: '/admin/today', icon: Sunrise },
+    ],
   },
   {
     heading: 'Content',

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import {
-  LayoutDashboard, GraduationCap, PenLine, ShoppingBag,
+  LayoutDashboard, Sunrise, GraduationCap, PenLine, ShoppingBag,
   Users, HeartHandshake, Mail, Receipt, Settings, LogOut, Bell, HelpCircle,
   Menu, X, BookOpen, MessageCircle, type LucideIcon,
 } from 'lucide-react'
@@ -14,7 +14,12 @@ type NavItem = { label: string; href: string; icon: LucideIcon }
 type NavSection = { heading?: string; items: NavItem[] }
 
 const navSections: NavSection[] = [
-  { items: [{ label: 'Overview', href: '/admin', icon: LayoutDashboard }] },
+  {
+    items: [
+      { label: 'Overview', href: '/admin', icon: LayoutDashboard },
+      { label: 'Today',    href: '/admin/today', icon: Sunrise },
+    ],
+  },
   {
     heading: 'Content',
     items: [
@@ -39,6 +44,7 @@ const navSections: NavSection[] = [
 
 const SEGMENT_TITLES: Record<string, string> = {
   '':           'Dashboard Overview',
+  'today':      'Today',
   'courses':    'Course Manager',
   'blog':       'Blog Manager',
   'coaching':   'Coaching',

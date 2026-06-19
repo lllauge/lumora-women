@@ -22,6 +22,13 @@ function daysSince(iso: string | null) {
   return Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24))
 }
 
+type NameEntry = { name: string; days: number }
+
+function fullName(c: { first_name: string | null; last_name: string | null; email: string }) {
+  const name = [c.first_name, c.last_name].filter(Boolean).join(' ').trim()
+  return name || c.email
+}
+
 async function summarize() {
   const supabase = await createAdminClient()
 
@@ -29,7 +36,7 @@ async function summarize() {
     { data: clients },
     { data: onboardings },
     { data: plans },
-    { count: unreadMessages },
+    { data: unread },
     { data: recentLogs },
   ] = await Promise.all([
     supabase
@@ -43,7 +50,7 @@ async function summarize() {
       .select('coaching_client_id, status'),
     supabase
       .from('coaching_messages')
-      .select('id', { count: 'exact', head: true })
+      .select('coaching_client_id, coaching_clients(first_name, last_name, email)')
       .eq('sender', 'client')
       .is('read_by_coach_at', null),
     supabase
@@ -66,10 +73,9 @@ async function summarize() {
     }
   }
 
-  let plansOverdue = 0
-  let plansUrgent = 0
-  let paidNotOnboarded = 0
-  let quietClients = 0
+  const plansList: NameEntry[] = []
+  const paidList: NameEntry[] = []
+  const quietList: NameEntry[] = []
 
   for (const c of (clients ?? []) as ClientRow[]) {
     const submittedAt = onboardingByClient.get(c.id)?.submitted_at ?? null
@@ -77,50 +83,67 @@ async function summarize() {
     const published = plan?.status === 'published'
 
     if (submittedAt && !published) {
-      const days = daysSince(submittedAt) ?? 0
-      if (days >= 2) plansOverdue += 1
-      if (days >= 5) plansUrgent += 1
+      plansList.push({ name: fullName(c), days: daysSince(submittedAt) ?? 0 })
     }
 
     if (c.onboarding_status === 'not_started' && c.paid_at) {
-      const days = daysSince(c.paid_at) ?? 0
-      if (days >= 3) paidNotOnboarded += 1
+      paidList.push({ name: fullName(c), days: daysSince(c.paid_at) ?? 0 })
     }
 
     if ((c.status === 'plan_pending' || c.status === 'active') && submittedAt) {
       const lastLog = lastLogByClient.get(c.id)
       const lastActivityIso = lastLog ? `${lastLog}T00:00:00Z` : submittedAt
       const days = daysSince(lastActivityIso) ?? 0
-      if (days >= 7) quietClients += 1
+      if (days >= 7) {
+        quietList.push({ name: fullName(c), days })
+      }
     }
   }
 
+  const sentBy = (a: NameEntry, b: NameEntry) => b.days - a.days
+  plansList.sort(sentBy)
+  paidList.sort(sentBy)
+  quietList.sort(sentBy)
+
+  type EmbeddedClient = { first_name: string | null; last_name: string | null; email: string }
+  const unreadNames = new Set<string>()
+  for (const m of (unread ?? []) as unknown as { coaching_client_id: string; coaching_clients: EmbeddedClient | EmbeddedClient[] | null }[]) {
+    const c = Array.isArray(m.coaching_clients) ? m.coaching_clients[0] : m.coaching_clients
+    if (c) unreadNames.add(fullName(c))
+  }
+
   return {
-    unreadMessages: unreadMessages ?? 0,
-    plansOverdue,
-    plansUrgent,
-    paidNotOnboarded,
-    quietClients,
+    plans: plansList,
+    paid: paidList,
+    quiet: quietList,
+    unread: Array.from(unreadNames),
   }
 }
 
+function formatList(entries: NameEntry[], max = 4) {
+  const shown = entries.slice(0, max).map((e) => `${e.name} (${e.days}d)`).join(', ')
+  const extra = entries.length - max
+  return extra > 0 ? `${shown}, +${extra} more` : shown
+}
+
 function composeMessage(s: Awaited<ReturnType<typeof summarize>>) {
-  const parts: string[] = []
-  if (s.plansOverdue > 0) {
-    parts.push(`${s.plansOverdue} plan${s.plansOverdue === 1 ? '' : 's'} to build${s.plansUrgent > 0 ? ` (${s.plansUrgent} urgent)` : ''}`)
+  const lines: string[] = []
+  if (s.plans.length > 0) {
+    lines.push(`Plans to build: ${formatList(s.plans)}`)
   }
-  if (s.paidNotOnboarded > 0) {
-    parts.push(`${s.paidNotOnboarded} paid but not onboarded`)
+  if (s.paid.length > 0) {
+    lines.push(`Paid, not onboarded: ${formatList(s.paid)}`)
   }
-  if (s.unreadMessages > 0) {
-    parts.push(`${s.unreadMessages} unread client message${s.unreadMessages === 1 ? '' : 's'}`)
+  if (s.unread.length > 0) {
+    const names = s.unread.slice(0, 4).join(', ')
+    const extra = s.unread.length - 4
+    lines.push(`Unread from: ${names}${extra > 0 ? `, +${extra} more` : ''}`)
   }
-  if (s.quietClients > 0) {
-    parts.push(`${s.quietClients} client${s.quietClients === 1 ? '' : 's'} quiet 7+ days`)
+  if (s.quiet.length > 0) {
+    lines.push(`Quiet 7+ days: ${formatList(s.quiet)}`)
   }
-  return parts.length === 0
-    ? null
-    : `Lumora today: ${parts.join(', ')}.`
+  if (lines.length === 0) return null
+  return `Lumora today\n\n${lines.join('\n')}`
 }
 
 async function run() {

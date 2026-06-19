@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { Leaf, ShoppingBasket, UtensilsCrossed, CalendarDays, ChevronDown, Check } from 'lucide-react'
+import { Leaf, ShoppingBasket, UtensilsCrossed, CalendarDays, ChevronDown, Check, Dumbbell } from 'lucide-react'
 import {
   getPortalContext, todayMealDayIndex, clientVisibleRecipes, withGrams, displayRecipeName,
   getDailyLogs, coachingToday, cleanIngredientText, clientPortionLines, isClientReadable, portionFraction,
@@ -173,6 +173,108 @@ export default async function CoachingPlanPage() {
                 </summary>
                 <div style={{ padding: '0.25rem 1.25rem 1rem' }}>
                   <DayMeals day={day} recipes={plan.recipes} />
+                </div>
+              </details>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Weekly workouts */}
+      {plan.workoutPlan.length > 0 && (
+        <section aria-label="Weekly workouts" style={{ marginBottom: '2.25rem' }}>
+          <SectionHeader
+            icon={<Dumbbell style={headerIcon} aria-hidden="true" />}
+            title="Your Workouts"
+            subtitle="A starting point. Follow as-is, modify with your trainer, or swap days as your week needs."
+          />
+          <div className="portal-card">
+            <div className="portal-gold-line" aria-hidden="true" />
+            {plan.workoutPlan.map((day, i) => (
+              <details key={i} className="portal-details" open={i === 0} style={{ borderTop: i === 0 ? 'none' : '1px solid rgba(200,220,192,0.3)' }}>
+                <summary style={{
+                  padding: '0.9375rem 1.25rem', minHeight: '52px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem',
+                }}>
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ display: 'block', fontFamily: 'var(--font-sans)', fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      {day.day.trim() || `Day ${i + 1}`}
+                    </span>
+                    {day.exercises.length > 0 && (
+                      <span style={{ display: 'block', fontFamily: 'var(--font-sans)', fontSize: '0.78125rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>
+                        {day.exercises.length} exercise{day.exercises.length !== 1 ? 's' : ''}
+                      </span>
+                    )}
+                  </span>
+                  <ChevronDown className="portal-chevron" style={{ width: '1.125rem', height: '1.125rem', color: 'var(--botanical-green)', flexShrink: 0 }} aria-hidden="true" />
+                </summary>
+                <div style={{ padding: '0.25rem 1.25rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+                  {day.warmup.trim() && (
+                    <div>
+                      <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.6875rem', fontWeight: 700, color: '#3F6936', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.25rem' }}>
+                        Warm-up
+                      </p>
+                      <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', color: 'var(--text-primary)', lineHeight: 1.5, whiteSpace: 'pre-line', margin: 0 }}>
+                        {day.warmup.trim()}
+                      </p>
+                    </div>
+                  )}
+                  {day.exercises.length > 0 && (
+                    <div>
+                      <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.6875rem', fontWeight: 700, color: '#3F6936', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.375rem' }}>
+                        Exercises
+                      </p>
+                      <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {day.exercises.map((exercise, idx) => (
+                          <li key={idx} style={{ background: 'var(--section-tint)', borderRadius: '0.625rem', padding: '0.625rem 0.875rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.625rem' }}>
+                              <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                                {idx + 1}. {exercise.name || 'Exercise'}
+                              </span>
+                              <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', fontWeight: 700, color: '#3F6936', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                                {[exercise.sets, exercise.reps].filter(Boolean).join(' × ')}
+                                {exercise.rest.trim() && (
+                                  <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · rest {exercise.rest.trim()}</span>
+                                )}
+                              </span>
+                            </div>
+                            {exercise.notes.trim() && (
+                              <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.5, marginTop: '0.25rem', marginBottom: 0 }}>
+                                {exercise.notes.trim()}
+                              </p>
+                            )}
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+                  {day.cardio.trim() && (
+                    <div>
+                      <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.6875rem', fontWeight: 700, color: '#3F6936', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.25rem' }}>
+                        Cardio
+                      </p>
+                      <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', color: 'var(--text-primary)', lineHeight: 1.5, whiteSpace: 'pre-line', margin: 0 }}>
+                        {day.cardio.trim()}
+                      </p>
+                    </div>
+                  )}
+                  {day.cooldown.trim() && (
+                    <div>
+                      <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.6875rem', fontWeight: 700, color: '#3F6936', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.25rem' }}>
+                        Cool-down
+                      </p>
+                      <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', color: 'var(--text-primary)', lineHeight: 1.5, whiteSpace: 'pre-line', margin: 0 }}>
+                        {day.cooldown.trim()}
+                      </p>
+                    </div>
+                  )}
+                  {day.notes.trim() && (
+                    <div style={{ background: 'var(--section-sand)', borderRadius: '0.625rem', padding: '0.625rem 0.875rem' }}>
+                      <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', color: 'var(--text-primary)', lineHeight: 1.5, whiteSpace: 'pre-line', margin: 0 }}>
+                        {day.notes.trim()}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </details>
             ))}

@@ -75,17 +75,22 @@ export function parseWeightPounds(value: string) {
 }
 
 export function parseHeightCentimeters(value: string) {
-  const normalized = value.toLowerCase().trim()
+  // Normalize curly quotes/primes to straight ASCII so 5'2" and 5'2" both parse.
+  const normalized = value
+    .toLowerCase()
+    .replace(/[‘’ʼʹ′]/g, "'")
+    .replace(/[“”ʺ″]/g, '"')
+    .trim()
   if (!normalized) return null
 
-  const feetInches = normalized.match(/(\d+)\s*(?:'|ft|feet)\s*(\d+)?/)
+  const feetInches = normalized.match(/(\d+)\s*(?:'|ft|feet)\s*(\d+(?:\.\d+)?)?\s*(?:"|in|inches)?/)
   if (feetInches) {
     const feet = Number(feetInches[1])
     const inches = Number(feetInches[2] ?? 0)
     return (feet * 12 + inches) * 2.54
   }
 
-  const inchesOnly = normalized.match(/(\d+(\.\d+)?)\s*(?:in|inches)/)
+  const inchesOnly = normalized.match(/(\d+(\.\d+)?)\s*(?:"|in|inches)/)
   if (inchesOnly) return Number(inchesOnly[1]) * 2.54
 
   const amount = firstNumber(normalized)

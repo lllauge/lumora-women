@@ -10,6 +10,11 @@ import {
   calculateMacroTargets,
   type MacroCalculationInputs,
 } from '@/lib/coaching-macro-calculator'
+import {
+  generateWorkoutPlan,
+  parseDaysPerWeek,
+  type LibraryExercise,
+} from '@/lib/workout-generator'
 
 type UsdaNutritionResponse = {
   error?: string
@@ -321,11 +326,23 @@ export default function CoachingPlanEditor({
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [libraryRecipes, setLibraryRecipes] = useState<LibraryRecipe[]>([])
+  const [libraryExercises, setLibraryExercises] = useState<LibraryExercise[]>([])
+  const [workoutDays, setWorkoutDays] = useState<2 | 3 | 4 | 5>(() => parseDaysPerWeek(stringField(asRecord(onboardingData.lifestyle), 'strengthTraining')))
+  const [workoutMinutes, setWorkoutMinutes] = useState<number>(45)
+  const [workoutLevel, setWorkoutLevel] = useState<'beginner' | 'intermediate' | 'advanced'>('beginner')
+  const [workoutEquipment, setWorkoutEquipment] = useState<string[]>(['bodyweight', 'dumbbells', 'cable', 'machine'])
 
   useEffect(() => {
     fetch('/api/admin/recipes')
       .then(r => r.json())
       .then(d => setLibraryRecipes(d.recipes ?? []))
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    fetch('/api/admin/exercises')
+      .then(r => r.json())
+      .then(d => setLibraryExercises(d.exercises ?? []))
       .catch(() => {})
   }, [])
 
@@ -490,6 +507,90 @@ export default function CoachingPlanEditor({
       )
       return { ...current, recipes: newRecipes }
     })
+  }
+
+  function generateWorkout() {
+    if (libraryExercises.length === 0) {
+      setError('Exercise Library is empty. Add exercises before generating.')
+      return
+    }
+    setError('')
+    const next = generateWorkoutPlan(libraryExercises, {
+      daysPerWeek: workoutDays,
+      minutesPerSession: workoutMinutes,
+      equipment: workoutEquipment,
+      level: workoutLevel,
+    })
+    setPlan(current => ({ ...current, workoutPlan: next }))
+    setMessage(`Generated ${next.length}-day workout plan.`)
+  }
+
+  function updateWorkoutDay(dayIndex: number, patch: Partial<CoachingPlanDraft['workoutPlan'][number]>) {
+    setPlan(current => {
+      const wp = [...current.workoutPlan]
+      wp[dayIndex] = { ...wp[dayIndex], ...patch }
+      return { ...current, workoutPlan: wp }
+    })
+  }
+
+  function updateWorkoutExercise(dayIndex: number, exIndex: number, patch: Partial<CoachingPlanDraft['workoutPlan'][number]['exercises'][number]>) {
+    setPlan(current => {
+      const wp = [...current.workoutPlan]
+      const exercises = [...wp[dayIndex].exercises]
+      exercises[exIndex] = { ...exercises[exIndex], ...patch }
+      wp[dayIndex] = { ...wp[dayIndex], exercises }
+      return { ...current, workoutPlan: wp }
+    })
+  }
+
+  function swapWorkoutExercise(dayIndex: number, exIndex: number, libraryId: string) {
+    const ex = libraryExercises.find(e => e.id === libraryId)
+    if (!ex) return
+    updateWorkoutExercise(dayIndex, exIndex, {
+      name: ex.name,
+      sets: ex.default_sets,
+      reps: ex.default_reps,
+      rest: ex.default_rest,
+      notes: ex.cues,
+    })
+  }
+
+  function addWorkoutExercise(dayIndex: number) {
+    setPlan(current => {
+      const wp = [...current.workoutPlan]
+      wp[dayIndex] = {
+        ...wp[dayIndex],
+        exercises: [...wp[dayIndex].exercises, { name: '', sets: '3', reps: '10', rest: '60s', notes: '' }],
+      }
+      return { ...current, workoutPlan: wp }
+    })
+  }
+
+  function removeWorkoutExercise(dayIndex: number, exIndex: number) {
+    setPlan(current => {
+      const wp = [...current.workoutPlan]
+      wp[dayIndex] = { ...wp[dayIndex], exercises: wp[dayIndex].exercises.filter((_, i) => i !== exIndex) }
+      return { ...current, workoutPlan: wp }
+    })
+  }
+
+  function addWorkoutDay() {
+    setPlan(current => ({
+      ...current,
+      workoutPlan: [...current.workoutPlan, {
+        day: `Day ${current.workoutPlan.length + 1}`,
+        focus: '',
+        warmup: '',
+        exercises: [],
+        cardio: '',
+        cooldown: '',
+        notes: '',
+      }],
+    }))
+  }
+
+  function removeWorkoutDay(dayIndex: number) {
+    setPlan(current => ({ ...current, workoutPlan: current.workoutPlan.filter((_, i) => i !== dayIndex) }))
   }
 
   function applyMacroEstimate() {
@@ -1192,11 +1293,211 @@ export default function CoachingPlanEditor({
         </div>
       </div>
 
-      {/* ── Section 5: Grocery List ── */}
+      {/* ── Section 5: Workout Plan ── */}
+      <div style={sCard}>
+        <div style={sHeader}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <SectionNum n={5} done={plan.workoutPlan.length > 0} />
+            <SectionTitle title="Workout Plan" subtitle="Generate a structured week from your Exercise Library, then swap or tweak per client" />
+          </div>
+          <button
+            type="button"
+            className="admin-btn-secondary"
+            style={{ flexShrink: 0 }}
+            onClick={generateWorkout}
+          >
+            <Sparkles size={14} style={{ marginRight: 6 }} />
+            Generate from Library
+          </button>
+        </div>
+        <div style={sBody}>
+          {/* Generator inputs */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16, padding: 12, background: 'var(--admin-surface-low)', borderRadius: 8 }}>
+            <label>
+              <span className="admin-label">Days/week</span>
+              <select className="admin-input" value={workoutDays} onChange={e => setWorkoutDays(Number(e.target.value) as 2|3|4|5)}>
+                <option value={2}>2 days</option>
+                <option value={3}>3 days</option>
+                <option value={4}>4 days</option>
+                <option value={5}>5 days</option>
+              </select>
+            </label>
+            <label>
+              <span className="admin-label">Minutes/session</span>
+              <select className="admin-input" value={workoutMinutes} onChange={e => setWorkoutMinutes(Number(e.target.value))}>
+                <option value={30}>30 min</option>
+                <option value={45}>45 min</option>
+                <option value={60}>60 min</option>
+                <option value={75}>75 min</option>
+              </select>
+            </label>
+            <label>
+              <span className="admin-label">Level</span>
+              <select className="admin-input" value={workoutLevel} onChange={e => setWorkoutLevel(e.target.value as 'beginner'|'intermediate'|'advanced')}>
+                <option value="beginner">Beginner</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="advanced">Advanced</option>
+              </select>
+            </label>
+            <label>
+              <span className="admin-label">Equipment</span>
+              <input
+                className="admin-input"
+                value={workoutEquipment.join(', ')}
+                onChange={e => setWorkoutEquipment(e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+                placeholder="bodyweight, dumbbells, cable"
+              />
+            </label>
+          </div>
+
+          {plan.workoutPlan.length === 0 && (
+            <p style={{ fontFamily: 'var(--font-hanken)', color: 'var(--admin-on-surface-variant)', fontSize: '0.85rem', textAlign: 'center', padding: '20px 0' }}>
+              No workout days yet. Click <strong>Generate from Library</strong> to auto-build a week, or{' '}
+              <button type="button" onClick={addWorkoutDay} style={{ background: 'none', border: 'none', color: 'var(--admin-primary)', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit', fontSize: 'inherit' }}>
+                add a blank day
+              </button>.
+              Build your library at <a href="/admin/exercises" style={{ color: 'var(--admin-primary)', fontWeight: 600 }}>Exercise Library</a>.
+            </p>
+          )}
+
+          {plan.workoutPlan.map((day, dayIndex) => (
+            <details key={dayIndex} style={{ border: '1px solid var(--admin-outline-variant)', borderRadius: 10, overflow: 'hidden', marginBottom: 8 }} open={dayIndex === 0}>
+              <summary style={{ listStyle: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: 'pointer', background: 'var(--admin-surface-low)' }}>
+                <div>
+                  <div style={{ fontFamily: 'var(--font-hanken)', fontWeight: 700, fontSize: '0.92rem', color: 'var(--admin-on-surface)' }}>{day.day || `Day ${dayIndex + 1}`}</div>
+                  <div style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.75rem', color: 'var(--admin-on-surface-variant)', marginTop: 2 }}>
+                    {day.exercises.length} exercise{day.exercises.length !== 1 ? 's' : ''}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button
+                    type="button"
+                    className="admin-btn-ghost"
+                    style={{ color: 'var(--admin-error)', fontSize: '0.78rem', padding: '4px 8px' }}
+                    onClick={e => { e.preventDefault(); e.stopPropagation(); removeWorkoutDay(dayIndex) }}
+                    aria-label="Remove day"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                  <ChevronDown size={15} style={{ color: 'var(--admin-on-surface-variant)' }} />
+                </div>
+              </summary>
+              <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 12, borderTop: '1px solid var(--admin-outline-variant)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <label>
+                    <span className="admin-label">Day Label</span>
+                    <input className="admin-input" value={day.day} onChange={e => updateWorkoutDay(dayIndex, { day: e.target.value })} />
+                  </label>
+                  <label>
+                    <span className="admin-label">Focus</span>
+                    <input className="admin-input" value={day.focus} onChange={e => updateWorkoutDay(dayIndex, { focus: e.target.value })} placeholder="e.g. Lower Body" />
+                  </label>
+                </div>
+
+                <label>
+                  <span className="admin-label">Warm-up</span>
+                  <textarea className="admin-input" rows={2} style={{ resize: 'vertical' }} value={day.warmup} onChange={e => updateWorkoutDay(dayIndex, { warmup: e.target.value })} />
+                </label>
+
+                {/* Exercises */}
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span className="admin-label" style={{ marginBottom: 0 }}>Exercises</span>
+                    <button type="button" className="admin-btn-ghost" style={{ fontSize: '0.78rem' }} onClick={() => addWorkoutExercise(dayIndex)}>
+                      + Add exercise
+                    </button>
+                  </div>
+                  {day.exercises.length === 0 && (
+                    <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.78rem', color: 'var(--admin-on-surface-variant)', margin: '4px 0' }}>No exercises yet.</p>
+                  )}
+                  {day.exercises.map((exercise, exIndex) => {
+                    const libMatch = libraryExercises.find(e => e.name === exercise.name)
+                    const pattern = libMatch?.movement_pattern
+                    const swappable = pattern
+                      ? libraryExercises.filter(e => e.movement_pattern === pattern && !e.archived)
+                      : libraryExercises.filter(e => !e.archived)
+                    return (
+                      <div key={exIndex} style={{ border: '1px solid var(--admin-outline-variant)', borderRadius: 8, padding: 10, marginBottom: 6, background: 'var(--admin-surface)' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '2fr 80px 80px 80px auto', gap: 8, alignItems: 'flex-end' }}>
+                          <label>
+                            <span className="admin-label">Exercise</span>
+                            <select
+                              className="admin-input"
+                              value={libMatch?.id ?? ''}
+                              onChange={e => {
+                                if (e.target.value) swapWorkoutExercise(dayIndex, exIndex, e.target.value)
+                                else updateWorkoutExercise(dayIndex, exIndex, { name: '' })
+                              }}
+                            >
+                              <option value="">{exercise.name || 'Pick from library…'}</option>
+                              {swappable.map(opt => (
+                                <option key={opt.id} value={opt.id}>{opt.name}</option>
+                              ))}
+                            </select>
+                          </label>
+                          <label>
+                            <span className="admin-label">Sets</span>
+                            <input className="admin-input" value={exercise.sets} onChange={e => updateWorkoutExercise(dayIndex, exIndex, { sets: e.target.value })} />
+                          </label>
+                          <label>
+                            <span className="admin-label">Reps</span>
+                            <input className="admin-input" value={exercise.reps} onChange={e => updateWorkoutExercise(dayIndex, exIndex, { reps: e.target.value })} />
+                          </label>
+                          <label>
+                            <span className="admin-label">Rest</span>
+                            <input className="admin-input" value={exercise.rest} onChange={e => updateWorkoutExercise(dayIndex, exIndex, { rest: e.target.value })} />
+                          </label>
+                          <button
+                            type="button"
+                            className="admin-btn-ghost"
+                            style={{ color: 'var(--admin-error)', padding: '4px 6px' }}
+                            onClick={() => removeWorkoutExercise(dayIndex, exIndex)}
+                            aria-label="Remove exercise"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                        <label style={{ display: 'block', marginTop: 8 }}>
+                          <span className="admin-label">Notes / Cues</span>
+                          <textarea className="admin-input" rows={2} style={{ resize: 'vertical', fontSize: '0.82rem' }} value={exercise.notes} onChange={e => updateWorkoutExercise(dayIndex, exIndex, { notes: e.target.value })} />
+                        </label>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <label>
+                    <span className="admin-label">Cardio</span>
+                    <textarea className="admin-input" rows={2} style={{ resize: 'vertical' }} value={day.cardio} onChange={e => updateWorkoutDay(dayIndex, { cardio: e.target.value })} />
+                  </label>
+                  <label>
+                    <span className="admin-label">Cool-down</span>
+                    <textarea className="admin-input" rows={2} style={{ resize: 'vertical' }} value={day.cooldown} onChange={e => updateWorkoutDay(dayIndex, { cooldown: e.target.value })} />
+                  </label>
+                </div>
+
+                <label>
+                  <span className="admin-label">Day Notes (shown to client)</span>
+                  <textarea className="admin-input" rows={2} style={{ resize: 'vertical' }} value={day.notes} onChange={e => updateWorkoutDay(dayIndex, { notes: e.target.value })} />
+                </label>
+              </div>
+            </details>
+          ))}
+
+          {plan.workoutPlan.length > 0 && (
+            <button type="button" className="admin-btn-secondary" style={{ alignSelf: 'flex-start' }} onClick={addWorkoutDay}>
+              + Add Day
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ── Section 6: Grocery List ── */}
       <details style={sCard}>
         <summary style={{ listStyle: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', cursor: 'pointer', userSelect: 'none' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <SectionNum n={5} done={plan.groceryList.length > 0} />
+            <SectionNum n={6} done={plan.groceryList.length > 0} />
             <SectionTitle title="Grocery List" subtitle="Fills in from the meal plan's recipes on save when empty — clear it to regenerate, or edit manually" />
           </div>
           <ChevronDown size={16} style={{ color: 'var(--admin-on-surface-variant)', flexShrink: 0 }} />

@@ -17,9 +17,10 @@ type ClientRow = {
   status: string
   onboarding_status: string
   paid_at: string | null
-  coaching_onboarding: { submitted_at: string | null }[] | null
-  coaching_plans: { status: string; updated_at: string }[] | null
 }
+
+type OnboardingRow = { coaching_client_id: string; submitted_at: string | null }
+type PlanRow = { coaching_client_id: string; status: string; updated_at: string }
 
 type MessageRow = {
   id: string
@@ -51,15 +52,23 @@ function urgencyColor(days: number, yellowAt: number, redAt: number) {
 async function loadData() {
   const supabase = await createAdminClient()
 
-  const [{ data: clients }, { data: messages }, { data: recentLogs }] = await Promise.all([
+  const [
+    { data: clients },
+    { data: onboardings },
+    { data: plans },
+    { data: messages },
+    { data: recentLogs },
+  ] = await Promise.all([
     supabase
       .from('coaching_clients')
-      .select(`
-        id, email, first_name, last_name, status, onboarding_status, paid_at,
-        coaching_onboarding(submitted_at),
-        coaching_plans(status, updated_at)
-      `)
-      .order('paid_at', { ascending: false }),
+      .select('id, email, first_name, last_name, status, onboarding_status, paid_at')
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('coaching_onboarding')
+      .select('coaching_client_id, submitted_at'),
+    supabase
+      .from('coaching_plans')
+      .select('coaching_client_id, status, updated_at'),
     supabase
       .from('coaching_messages')
       .select(`
@@ -77,14 +86,22 @@ async function loadData() {
   ])
 
   return {
-    clients: (clients ?? []) as unknown as ClientRow[],
+    clients: (clients ?? []) as ClientRow[],
+    onboardings: (onboardings ?? []) as OnboardingRow[],
+    plans: (plans ?? []) as PlanRow[],
     messages: (messages ?? []) as unknown as MessageRow[],
     recentLogs: (recentLogs ?? []) as DailyLog[],
   }
 }
 
 export default async function AdminTodayPage() {
-  const { clients, messages, recentLogs } = await loadData()
+  const { clients, onboardings, plans, messages, recentLogs } = await loadData()
+
+  const onboardingByClient = new Map<string, OnboardingRow>()
+  for (const o of onboardings) onboardingByClient.set(o.coaching_client_id, o)
+
+  const planByClient = new Map<string, PlanRow>()
+  for (const p of plans) planByClient.set(p.coaching_client_id, p)
 
   const lastLogByClient = new Map<string, string>()
   for (const log of recentLogs) {
@@ -96,8 +113,8 @@ export default async function AdminTodayPage() {
 
   const planOverdue = clients
     .map((c) => {
-      const submittedAt = c.coaching_onboarding?.[0]?.submitted_at ?? null
-      const plan = c.coaching_plans?.[0]
+      const submittedAt = onboardingByClient.get(c.id)?.submitted_at ?? null
+      const plan = planByClient.get(c.id)
       const published = plan?.status === 'published'
       if (!submittedAt || published) return null
       const days = daysSince(submittedAt) ?? 0
@@ -119,7 +136,7 @@ export default async function AdminTodayPage() {
   const quietClients = clients
     .map((c) => {
       if (c.status !== 'plan_pending' && c.status !== 'active') return null
-      const submittedAt = c.coaching_onboarding?.[0]?.submitted_at
+      const submittedAt = onboardingByClient.get(c.id)?.submitted_at
       if (!submittedAt) return null
       const lastLog = lastLogByClient.get(c.id) ?? null
       const lastActivityIso = lastLog ? `${lastLog}T00:00:00Z` : submittedAt

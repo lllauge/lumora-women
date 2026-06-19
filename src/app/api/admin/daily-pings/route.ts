@@ -12,9 +12,10 @@ type ClientRow = {
   status: string
   onboarding_status: string
   paid_at: string | null
-  coaching_onboarding: { submitted_at: string | null }[] | null
-  coaching_plans: { status: string }[] | null
 }
+
+type OnboardingRow = { coaching_client_id: string; submitted_at: string | null }
+type PlanRow = { coaching_client_id: string; status: string }
 
 function daysSince(iso: string | null) {
   if (!iso) return null
@@ -24,14 +25,22 @@ function daysSince(iso: string | null) {
 async function summarize() {
   const supabase = await createAdminClient()
 
-  const [{ data: clients }, { count: unreadMessages }, { data: recentLogs }] = await Promise.all([
+  const [
+    { data: clients },
+    { data: onboardings },
+    { data: plans },
+    { count: unreadMessages },
+    { data: recentLogs },
+  ] = await Promise.all([
     supabase
       .from('coaching_clients')
-      .select(`
-        id, email, first_name, last_name, status, onboarding_status, paid_at,
-        coaching_onboarding(submitted_at),
-        coaching_plans(status)
-      `),
+      .select('id, email, first_name, last_name, status, onboarding_status, paid_at'),
+    supabase
+      .from('coaching_onboarding')
+      .select('coaching_client_id, submitted_at'),
+    supabase
+      .from('coaching_plans')
+      .select('coaching_client_id, status'),
     supabase
       .from('coaching_messages')
       .select('id', { count: 'exact', head: true })
@@ -42,6 +51,12 @@ async function summarize() {
       .select('coaching_client_id, log_date')
       .gte('log_date', new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)),
   ])
+
+  const onboardingByClient = new Map<string, OnboardingRow>()
+  for (const o of (onboardings ?? []) as OnboardingRow[]) onboardingByClient.set(o.coaching_client_id, o)
+
+  const planByClient = new Map<string, PlanRow>()
+  for (const p of (plans ?? []) as PlanRow[]) planByClient.set(p.coaching_client_id, p)
 
   const lastLogByClient = new Map<string, string>()
   for (const log of (recentLogs ?? []) as { coaching_client_id: string; log_date: string }[]) {
@@ -56,9 +71,9 @@ async function summarize() {
   let paidNotOnboarded = 0
   let quietClients = 0
 
-  for (const c of (clients ?? []) as unknown as ClientRow[]) {
-    const submittedAt = c.coaching_onboarding?.[0]?.submitted_at ?? null
-    const plan = c.coaching_plans?.[0]
+  for (const c of (clients ?? []) as ClientRow[]) {
+    const submittedAt = onboardingByClient.get(c.id)?.submitted_at ?? null
+    const plan = planByClient.get(c.id)
     const published = plan?.status === 'published'
 
     if (submittedAt && !published) {

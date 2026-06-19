@@ -4,6 +4,17 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { logAdminAction } from '@/lib/audit-log'
 import { getVerifiedAdminUser } from '@/lib/admin-guard'
+import { sendAdminSms } from '@/lib/admin-sms'
+
+export async function sendTestPing() {
+  await getVerifiedAdminUser()
+  const stamp = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  const result = await sendAdminSms(
+    `This is a test ping sent at ${stamp}. If you see this on your phone, Pushover is wired up correctly.`,
+    { title: 'Lumora · Test' }
+  )
+  return result
+}
 
 export async function deleteCoachingClient(formData: FormData) {
   const { user } = await getVerifiedAdminUser()

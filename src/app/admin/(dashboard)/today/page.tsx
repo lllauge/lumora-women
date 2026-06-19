@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/server'
+import SendTestPingButton from '@/components/admin/SendTestPingButton'
 
 export const metadata: Metadata = {
   title: 'Today',
@@ -152,15 +153,18 @@ export default async function AdminTodayPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 style={{ fontFamily: 'var(--font-eb-garamond)', fontSize: '2rem', fontWeight: 600, color: 'var(--admin-on-surface)' }}>
-          Today
-        </h1>
-        <p style={{ fontFamily: 'var(--font-hanken)', color: 'var(--admin-on-surface-variant)' }}>
-          {todaysWork === 0
-            ? 'Inbox zero. Nothing waiting on you right now.'
-            : `${todaysWork} ${todaysWork === 1 ? 'item' : 'items'} waiting on you.`}
-        </p>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+        <div>
+          <h1 style={{ fontFamily: 'var(--font-eb-garamond)', fontSize: '2rem', fontWeight: 600, color: 'var(--admin-on-surface)' }}>
+            Today
+          </h1>
+          <p style={{ fontFamily: 'var(--font-hanken)', color: 'var(--admin-on-surface-variant)' }}>
+            {todaysWork === 0
+              ? 'Inbox zero. Nothing waiting on you right now.'
+              : `${todaysWork} ${todaysWork === 1 ? 'item' : 'items'} waiting on you.`}
+          </p>
+        </div>
+        <SendTestPingButton />
       </div>
 
       <Section

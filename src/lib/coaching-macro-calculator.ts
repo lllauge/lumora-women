@@ -142,14 +142,17 @@ export function calculateMacroTargets(inputs: MacroCalculationInputs): Calculate
   const calories = roundToNearest(Math.max(1200, maintenanceCalories * (1 + adjustment)), 25)
 
   // Protein: 1g per lb of goal weight (or current weight if no lower goal),
-  // bounded so protein stays between 60g and 40% of calories.
+  // with a 30% of calories floor — important for insulin sensitivity and
+  // lean-mass retention in a deficit. Capped at 40% of calories.
   const targetWeightLb = parseWeightPounds(inputs.targetWeight)
   const proteinReferenceLb = targetWeightLb && targetWeightLb < weightLb ? targetWeightLb : weightLb
+  const proteinFloor = (calories * 0.3) / 4
   const proteinCap = (calories * 0.4) / 4
-  const protein = roundToNearest(Math.min(Math.max(60, proteinReferenceLb), proteinCap), 5)
+  const protein = roundToNearest(Math.min(Math.max(proteinFloor, proteinReferenceLb), proteinCap), 5)
 
-  // Fat: 28% of calories, never below 40g.
-  const fats = roundToNearest(Math.max(40, (calories * 0.28) / 9), 5)
+  // Fat: 35% of calories, never below 50g. Higher-fat default keeps carbs
+  // moderate for the insulin-resistant profile most coaching clients present with.
+  const fats = roundToNearest(Math.max(50, (calories * 0.35) / 9), 5)
 
   // Carbs are the exact remainder so 4·protein + 4·carbs + 9·fat = calories.
   const carbs = Math.max(0, Math.round((calories - protein * 4 - fats * 9) / 4))

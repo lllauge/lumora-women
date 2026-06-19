@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/server'
 import CoachingCheckoutForm from '@/components/admin/CoachingCheckoutForm'
 import CoachingCompInviteForm from '@/components/admin/CoachingCompInviteForm'
+import DeleteCoachingClientButton from '@/components/admin/DeleteCoachingClientButton'
 import { formatCurrency, formatShortDate } from '@/utils/format'
 
 export const metadata: Metadata = {
@@ -93,9 +94,12 @@ export default async function AdminCoachingPage() {
                     <td>{client.paid_at ? formatShortDate(client.paid_at) : '—'}</td>
                     <td>{formatCurrency(Number(client.coaching_orders?.amount ?? 0))}</td>
                     <td className="text-right">
-                      <Link href={`/admin/coaching/${client.id}`} className="admin-btn-secondary" style={{ padding: '0.45rem 0.85rem' }}>
-                        View Onboarding
-                      </Link>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Link href={`/admin/coaching/${client.id}`} className="admin-btn-secondary" style={{ padding: '0.45rem 0.85rem' }}>
+                          View Onboarding
+                        </Link>
+                        <DeleteCoachingClientButton id={client.id} label={name} />
+                      </div>
                     </td>
                   </tr>
                 )

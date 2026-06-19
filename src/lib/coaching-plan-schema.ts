@@ -67,10 +67,29 @@ export const RecipeSchema = z.object({
   notes: z.string().default(''),
 })
 
+export const WorkoutExerciseSchema = z.object({
+  name: z.string().default(''),
+  sets: z.string().default(''),
+  reps: z.string().default(''),
+  rest: z.string().default(''),
+  notes: z.string().default(''),
+})
+
+export const WorkoutDaySchema = z.object({
+  day: z.string().default(''),
+  focus: z.string().default(''),
+  warmup: z.string().default(''),
+  exercises: z.array(WorkoutExerciseSchema).default([]),
+  cardio: z.string().default(''),
+  cooldown: z.string().default(''),
+  notes: z.string().default(''),
+})
+
 export const CoachingPlanSchema = z.object({
   macroTargets: MacroTargetsSchema.default(emptyMacroTargets),
   mealPlan: z.array(MealDaySchema).default([]),
   recipes: z.array(RecipeSchema).default([]),
+  workoutPlan: z.array(WorkoutDaySchema).default([]),
   groceryList: z.array(z.string()).default([]),
   adminNotes: z.string().default(''),
   clientNotes: z.string().default(''),
@@ -84,6 +103,7 @@ export const emptyCoachingPlan: CoachingPlanDraft = {
   macroTargets: emptyMacroTargets,
   mealPlan: [],
   recipes: [],
+  workoutPlan: [],
   groceryList: [],
   adminNotes: '',
   clientNotes: '',
@@ -99,7 +119,7 @@ export function parseCoachingPlan(value: unknown): CoachingPlanDraft {
 export const CoachingPlanAiJsonSchema = {
   type: 'object',
   additionalProperties: false,
-  required: ['macroTargets', 'mealPlan', 'recipes', 'groceryList', 'adminNotes', 'clientNotes', 'status', 'generatedByAi'],
+  required: ['macroTargets', 'mealPlan', 'recipes', 'workoutPlan', 'groceryList', 'adminNotes', 'clientNotes', 'status', 'generatedByAi'],
   properties: {
     macroTargets: {
       type: 'object',

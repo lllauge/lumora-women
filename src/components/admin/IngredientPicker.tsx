@@ -90,12 +90,8 @@ export default function IngredientPicker({ onAdd }: Props) {
   }, [])
 
   function applyDefaultUnit(food: UsdaFoodOption) {
-    // Count-style measures ("1 large", "1 medium") default to counting;
-    // weighed foods (egg whites, chicken, rice) default to grams.
-    const weighedFood = /egg,?\s*white|liquid egg/i.test(food.description)
-    const countMeasure = weighedFood
-      ? -1
-      : (food.measures ?? []).findIndex((m) => /^1\s+(large|medium|small|extra large|jumbo|slice|piece|egg|banana|apple)\b/i.test(m.label))
+    // Count-style measures ("1 large", "1 medium") default to counting.
+    const countMeasure = (food.measures ?? []).findIndex((m) => /^1\s+(large|medium|small|extra large|jumbo|slice|piece|egg|banana|apple)\b/i.test(m.label))
     setMeasureIdx(countMeasure)
     const defaultAmount = countMeasure >= 0 ? '1' : ''
     setAmount(defaultAmount)

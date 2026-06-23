@@ -15,6 +15,7 @@ import {
   parseDaysPerWeek,
   type LibraryExercise,
 } from '@/lib/workout-generator'
+import { cookedGramsToRaw } from '@/lib/cooked-to-raw'
 
 type UsdaNutritionResponse = {
   error?: string
@@ -221,10 +222,11 @@ function buildGroceryList(plan: CoachingPlanDraft): string[] {
       if (!line) continue
       const gramMatch = line.match(/^(\d+(?:\.\d+)?)\s*g\s+(.+)$/i)
       if (gramMatch) {
-        const label = gramMatch[2].trim()
+        const cookedGrams = Number(gramMatch[1]) * times
+        const { grams, label } = cookedGramsToRaw(gramMatch[2].trim(), cookedGrams)
         const key = label.toLowerCase()
         const existing = gramTotals.get(key)
-        gramTotals.set(key, { label, grams: (existing?.grams ?? 0) + Number(gramMatch[1]) * times })
+        gramTotals.set(key, { label, grams: (existing?.grams ?? 0) + grams })
       } else {
         const key = line.toLowerCase()
         const existing = otherCounts.get(key)

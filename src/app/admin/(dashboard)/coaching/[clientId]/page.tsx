@@ -47,6 +47,7 @@ type PlanRow = {
   macro_targets: unknown
   meal_plan: unknown
   recipes: unknown
+  workout_plan: unknown
   grocery_list: unknown
   admin_notes: string | null
   client_notes: string | null
@@ -184,7 +185,7 @@ async function loadClient(clientId: string) {
       .maybeSingle(),
     supabase
       .from('coaching_plans')
-      .select('planning_inputs, macro_targets, meal_plan, recipes, grocery_list, admin_notes, client_notes, status, generated_by_ai')
+      .select('planning_inputs, macro_targets, meal_plan, recipes, workout_plan, grocery_list, admin_notes, client_notes, status, generated_by_ai')
       .eq('coaching_client_id', clientId)
       .maybeSingle(),
     supabase
@@ -217,6 +218,7 @@ export default async function AdminCoachingClientPage({ params }: PageProps) {
         macroTargets: plan.macro_targets,
         mealPlan: plan.meal_plan,
         recipes: plan.recipes,
+        workoutPlan: plan.workout_plan,
         groceryList: plan.grocery_list,
         adminNotes: plan.admin_notes ?? '',
         clientNotes: plan.client_notes ?? '',

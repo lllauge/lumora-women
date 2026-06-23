@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createAdminClient, createClient } from '@/lib/supabase/server'
 import { parseCoachingPlan, type CoachingPlanDraft } from '@/lib/coaching-plan-schema'
+import { cookedGramsToRaw } from '@/lib/cooked-to-raw'
 
 const COACHING_TIME_ZONE = 'America/New_York'
 
@@ -183,12 +184,13 @@ export function groceryDisplay(item: string): string {
   const cleaned = cleanIngredientText(item)
   const match = cleaned.match(/^(\d+(?:\.\d+)?)\s*g\b\s*(.+)$/i)
   if (!match) return cleaned
-  const grams = parseFloat(match[1])
-  if (!Number.isFinite(grams) || grams <= 0) return cleaned
+  const parsedGrams = parseFloat(match[1])
+  if (!Number.isFinite(parsedGrams) || parsedGrams <= 0) return cleaned
+  const { grams, label } = cookedGramsToRaw(match[2].trim(), parsedGrams)
   const friendly = grams >= 454
     ? `${(Math.round((grams / 453.59) * 4) / 4).toFixed(2).replace(/\.?0+$/, '')} lb`
     : `${(Math.round((grams / 28.35) * 2) / 2).toFixed(1).replace(/\.0$/, '')} oz`
-  return `${match[2].trim()}, ${Math.round(grams)}g (about ${friendly})`
+  return `${label}, ${Math.round(grams)}g (about ${friendly})`
 }
 
 const FRACTIONS: [number, string][] = [
@@ -374,7 +376,7 @@ export async function getPortalContext(): Promise<PortalContext> {
 
   const { data: planRow } = await admin
     .from('coaching_plans')
-    .select('macro_targets, meal_plan, recipes, grocery_list, client_notes, status, updated_at')
+    .select('macro_targets, meal_plan, recipes, workout_plan, grocery_list, client_notes, status, updated_at')
     .eq('coaching_client_id', client.id)
     .eq('status', 'published')
     .maybeSingle()
@@ -385,6 +387,7 @@ export async function getPortalContext(): Promise<PortalContext> {
     macroTargets: planRow.macro_targets,
     mealPlan: planRow.meal_plan,
     recipes: planRow.recipes,
+    workoutPlan: planRow.workout_plan,
     groceryList: planRow.grocery_list,
     clientNotes: planRow.client_notes ?? '',
     status: planRow.status,

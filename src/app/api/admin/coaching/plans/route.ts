@@ -44,6 +44,7 @@ export async function POST(req: NextRequest) {
         macro_targets: plan.macroTargets,
         meal_plan: plan.mealPlan,
         recipes: plan.recipes,
+        workout_plan: plan.workoutPlan,
         grocery_list: plan.groceryList,
         planning_inputs: planningInputs ?? {},
         admin_notes: plan.adminNotes,
@@ -54,7 +55,7 @@ export async function POST(req: NextRequest) {
       },
       { onConflict: 'coaching_client_id' }
     )
-    .select('macro_targets, meal_plan, recipes, grocery_list, planning_inputs, admin_notes, client_notes, status, generated_by_ai')
+    .select('macro_targets, meal_plan, recipes, workout_plan, grocery_list, planning_inputs, admin_notes, client_notes, status, generated_by_ai')
     .single()
 
   if (error) {
@@ -80,6 +81,7 @@ export async function POST(req: NextRequest) {
       macroTargets: savedPlan?.macro_targets,
       mealPlan: savedPlan?.meal_plan,
       recipes: savedPlan?.recipes,
+      workoutPlan: savedPlan?.workout_plan,
       groceryList: savedPlan?.grocery_list,
       adminNotes: savedPlan?.admin_notes ?? '',
       clientNotes: savedPlan?.client_notes ?? '',

@@ -150,18 +150,34 @@ export default function Navbar({ showShop = false }: { showShop?: boolean }) {
             </Link>
           </div>
 
-          {/* Mobile menu button */}
-          <button
-            ref={menuButtonRef}
-            className="md:hidden touch-target rounded-md"
-            style={{ color: 'var(--botanical-light)' }}
-            onClick={() => setMobileOpen(!mobileOpen)}
-            aria-label={mobileOpen ? 'Close navigation menu' : 'Open navigation menu'}
-            aria-expanded={mobileOpen}
-            aria-controls="mobile-nav"
-          >
-            {mobileOpen ? <X className="w-5 h-5" aria-hidden="true" /> : <Menu className="w-5 h-5" aria-hidden="true" />}
-          </button>
+          {/* Mobile right, login shortcut + menu button */}
+          <div className="md:hidden flex items-center gap-2">
+            <Link
+              href={user ? '/dashboard' : '/login'}
+              className="touch-target text-sm px-3 rounded-md"
+              style={{
+                color: 'var(--botanical-light)',
+                fontFamily: 'var(--font-sans)',
+                fontWeight: 500,
+                border: '1px solid rgba(200, 220, 192, 0.35)',
+                display: 'inline-flex',
+                alignItems: 'center',
+              }}
+            >
+              {user ? 'Dashboard' : 'Log In'}
+            </Link>
+            <button
+              ref={menuButtonRef}
+              className="touch-target rounded-md"
+              style={{ color: 'var(--botanical-light)' }}
+              onClick={() => setMobileOpen(!mobileOpen)}
+              aria-label={mobileOpen ? 'Close navigation menu' : 'Open navigation menu'}
+              aria-expanded={mobileOpen}
+              aria-controls="mobile-nav"
+            >
+              {mobileOpen ? <X className="w-5 h-5" aria-hidden="true" /> : <Menu className="w-5 h-5" aria-hidden="true" />}
+            </button>
+          </div>
         </div>
       </div>
 

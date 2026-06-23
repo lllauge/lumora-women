@@ -83,9 +83,13 @@ const IFRAME_HEIGHT_SHIM = `
 `
 
 function prepareCourseHtml(rawHtml: string): string {
+  // Embedded guides often have scroll-snap sections sized to the full viewport.
+  // Inside an iframe that snowballs into a multi-thousand-pixel document with
+  // huge empty bands between blocks of text. Strip viewport-relative heights
+  // and let each section size to its actual content instead.
   const neutralized = rawHtml
-    .replace(/min-height\s*:\s*100vh/gi, 'min-height: 720px')
-    .replace(/height\s*:\s*100vh/gi, 'min-height: 720px')
+    .replace(/min-height\s*:\s*100(?:vh|dvh|svh|lvh)\b/gi, 'min-height: 0')
+    .replace(/height\s*:\s*100(?:vh|dvh|svh|lvh)\b/gi, 'height: auto')
   if (/<\/body>/i.test(neutralized)) {
     return neutralized.replace(/<\/body>/i, `${IFRAME_HEIGHT_SHIM}</body>`)
   }

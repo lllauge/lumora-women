@@ -264,9 +264,15 @@ export function clientVisibleRecipes(plan: CoachingPlanDraft): { recipe: Coachin
     }
   }
   if (referenced.size === 0) return []
+  // Auto-slot recipes created when a coach adds raw ingredients to a meal slot
+  // without picking a real recipe are named "Custom breakfast (d1-breakfast)"
+  // etc. Those carry the meal's ingredient list but aren't recipes the client
+  // is meant to read as a card — hide them.
+  const autoSlotName = /^Custom\s+(breakfast|lunch|dinner|snack)\b/i
   return plan.recipes
     .map((recipe, index) => ({ recipe, index }))
     .filter(({ recipe }) => referenced.has(recipe.name.trim()))
+    .filter(({ recipe }) => !autoSlotName.test(displayRecipeName(recipe.name)))
 }
 
 function winsCount(log: DailyLog | undefined, habits: Habit[]): number {

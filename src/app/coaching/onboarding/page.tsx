@@ -196,6 +196,32 @@ export default async function CoachingOnboardingPage({ searchParams }: PageProps
                 <Field name="steps" label="Average daily steps, if known" />
               </div>
               <TextArea name="workouts" label="Current workouts and equipment access" />
+              <div className="grid md:grid-cols-2 gap-4">
+                <SelectField
+                  name="workoutDaysCommitment"
+                  label="Realistic training days you can commit to each week"
+                  options={[
+                    { value: '', label: '— Select —' },
+                    { value: '1_day', label: '1 day' },
+                    { value: '2_days', label: '2 days' },
+                    { value: '3_days', label: '3 days' },
+                    { value: '4_days', label: '4 days' },
+                    { value: '5_plus_days', label: '5+ days' },
+                  ]}
+                />
+                <SelectField
+                  name="workoutSessionLength"
+                  label="Realistic session length"
+                  options={[
+                    { value: '', label: '— Select —' },
+                    { value: 'under_20', label: 'Under 20 minutes' },
+                    { value: '20_30', label: '20–30 minutes' },
+                    { value: '30_45', label: '30–45 minutes' },
+                    { value: '45_60', label: '45–60 minutes' },
+                    { value: '60_plus', label: '60+ minutes' },
+                  ]}
+                />
+              </div>
               <TextArea name="barriers" label="Biggest barriers" />
               <TextArea name="accountability" label="What kind of accountability helps you most?" />
             </Section>

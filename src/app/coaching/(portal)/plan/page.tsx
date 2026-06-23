@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { Leaf, ShoppingBasket, UtensilsCrossed, CalendarDays, ChevronDown, Check, Dumbbell } from 'lucide-react'
+import { Leaf, ShoppingBasket, UtensilsCrossed, CalendarDays, ChevronDown, Check, Dumbbell, PlayCircle } from 'lucide-react'
 import {
   getPortalContext, todayMealDayIndex, clientVisibleRecipes, withGrams, displayRecipeName,
   getDailyLogs, coachingToday, cleanIngredientText, clientPortionLines, isClientReadable, portionFraction,
@@ -30,6 +30,19 @@ function SectionHeader({ icon, title, subtitle }: { icon: React.ReactNode; title
 }
 
 const headerIcon: React.CSSProperties = { width: '1rem', height: '1rem', color: 'var(--botanical-green)' }
+
+function exerciseDemoHref(exercise: CoachingPlanDraft['workoutPlan'][number]['exercises'][number]) {
+  const savedUrl = exercise.videoUrl.trim()
+  if (savedUrl) {
+    if (/^https?:\/\//i.test(savedUrl)) return savedUrl
+    if (/^(www\.)?(youtube\.com|youtu\.be)\//i.test(savedUrl)) return `https://${savedUrl}`
+    return savedUrl
+  }
+
+  const name = exercise.name.trim()
+  if (!name) return ''
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(`${name} exercise demo form`)}`
+}
 
 export default async function CoachingPlanPage() {
   const { client, plan } = await getPortalContext()
@@ -238,6 +251,24 @@ export default async function CoachingPlanPage() {
                                 )}
                               </span>
                             </div>
+                            {exerciseDemoHref(exercise) && (
+                              <a
+                                href={exerciseDemoHref(exercise)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  display: 'inline-flex', alignItems: 'center', gap: '0.375rem',
+                                  minHeight: '2rem', marginTop: '0.5rem', padding: '0.375rem 0.625rem',
+                                  borderRadius: '999px', background: '#FFFFFF', border: '1px solid rgba(63,105,54,0.18)',
+                                  fontFamily: 'var(--font-sans)', fontSize: '0.78125rem', fontWeight: 700,
+                                  color: '#3F6936', textDecoration: 'none',
+                                }}
+                                aria-label={`Watch demo video for ${exercise.name || 'this exercise'}`}
+                              >
+                                <PlayCircle style={{ width: '0.875rem', height: '0.875rem' }} aria-hidden="true" />
+                                Watch demo
+                              </a>
+                            )}
                             {exercise.notes.trim() && (
                               <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.5, marginTop: '0.25rem', marginBottom: 0 }}>
                                 {exercise.notes.trim()}

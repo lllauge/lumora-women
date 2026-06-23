@@ -553,6 +553,7 @@ export default function CoachingPlanEditor({
       sets: ex.default_sets,
       reps: ex.default_reps,
       rest: ex.default_rest,
+      videoUrl: ex.video_url,
       notes: ex.cues,
     })
   }
@@ -562,7 +563,7 @@ export default function CoachingPlanEditor({
       const wp = [...current.workoutPlan]
       wp[dayIndex] = {
         ...wp[dayIndex],
-        exercises: [...wp[dayIndex].exercises, { name: '', sets: '3', reps: '10', rest: '60s', notes: '' }],
+        exercises: [...wp[dayIndex].exercises, { name: '', sets: '3', reps: '10', rest: '60s', videoUrl: '', notes: '' }],
       }
       return { ...current, workoutPlan: wp }
     })
@@ -1428,7 +1429,7 @@ export default function CoachingPlanEditor({
                               value={libMatch?.id ?? ''}
                               onChange={e => {
                                 if (e.target.value) swapWorkoutExercise(dayIndex, exIndex, e.target.value)
-                                else updateWorkoutExercise(dayIndex, exIndex, { name: '' })
+                                else updateWorkoutExercise(dayIndex, exIndex, { name: '', videoUrl: '' })
                               }}
                             >
                               <option value="">{exercise.name || 'Pick from library…'}</option>
@@ -1459,6 +1460,15 @@ export default function CoachingPlanEditor({
                             <Trash2 size={13} />
                           </button>
                         </div>
+                        <label style={{ display: 'block', marginTop: 8 }}>
+                          <span className="admin-label">Demo Video URL</span>
+                          <input
+                            className="admin-input"
+                            value={exercise.videoUrl}
+                            onChange={e => updateWorkoutExercise(dayIndex, exIndex, { videoUrl: e.target.value })}
+                            placeholder="Saved library URL, or paste a YouTube demo link"
+                          />
+                        </label>
                         <label style={{ display: 'block', marginTop: 8 }}>
                           <span className="admin-label">Notes / Cues</span>
                           <textarea className="admin-input" rows={2} style={{ resize: 'vertical', fontSize: '0.82rem' }} value={exercise.notes} onChange={e => updateWorkoutExercise(dayIndex, exIndex, { notes: e.target.value })} />

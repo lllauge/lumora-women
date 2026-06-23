@@ -72,6 +72,7 @@ export const WorkoutExerciseSchema = z.object({
   sets: z.string().default(''),
   reps: z.string().default(''),
   rest: z.string().default(''),
+  videoUrl: z.string().default(''),
   notes: z.string().default(''),
 })
 
@@ -177,6 +178,38 @@ export const CoachingPlanAiJsonSchema = {
           ingredients: { type: 'array', items: { type: 'string' } },
           instructions: { type: 'array', items: { type: 'string' } },
           swaps: { type: 'array', items: { type: 'string' } },
+          notes: { type: 'string' },
+        },
+      },
+    },
+    workoutPlan: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['day', 'focus', 'warmup', 'exercises', 'cardio', 'cooldown', 'notes'],
+        properties: {
+          day: { type: 'string' },
+          focus: { type: 'string' },
+          warmup: { type: 'string' },
+          exercises: {
+            type: 'array',
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              required: ['name', 'sets', 'reps', 'rest', 'videoUrl', 'notes'],
+              properties: {
+                name: { type: 'string' },
+                sets: { type: 'string' },
+                reps: { type: 'string' },
+                rest: { type: 'string' },
+                videoUrl: { type: 'string' },
+                notes: { type: 'string' },
+              },
+            },
+          },
+          cardio: { type: 'string' },
+          cooldown: { type: 'string' },
           notes: { type: 'string' },
         },
       },

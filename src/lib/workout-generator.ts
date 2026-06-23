@@ -209,6 +209,7 @@ export function generateWorkoutPlan(
         sets: ex.default_sets,
         reps: ex.default_reps,
         rest: ex.default_rest,
+        videoUrl: ex.video_url,
         notes: ex.cues,
       })
     }

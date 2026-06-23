@@ -83,12 +83,15 @@ async function canAccessAsset(req: NextRequest, assetUrl: string) {
     .maybeSingle()
 
   if (download) {
+    const isHtml =
+      (typeof download.file_type === 'string' && /text\/html\b/i.test(download.file_type)) ||
+      (typeof download.file_name === 'string' && /\.html?$/i.test(download.file_name))
     return {
       allowed: true,
       status: 200,
       filename: download.file_name ?? null,
-      inline: download.file_type === 'text/html',
-      isHtml: download.file_type === 'text/html',
+      inline: isHtml,
+      isHtml,
     }
   }
 

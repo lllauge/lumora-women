@@ -51,6 +51,14 @@ function protectedAssetUrl(url: string) {
   return `/api/course-assets?url=${encodeURIComponent(url)}`
 }
 
+// Match the stored MIME (which may carry a charset like "text/html; charset=utf-8")
+// OR fall back to the filename extension — older uploads sometimes have file_type
+// stored as null or an opaque type like "application/octet-stream".
+function isHtmlDownload(d: { file_type: string | null; file_name: string }): boolean {
+  if (d.file_type && /text\/html\b/i.test(d.file_type)) return true
+  return /\.html?$/i.test(d.file_name)
+}
+
 const IFRAME_HEIGHT_SHIM = `
 <script>
 (function () {
@@ -545,7 +553,7 @@ export default function LessonPage({
           )}
 
           {/* Inline HTML viewers */}
-          {downloads.filter((d) => d.file_type === 'text/html').map((dl) => (
+          {downloads.filter(isHtmlDownload).map((dl) => (
             <section key={dl.id} aria-label={dl.file_name} style={{ marginBottom: '2rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '1rem', marginBottom: '0.75rem', flexWrap: 'wrap' as const }}>
                 <a
@@ -570,14 +578,14 @@ export default function LessonPage({
           ))}
 
           {/* Downloads */}
-          {downloads.filter((d) => d.file_type !== 'text/html').length > 0 && (
+          {downloads.filter((d) => !isHtmlDownload(d)).length > 0 && (
             <section aria-label="Downloads" style={{ maxWidth: '36rem', marginBottom: '2rem' }}>
               <h2 style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
                 <Download className="w-4 h-4" aria-hidden="true" />
                 Downloads
               </h2>
               <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', listStyle: 'none', padding: 0, margin: 0 }}>
-                {downloads.filter((d) => d.file_type !== 'text/html').map((dl) => (
+                {downloads.filter((d) => !isHtmlDownload(d)).map((dl) => (
                   <li key={dl.id}>
                     <a
                       href={protectedAssetUrl(dl.file_url)}

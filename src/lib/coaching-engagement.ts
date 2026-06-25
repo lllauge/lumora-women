@@ -154,7 +154,12 @@ export type PortionLine = {
  */
 export function clientPortionLines(recipe: CoachingPlanDraft['recipes'][number]): PortionLine[] {
   const multiplier = parseFloat(recipe.clientServingMultiplier)
-  const factor = Number.isFinite(multiplier) && multiplier > 0 ? multiplier : 1
+  const familyServings = parseFloat(recipe.familyServings)
+  // When the multiplier is missing on a family recipe, fall back to an equal
+  // share (1/familyServings) instead of 1 — otherwise the client sees the
+  // entire family pot as her portion.
+  const familyFallback = Number.isFinite(familyServings) && familyServings > 1 ? 1 / familyServings : 1
+  const factor = Number.isFinite(multiplier) && multiplier > 0 ? multiplier : familyFallback
   return recipe.ingredients
     .map((ing) => {
       const grams = ingredientGrams(ing)

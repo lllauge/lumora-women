@@ -396,7 +396,8 @@ function DayMeals({ day, recipes }: { day: CoachingPlanDraft['mealPlan'][number]
         const recipe = row.meal.recipeName.trim()
           ? recipes.find((r) => r.name === row.meal.recipeName)
           : undefined
-        const weighOut = recipe ? portionSummaryLine(recipe) : ''
+        const portionLines = recipe ? clientPortionLines(recipe).filter((line) => line.grams !== null || line.count) : []
+        const fallbackWeighOut = recipe && portionLines.length === 0 ? portionSummaryLine(recipe) : ''
         const description = cleanMealDescription(row.meal.description)
         return (
           <div key={i} style={{ padding: '0.75rem 0', borderTop: i === 0 ? 'none' : '1px solid rgba(200,220,192,0.25)' }}>
@@ -411,10 +412,32 @@ function DayMeals({ day, recipes }: { day: CoachingPlanDraft['mealPlan'][number]
                 {description}
               </p>
             )}
-            {weighOut && (
+            {portionLines.length > 0 && (
+              <div style={{ marginTop: '0.5rem' }}>
+                <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 700, color: '#3F6936', marginBottom: '0.25rem' }}>
+                  Your portion:
+                </p>
+                <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                  {portionLines.map((line, j) => {
+                    const amount = line.count ? line.count : line.grams !== null ? `${line.grams}g` : ''
+                    return (
+                      <li key={j} style={{ display: 'flex', gap: '0.625rem', alignItems: 'baseline', padding: '0.125rem 0' }}>
+                        <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-primary)', minWidth: '3.25rem', textAlign: 'right' }}>
+                          {amount}
+                        </span>
+                        <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+                          {line.name}
+                        </span>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
+            )}
+            {portionLines.length === 0 && fallbackWeighOut && (
               <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
                 <span style={{ fontWeight: 700, color: '#3F6936' }}>Your portion: </span>
-                {weighOut}
+                {fallbackWeighOut}
               </p>
             )}
           </div>

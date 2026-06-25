@@ -97,6 +97,17 @@ const CUP_GRAMS: Array<{ match: RegExp; grams: number }> = [
   // Nuts & seeds
   { match: /\balmonds?\b|\bcashews?\b|\bwalnuts?\b|\bpecans?\b|\bpistachios?\b|\bnuts?\b/, grams: 140 },
   { match: /\bsunflower seeds?\b|\bpumpkin seeds?\b|\bchia\b|\bflax\b|\bsesame\b/, grams: 145 },
+  // Dried spices & seasonings — densities approx, calibrated to common tsp/cup conversions.
+  // Light leafy herbs (~1g/tsp = ~48g/cup): oregano, basil, thyme, rosemary, parsley, sage, mint, dill, tarragon, marjoram, italian seasoning, herbes de provence
+  { match: /\b(oregano|basil|thyme|rosemary|parsley|sage|dill|tarragon|marjoram|italian seasoning|herbes de provence|herbs? de provence|bay leaf|bay leaves)\s*(,?\s*(dried|crushed|ground))?\b/, grams: 48 },
+  // Medium-density ground spices (~2g/tsp = ~96g/cup): cumin, black pepper, chili powder, paprika, cayenne, coriander, ginger, mustard, fennel, allspice, cardamom, cloves, anise, taco seasoning, italian, garam masala, curry powder
+  { match: /\b(ground cumin|cumin|black pepper|white pepper|ground pepper|chili powder|paprika|smoked paprika|cayenne|coriander|ground coriander|ground ginger|mustard powder|dry mustard|fennel|allspice|cardamom|cloves?|ground cloves?|anise|star anise|taco seasoning|garam masala|curry powder|five spice|red pepper flakes?|crushed red pepper|chinese five spice)\b/, grams: 96 },
+  // Powders (~3g/tsp = ~144g/cup): garlic powder, onion powder, turmeric
+  { match: /\b(garlic powder|granulated garlic|onion powder|granulated onion|turmeric)\b/, grams: 144 },
+  // Cinnamon, nutmeg (~2.6g/tsp = ~125g/cup)
+  { match: /\b(ground cinnamon|cinnamon|nutmeg|ground nutmeg|mace)\b/, grams: 125 },
+  // Vanilla & extracts (~4.2g/tsp = ~200g/cup — water-like syrups)
+  { match: /\b(vanilla extract|almond extract|extract)\b/, grams: 208 },
   // Liquids ~= water
   { match: /\b(water|broth|stock|milk|almond milk|oat milk|soy milk|coconut milk|cream|half[- ]and[- ]half|wine|juice|vinegar|soy sauce|tamari|sauce|salsa|marinara|tomato sauce|crushed tomatoes|diced tomatoes|tomato paste)\b/, grams: 240 },
 ]

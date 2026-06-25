@@ -152,14 +152,25 @@ export type PortionLine = {
  * portion; individual recipes are eaten as entered, multiplier 1). Counts
  * like "(3 large)" carry through when they scale to a whole number.
  */
-export function clientPortionLines(recipe: CoachingPlanDraft['recipes'][number]): PortionLine[] {
+/**
+ * The fraction of the full recipe that's the client's portion. For family
+ * recipes (familyServings > 1), a missing OR 1.0 multiplier means "default to
+ * equal share" — no client eats a whole family pot. Use the saved multiplier
+ * only when it's actually been carved (0 < m < 1).
+ */
+export function clientPortionFactor(recipe: CoachingPlanDraft['recipes'][number]): number {
   const multiplier = parseFloat(recipe.clientServingMultiplier)
   const familyServings = parseFloat(recipe.familyServings)
-  // When the multiplier is missing on a family recipe, fall back to an equal
-  // share (1/familyServings) instead of 1 — otherwise the client sees the
-  // entire family pot as her portion.
-  const familyFallback = Number.isFinite(familyServings) && familyServings > 1 ? 1 / familyServings : 1
-  const factor = Number.isFinite(multiplier) && multiplier > 0 ? multiplier : familyFallback
+  const isFamily = Number.isFinite(familyServings) && familyServings > 1
+  if (isFamily) {
+    if (Number.isFinite(multiplier) && multiplier > 0 && multiplier < 1) return multiplier
+    return 1 / familyServings
+  }
+  return Number.isFinite(multiplier) && multiplier > 0 ? multiplier : 1
+}
+
+export function clientPortionLines(recipe: CoachingPlanDraft['recipes'][number]): PortionLine[] {
+  const factor = clientPortionFactor(recipe)
   return recipe.ingredients
     .map((ing) => {
       const grams = ingredientGrams(ing)
@@ -212,12 +223,11 @@ export type PortionFraction = { label: string; qualifier: 'generous' | 'scant' |
  * within 3% reads as exact; up to 12% off gets a "generous"/"scant" steer;
  * anything further from a kitchen fraction shows nothing.
  */
-export function portionFraction(multiplierValue: string): PortionFraction | null {
-  const multiplier = parseFloat(multiplierValue)
-  if (!Number.isFinite(multiplier) || multiplier <= 0 || multiplier > 1.02) return null
+export function portionFraction(factor: number): PortionFraction | null {
+  if (!Number.isFinite(factor) || factor <= 0 || factor > 1.02) return null
   let best: { label: string; deviation: number } | null = null
   for (const [value, label] of FRACTIONS) {
-    const deviation = (multiplier - value) / value
+    const deviation = (factor - value) / value
     if (!best || Math.abs(deviation) < Math.abs(best.deviation)) best = { label, deviation }
   }
   if (!best || Math.abs(best.deviation) > 0.12) return null

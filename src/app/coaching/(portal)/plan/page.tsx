@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { Leaf, ShoppingBasket, UtensilsCrossed, CalendarDays, ChevronDown, Check, Dumbbell, PlayCircle } from 'lucide-react'
 import {
   getPortalContext, todayMealDayIndex, clientVisibleRecipes, withGrams, displayRecipeName,
-  getDailyLogs, coachingToday, cleanIngredientText, clientPortionLines, isClientReadable, portionFraction,
+  getDailyLogs, coachingToday, cleanIngredientText, clientPortionFactor, clientPortionLines, isClientReadable, portionFraction,
   cleanMealDescription, portionSummaryLine, ingredientWeighState, groceryDisplay,
 } from '@/lib/coaching-engagement'
 import GroceryChecklist from '@/components/coaching/GroceryChecklist'
@@ -398,6 +398,7 @@ function DayMeals({ day, recipes }: { day: CoachingPlanDraft['mealPlan'][number]
           : undefined
         const portionLines = recipe ? clientPortionLines(recipe).filter((line) => line.grams !== null || line.count) : []
         const fallbackWeighOut = recipe && portionLines.length === 0 ? portionSummaryLine(recipe) : ''
+        const fraction = recipe ? portionFraction(clientPortionFactor(recipe)) : null
         const description = cleanMealDescription(row.meal.description)
         return (
           <div key={i} style={{ padding: '0.75rem 0', borderTop: i === 0 ? 'none' : '1px solid rgba(200,220,192,0.25)' }}>
@@ -438,6 +439,12 @@ function DayMeals({ day, recipes }: { day: CoachingPlanDraft['mealPlan'][number]
               <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
                 <span style={{ fontWeight: 700, color: '#3F6936' }}>Your portion: </span>
                 {fallbackWeighOut}
+              </p>
+            )}
+            {fraction && fraction.label !== 'the whole recipe' && (
+              <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem', fontStyle: 'italic' }}>
+                <span style={{ fontWeight: 700, color: '#3F6936', fontStyle: 'normal' }}>No scale? </span>
+                Cook the full recipe, then serve yourself {fraction.qualifier ? `a ${fraction.qualifier} ${fraction.label}` : `about ${fraction.label}`} of it.
               </p>
             )}
           </div>
@@ -515,7 +522,7 @@ function RecipeDetail({ recipe }: { recipe: CoachingPlanDraft['recipes'][number]
             <p style={{ ...bodyText, fontSize: '0.8125rem', marginTop: '0.375rem' }}>{cleanIngredientText(recipe.clientServingBreakdown)}</p>
           )}
           {(() => {
-            const fraction = portionFraction(recipe.clientServingMultiplier)
+            const fraction = portionFraction(clientPortionFactor(recipe))
             if (!fraction) return null
             const grams = recipe.clientServingGrams.trim()
             const serving = fraction.qualifier

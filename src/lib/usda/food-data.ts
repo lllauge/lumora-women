@@ -340,6 +340,12 @@ export async function searchFoodsForPicker(query: string, apiKey: string): Promi
 
   const cookWords = ['cooked', 'baked', 'grilled', 'roasted', 'boiled', 'steamed', 'broiled', 'sauteed']
   const wantsCooked = cookWords.some((w) => queryTokens.includes(w))
+  // When the query explicitly names a processed form (e.g. "protein powder",
+  // "almond flour", "oat flakes"), skip the processed penalty — the user
+  // wants that product. Branded items (Truvani, Quest, etc.) would otherwise
+  // be filtered out.
+  const processedWords = ['flour', 'powder', 'powdered', 'flakes', 'flake', 'mix', 'concentrate', 'instant', 'protein']
+  const wantsProcessed = processedWords.some((w) => queryTokens.includes(w))
 
   const scored = foods
     .map((food) => {
@@ -350,12 +356,14 @@ export async function searchFoodsForPicker(query: string, apiKey: string): Promi
       const notCookedPenalty = wantsCooked && !isCookedInDescription && !description.includes('prepared') ? -12 : 0
       const rawPenalty = wantsCooked && /\b(raw|uncooked|dehydrated)\b/.test(description) ? -20 : 0
       const dryPenalty = wantsCooked && /\bdry\b/.test(description) ? -20 : 0
-      const processedPenalty = /\b(flour|powder|flakes?|mix|concentrate|instant|freeze.dried)\b/.test(description) ? -20 : 0
+      const processedPenalty = !wantsProcessed && /\b(flour|powder|flakes?|mix|concentrate|instant|freeze.dried)\b/.test(description) ? -20 : 0
       // Lab-analyzed generics outrank label-reported branded products in ties.
       const dataTypeScore = food.dataType === 'Foundation' ? 3 : food.dataType === 'SR Legacy' ? 2 : food.dataType === 'Branded' ? 0 : 1
       const brandTokens = `${food.brandName ?? ''} ${food.brandOwner ?? ''}`.toLowerCase()
+      // Strong brand boost so a typed brand name (e.g. "truvani") promotes the
+      // branded match above generic SR Legacy / Foundation rows.
       const brandScore = food.dataType === 'Branded'
-        ? queryTokens.reduce((s, t) => s + (brandTokens.includes(t) ? 4 : 0), 0)
+        ? queryTokens.reduce((s, t) => s + (brandTokens.includes(t) ? 8 : 0), 0)
         : 0
       const score = tokenScore + brandScore + cookedScore + notCookedPenalty + rawPenalty + dryPenalty + processedPenalty + dataTypeScore
       const macros = macrosPer100g(food)

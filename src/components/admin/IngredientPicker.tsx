@@ -89,6 +89,18 @@ export default function IngredientPicker({ onAdd }: Props) {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  // Whole eggs are counted, never weighed — USDA doesn't always return a
+  // per-each measure, so synthesize one. Egg whites/yolks are separated and
+  // weighed, so we leave them on grams.
+  function ensureEggCountMeasure(food: UsdaFoodOption): UsdaFoodOption {
+    const desc = food.description.toLowerCase()
+    if (!/\begg(s|\b)/.test(desc)) return food
+    if (/white|yolk/.test(desc)) return food
+    const measures = food.measures ?? []
+    if (measures.some((m) => /^1\s+(large|medium|small|extra large|jumbo)\b/i.test(m.label))) return food
+    return { ...food, measures: [{ label: '1 large', grams: 50 }, ...measures] }
+  }
+
   function applyDefaultUnit(food: UsdaFoodOption) {
     // Count-style measures ("1 large", "1 medium") default to counting.
     const countMeasure = (food.measures ?? []).findIndex((m) => /^1\s+(large|medium|small|extra large|jumbo|slice|piece|egg|banana|apple)\b/i.test(m.label))
@@ -100,10 +112,11 @@ export default function IngredientPicker({ onAdd }: Props) {
 
   function selectFood(food: UsdaFoodOption) {
     selectedFdcRef.current = food.fdcId
-    setSelected(food)
-    setQuery(food.description)
+    const prepared = ensureEggCountMeasure(food)
+    setSelected(prepared)
+    setQuery(prepared.description)
     setOpen(false)
-    applyDefaultUnit(food)
+    applyDefaultUnit(prepared)
 
     // Search results rarely include household measures — fetch them for this food.
     if ((food.measures ?? []).length === 0) {
@@ -112,7 +125,7 @@ export default function IngredientPicker({ onAdd }: Props) {
         .then((data: { measures?: UsdaFoodMeasure[] }) => {
           const measures = data.measures ?? []
           if (measures.length === 0 || selectedFdcRef.current !== food.fdcId) return
-          const withMeasures = { ...food, measures }
+          const withMeasures = ensureEggCountMeasure({ ...food, measures })
           setSelected(withMeasures)
           // Don't disturb anything she already typed while measures loaded.
           if (!amountRef.current.trim()) applyDefaultUnit(withMeasures)

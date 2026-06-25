@@ -313,30 +313,73 @@ function foodMeasureOptions(food: FoodSearchResult): UsdaFoodMeasure[] {
   return augmentVolumeMeasures(measures)
 }
 
+// Common food vocabulary — tokens in this set are NOT treated as brand names,
+// so they don't trigger a brand-only sub-search. Anything else is treated as a
+// likely brand and gets a parallel Branded-only query so brand matches surface
+// even when USDA's main relevance ranking buries them under generic foods.
+const COMMON_FOOD_WORDS = new Set([
+  'protein', 'powder', 'powdered', 'flour', 'flakes', 'flake', 'mix', 'concentrate',
+  'instant', 'whey', 'pea', 'soy', 'casein', 'plant', 'based', 'vegan',
+  'chicken', 'beef', 'pork', 'turkey', 'fish', 'salmon', 'tuna', 'shrimp', 'egg', 'eggs',
+  'milk', 'butter', 'cheese', 'yogurt', 'cream',
+  'rice', 'pasta', 'bread', 'oats', 'oat', 'quinoa', 'barley', 'wheat', 'corn',
+  'apple', 'banana', 'orange', 'berry', 'fruit', 'vegetable',
+  'cooked', 'raw', 'baked', 'grilled', 'roasted', 'boiled', 'steamed', 'broiled',
+  'large', 'medium', 'small', 'whole', 'half', 'piece', 'slice',
+  'low', 'high', 'fat', 'free', 'reduced', 'lean', 'extra', 'lite', 'light',
+  'organic', 'natural', 'fresh', 'frozen', 'dried', 'canned',
+  'chocolate', 'vanilla', 'strawberry', 'plain', 'flavored',
+  'shake', 'drink', 'beverage', 'bar', 'snack',
+  'and', 'the', 'with', 'for', 'all', 'any',
+])
+
 export async function searchFoodsForPicker(query: string, apiKey: string): Promise<UsdaFoodOption[]> {
   const url = new URL(USDA_SEARCH_URL)
   url.searchParams.set('api_key', apiKey)
 
-  const response = await fetch(url, {
+  const queryTokensRaw = query
+    .toLowerCase()
+    .split(/\s+/)
+    .map((t) => t.replace(/[^a-z0-9]/g, ''))
+    .filter((t) => t.length > 2 && t !== 'and' && t !== 'the' && t !== 'with')
+
+  // Likely brand-name tokens get a parallel Branded-only search — USDA's main
+  // relevance ranker buries small brands under thousands of generic matches.
+  const brandLikeTokens = queryTokensRaw.filter((t) => t.length >= 4 && !COMMON_FOOD_WORDS.has(t))
+
+  const fetchSearch = (body: object) => fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
+    body: JSON.stringify(body),
+  }).then((r) => r.ok ? r.json() as Promise<FoodSearchResponse> : null).catch(() => null)
+
+  const [mainData, brandedData] = await Promise.all([
+    fetchSearch({
       query,
       pageSize: 25,
       dataType: ['Foundation', 'SR Legacy', 'Survey (FNDDS)', 'Branded'],
     }),
-  })
+    brandLikeTokens.length > 0
+      ? fetchSearch({
+          query: brandLikeTokens.map((t) => `"${t}"`).join(' '),
+          pageSize: 25,
+          dataType: ['Branded'],
+        })
+      : Promise.resolve(null),
+  ])
 
-  if (!response.ok) return []
+  if (!mainData && !brandedData) return []
 
-  const data = await response.json() as FoodSearchResponse
-  const foods = data.foods ?? []
+  // Merge results, de-duplicating by fdcId.
+  const seen = new Set<number>()
+  const foods: FoodSearchResult[] = []
+  for (const f of [...(mainData?.foods ?? []), ...(brandedData?.foods ?? [])]) {
+    if (seen.has(f.fdcId)) continue
+    seen.add(f.fdcId)
+    foods.push(f)
+  }
 
-  const queryTokens = query
-    .toLowerCase()
-    .split(/\s+/)
-    .map((t) => t.replace(/[^a-z0-9]/g, ''))
-    .filter((t) => t.length > 2 && !['and', 'the', 'with'].includes(t))
+  const queryTokens = queryTokensRaw
 
   const cookWords = ['cooked', 'baked', 'grilled', 'roasted', 'boiled', 'steamed', 'broiled', 'sauteed']
   const wantsCooked = cookWords.some((w) => queryTokens.includes(w))

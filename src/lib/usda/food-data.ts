@@ -262,6 +262,28 @@ export type UsdaFoodOption = {
   measures: UsdaFoodMeasure[]
 }
 
+// USDA often gives one volume measure (e.g. "1 Tbsp") but not its sibling units.
+// Fill in tsp/Tbsp/cup from whichever volume measure we do have, so a recipe
+// written in teaspoons doesn't force the user to convert by hand.
+function augmentVolumeMeasures(measures: UsdaFoodMeasure[]): UsdaFoodMeasure[] {
+  const has = (re: RegExp) => measures.some((m) => re.test(m.label))
+  const find = (re: RegExp) => measures.find((m) => re.test(m.label))
+
+  const tbsp = find(/^1\s*(tbsp|tablespoon)\b/i)
+  const tsp = find(/^1\s*(tsp|teaspoon)\b/i)
+  const cup = find(/^1\s*cup\b/i)
+
+  const derived: UsdaFoodMeasure[] = []
+  // 1 Tbsp = 3 tsp, 1 cup = 16 Tbsp = 48 tsp
+  if (tbsp && !tsp) derived.push({ label: '1 tsp', grams: Math.round((tbsp.grams / 3) * 10) / 10 })
+  if (tsp && !tbsp) derived.push({ label: '1 Tbsp', grams: Math.round(tsp.grams * 3 * 10) / 10 })
+  if (tbsp && !cup) derived.push({ label: '1 cup', grams: Math.round(tbsp.grams * 16 * 10) / 10 })
+  if (cup && !tbsp) derived.push({ label: '1 Tbsp', grams: Math.round((cup.grams / 16) * 10) / 10 })
+  if (cup && !has(/^1\s*(tsp|teaspoon)\b/i)) derived.push({ label: '1 tsp', grams: Math.round((cup.grams / 48) * 10) / 10 })
+
+  return [...measures, ...derived]
+}
+
 // Household measures ("1 large", "1 cup, sliced") so count-based foods like
 // eggs and bananas can be entered as "2 each" instead of weighed.
 function foodMeasureOptions(food: FoodSearchResult): UsdaFoodMeasure[] {
@@ -288,7 +310,7 @@ function foodMeasureOptions(food: FoodSearchResult): UsdaFoodMeasure[] {
     })
   }
 
-  return measures
+  return augmentVolumeMeasures(measures)
 }
 
 export async function searchFoodsForPicker(query: string, apiKey: string): Promise<UsdaFoodOption[]> {
@@ -403,7 +425,7 @@ export async function getFoodMeasuresById(fdcId: number, apiKey: string): Promis
     }
   }
 
-  return measures.slice(0, 8)
+  return augmentVolumeMeasures(measures.slice(0, 8))
 }
 
 async function fetchFoodById(fdcId: number, apiKey: string): Promise<FoodSearchResult | null> {

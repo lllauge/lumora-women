@@ -11,6 +11,12 @@ const RecipeSchema = z.object({
   ingredients: z.array(z.string()).default([]),
   instructions: z.array(z.string()).default([]),
   notes: z.string().default(''),
+  calories: z.number().nullable().optional(),
+  protein: z.number().nullable().optional(),
+  carbs: z.number().nullable().optional(),
+  fats: z.number().nullable().optional(),
+  fiber: z.number().nullable().optional(),
+  total_recipe_grams: z.number().nullable().optional(),
 })
 
 export async function GET(req: NextRequest) {

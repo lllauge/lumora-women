@@ -61,6 +61,7 @@ export const RecipeSchema = z.object({
   protein: z.string().default(''),
   carbs: z.string().default(''),
   fats: z.string().default(''),
+  fiber: z.string().default(''),
   ingredients: z.array(z.string()).default([]),
   instructions: z.array(z.string()).default([]),
   swaps: z.array(z.string()).default([]),
@@ -158,7 +159,7 @@ export const CoachingPlanAiJsonSchema = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['name', 'mealType', 'servings', 'familyServings', 'clientServing', 'clientServingMultiplier', 'clientServingGrams', 'clientServingMeasure', 'clientServingBreakdown', 'prepTime', 'cookTime', 'calories', 'protein', 'carbs', 'fats', 'ingredients', 'instructions', 'swaps', 'notes'],
+        required: ['name', 'mealType', 'servings', 'familyServings', 'clientServing', 'clientServingMultiplier', 'clientServingGrams', 'clientServingMeasure', 'clientServingBreakdown', 'prepTime', 'cookTime', 'calories', 'protein', 'carbs', 'fats', 'fiber', 'ingredients', 'instructions', 'swaps', 'notes'],
         properties: {
           name: { type: 'string' },
           mealType: { type: 'string' },
@@ -175,6 +176,7 @@ export const CoachingPlanAiJsonSchema = {
           protein: { type: 'string' },
           carbs: { type: 'string' },
           fats: { type: 'string' },
+          fiber: { type: 'string' },
           ingredients: { type: 'array', items: { type: 'string' } },
           instructions: { type: 'array', items: { type: 'string' } },
           swaps: { type: 'array', items: { type: 'string' } },

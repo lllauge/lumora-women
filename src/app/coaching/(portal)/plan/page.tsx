@@ -519,12 +519,13 @@ function RecipeDetail({ recipe }: { recipe: CoachingPlanDraft['recipes'][number]
           recipe.prepTime.trim() && `Prep ${recipe.prepTime.trim()}`,
           recipe.cookTime.trim() && `Cook ${recipe.cookTime.trim()}`,
           recipe.familyServings.trim() && isFamily && `Serves ${recipe.familyServings.trim()}`,
-          [recipe.calories, recipe.protein, recipe.carbs, recipe.fats].some((v) => v.trim()) &&
+          [recipe.calories, recipe.protein, recipe.carbs, recipe.fats, recipe.fiber].some((v) => v.trim()) &&
             `Per portion: ${[
               recipe.calories.trim() && `${recipe.calories.trim().replace(/\s*k?cal$/i, '')} cal`,
               recipe.protein.trim() && `${recipe.protein.trim().replace(/\s*g$/i, '')}P`,
               recipe.carbs.trim() && `${recipe.carbs.trim().replace(/\s*g$/i, '')}C`,
               recipe.fats.trim() && `${recipe.fats.trim().replace(/\s*g$/i, '')}F`,
+              recipe.fiber.trim() && `${recipe.fiber.trim().replace(/\s*g$/i, '')} fiber`,
             ].filter(Boolean).join(' / ')}`,
         ].filter(Boolean).join(' · ')}
       </p>

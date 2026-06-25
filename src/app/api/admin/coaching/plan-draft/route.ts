@@ -68,6 +68,7 @@ function recipeMacroLabel(recipe: CoachingPlanDraft['recipes'][number]) {
     recipe.protein ? `${recipe.protein} protein` : '',
     recipe.carbs ? `${recipe.carbs} carbs` : '',
     recipe.fats ? `${recipe.fats} fats` : '',
+    recipe.fiber ? `${recipe.fiber} fiber` : '',
   ].filter(Boolean).join(', ')
 }
 

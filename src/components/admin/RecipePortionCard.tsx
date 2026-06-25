@@ -182,7 +182,7 @@ export default function RecipePortionCard({ recipe }: { recipe: Recipe }) {
           </p>
           <ServingDiagram multiplier={recipe.clientServingMultiplier} />
           <p style={{ fontFamily: 'var(--font-hanken)', color: '#8A7A5A', fontSize: '0.82rem', marginTop: '0.75rem' }}>
-            {recipe.clientServingGrams} · {recipe.calories} cal · {recipe.protein} protein · {recipe.carbs} carbs · {recipe.fats} fat
+            {recipe.clientServingGrams} · {recipe.calories} cal · {recipe.protein} protein · {recipe.carbs} carbs · {recipe.fats} fat{recipe.fiber.trim() ? ` · ${recipe.fiber} fiber` : ''}
           </p>
         </div>
       )}
@@ -240,7 +240,7 @@ export default function RecipePortionCard({ recipe }: { recipe: Recipe }) {
                 {recipe.clientServingBreakdown?.split('\n')[0] || recipe.clientServingGrams}
               </p>
               <p style={{ fontFamily: 'var(--font-hanken)', color: '#8A7A5A', fontSize: '0.82rem' }}>
-                {recipe.clientServingGrams} · {recipe.calories} cal · {recipe.protein} protein · {recipe.carbs} carbs · {recipe.fats} fat
+                {recipe.clientServingGrams} · {recipe.calories} cal · {recipe.protein} protein · {recipe.carbs} carbs · {recipe.fats} fat{recipe.fiber.trim() ? ` · ${recipe.fiber} fiber` : ''}
               </p>
             </div>
           )}

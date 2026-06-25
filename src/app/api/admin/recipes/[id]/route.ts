@@ -11,6 +11,12 @@ const RecipeUpdateSchema = z.object({
   ingredients: z.array(z.string()).optional(),
   instructions: z.array(z.string()).optional(),
   notes: z.string().optional(),
+  calories: z.number().nullable().optional(),
+  protein: z.number().nullable().optional(),
+  carbs: z.number().nullable().optional(),
+  fats: z.number().nullable().optional(),
+  fiber: z.number().nullable().optional(),
+  total_recipe_grams: z.number().nullable().optional(),
 })
 
 type RouteContext = { params: Promise<{ id: string }> }

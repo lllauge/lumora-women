@@ -57,6 +57,13 @@ type LibraryRecipe = {
   ingredients: string[]
   instructions: string[]
   notes: string
+  // Present when the recipe was entered in paste-mode with publisher's macros.
+  calories: number | null
+  protein: number | null
+  carbs: number | null
+  fats: number | null
+  fiber: number | null
+  total_recipe_grams: number | null
 }
 
 type Props = {
@@ -177,6 +184,7 @@ function recipeMacroLabel(recipe: CoachingPlanDraft['recipes'][number]) {
     macroPart(recipe.protein, 'protein'),
     macroPart(recipe.carbs, 'carbs'),
     macroPart(recipe.fats, 'fats'),
+    macroPart(recipe.fiber, 'fiber'),
   ].filter(Boolean).join(', ')
 }
 
@@ -200,6 +208,109 @@ function parseMealMacroLine(value: string) {
 
 function cleanIngredientLine(line: string) {
   return line.replace(/^\[fdc:\d+\]\s*/, '').trim()
+}
+
+// Paste-mode recipes carry stored macros on the library row. The plan recipe
+// shape uses strings everywhere, so convert and copy them when the recipe is
+// first dragged into a meal slot. Empty strings keep USDA-only recipes flowing
+// through the existing nutrition-calc pipeline unchanged.
+function libraryRecipeToPlanRecipe(libRecipe: LibraryRecipe): CoachingPlanDraft['recipes'][number] {
+  const macro = (n: number | null, suffix: string) => (n == null ? '' : `${n}${suffix}`)
+  return {
+    name: libRecipe.name,
+    mealType: libRecipe.meal_type,
+    servings: libRecipe.family_servings,
+    familyServings: libRecipe.family_servings,
+    clientServing: '',
+    clientServingMultiplier: '',
+    clientServingGrams: '',
+    clientServingMeasure: '',
+    clientServingBreakdown: '',
+    prepTime: '',
+    cookTime: '',
+    calories: macro(libRecipe.calories, ''),
+    protein: macro(libRecipe.protein, 'g'),
+    carbs: macro(libRecipe.carbs, 'g'),
+    fats: macro(libRecipe.fats, 'g'),
+    fiber: macro(libRecipe.fiber, 'g'),
+    ingredients: libRecipe.ingredients,
+    instructions: libRecipe.instructions,
+    swaps: [],
+    notes: libRecipe.notes,
+  }
+}
+
+// Pulls a leading "<grams>g " off an ingredient line. Returns null for free-text
+// lines (e.g. "Black pepper, to taste") that have no quantifiable weight.
+function extractLeadingGrams(line: string): { grams: number; label: string } | null {
+  const cleaned = cleanIngredientLine(line)
+  const match = cleaned.match(/^(\d+(?:\.\d+)?)\s*g\s+(.+)$/i)
+  if (!match) return null
+  return { grams: Number(match[1]), label: match[2].trim() }
+}
+
+// Scales a paste-mode recipe to the client's calorie target using the stored
+// recipe totals — no USDA call. Mirrors the shape that calculateRecipeNutrition
+// produces so downstream display code stays oblivious to the source.
+function scalePasteRecipe({
+  recipeCalories,
+  recipeProtein,
+  recipeCarbs,
+  recipeFats,
+  recipeFiber,
+  totalRecipeGrams,
+  ingredients,
+  isFamily,
+  targetCalories,
+  familyServings,
+}: {
+  recipeCalories: number
+  recipeProtein: number
+  recipeCarbs: number
+  recipeFats: number
+  recipeFiber: number
+  totalRecipeGrams: number
+  ingredients: string[]
+  isFamily: boolean
+  targetCalories: number | undefined
+  familyServings: number
+}) {
+  let multiplier = 1
+  if (!isFamily) {
+    multiplier = 1
+  } else if (targetCalories && recipeCalories > 0) {
+    multiplier = Math.min(1, targetCalories / recipeCalories)
+  } else if (familyServings > 1) {
+    multiplier = 1 / familyServings
+  }
+
+  const clientServingGrams = Math.round(totalRecipeGrams * multiplier)
+  const sharePct = multiplier >= 1 ? 'the full recipe' : `${Math.round(multiplier * 100)}% of the full recipe`
+  const clientServingMeasure = `Plate by the ingredient weights below. Total client serving is about ${clientServingGrams}g (${sharePct}).`
+
+  const breakdownParts: string[] = []
+  for (const raw of ingredients) {
+    const parsed = extractLeadingGrams(raw)
+    if (!parsed) continue
+    const scaledGrams = Math.round(parsed.grams * multiplier * 10) / 10
+    if (scaledGrams <= 0) continue
+    breakdownParts.push(`${scaledGrams}g ${parsed.label}`)
+  }
+  const clientServingBreakdown = breakdownParts.join(' + ')
+
+  const round1 = (n: number) => Math.round(n * 10) / 10
+  return {
+    clientServingMultiplier: multiplier.toFixed(2),
+    clientServingGrams: `${clientServingGrams}g`,
+    clientServingMeasure,
+    clientServingBreakdown,
+    clientServing: clientServingBreakdown || `${clientServingGrams}g`,
+    calories: `${Math.round(recipeCalories * multiplier)}`,
+    protein: `${round1(recipeProtein * multiplier)}g`,
+    carbs: `${round1(recipeCarbs * multiplier)}g`,
+    fats: `${round1(recipeFats * multiplier)}g`,
+    fiber: `${round1(recipeFiber * multiplier)}g`,
+  }
 }
 
 // Every meal-slot usage of a recipe means the full dish gets cooked once,
@@ -372,15 +483,7 @@ export default function CoachingPlanEditor({
     setPlan(current => {
       let newRecipes = current.recipes
       if (libRecipe && !current.recipes.some(r => r.name === libRecipeName)) {
-        newRecipes = [...current.recipes, {
-          name: libRecipe.name, mealType: libRecipe.meal_type,
-          servings: libRecipe.family_servings, familyServings: libRecipe.family_servings,
-          clientServing: '', clientServingMultiplier: '', clientServingGrams: '',
-          clientServingMeasure: '', clientServingBreakdown: '',
-          prepTime: '', cookTime: '', calories: '', protein: '', carbs: '', fats: '',
-          ingredients: libRecipe.ingredients, instructions: libRecipe.instructions,
-          swaps: [], notes: libRecipe.notes,
-        }]
+        newRecipes = [...current.recipes, libraryRecipeToPlanRecipe(libRecipe)]
       }
       const recipe = newRecipes.find(r => r.name === libRecipeName)
       const mealPlan = [...current.mealPlan]
@@ -403,15 +506,7 @@ export default function CoachingPlanEditor({
     setPlan(current => {
       let newRecipes = current.recipes
       if (libRecipe && !current.recipes.some(r => r.name === libRecipeName)) {
-        newRecipes = [...current.recipes, {
-          name: libRecipe.name, mealType: libRecipe.meal_type,
-          servings: libRecipe.family_servings, familyServings: libRecipe.family_servings,
-          clientServing: '', clientServingMultiplier: '', clientServingGrams: '',
-          clientServingMeasure: '', clientServingBreakdown: '',
-          prepTime: '', cookTime: '', calories: '', protein: '', carbs: '', fats: '',
-          ingredients: libRecipe.ingredients, instructions: libRecipe.instructions,
-          swaps: [], notes: libRecipe.notes,
-        }]
+        newRecipes = [...current.recipes, libraryRecipeToPlanRecipe(libRecipe)]
       }
       const recipe = newRecipes.find(r => r.name === libRecipeName)
       const mealPlan = [...current.mealPlan]
@@ -443,7 +538,7 @@ export default function CoachingPlanEditor({
               name: slotRecipeName, mealType: mealKey, servings: '1', familyServings: '1',
               clientServing: '', clientServingMultiplier: '', clientServingGrams: '',
               clientServingMeasure: '', clientServingBreakdown: '',
-              prepTime: '', cookTime: '', calories: '', protein: '', carbs: '', fats: '',
+              prepTime: '', cookTime: '', calories: '', protein: '', carbs: '', fats: '', fiber: '',
               ingredients: [], instructions: [], swaps: [], notes: '',
             }
         )
@@ -485,7 +580,7 @@ export default function CoachingPlanEditor({
               name: slotRecipeName, mealType: 'snack', servings: '1', familyServings: '1',
               clientServing: '', clientServingMultiplier: '', clientServingGrams: '',
               clientServingMeasure: '', clientServingBreakdown: '',
-              prepTime: '', cookTime: '', calories: '', protein: '', carbs: '', fats: '',
+              prepTime: '', cookTime: '', calories: '', protein: '', carbs: '', fats: '', fiber: '',
               ingredients: [], instructions: [], swaps: [], notes: '',
             }
         )
@@ -659,6 +754,26 @@ export default function CoachingPlanEditor({
             : mealCalorieTarget(recipe.mealType, dailyCalories, planningInputs))
           : undefined
 
+        // Paste-mode signal: stored calories on the recipe row. Scale locally
+        // using the publisher's macros — no USDA call needed.
+        const storedCalories = firstNumber(recipe.calories)
+        if (storedCalories > 0) {
+          const totalRecipeGrams = recipe.ingredients.reduce((sum, line) => sum + (extractLeadingGrams(line)?.grams ?? 0), 0)
+          const scaled = scalePasteRecipe({
+            recipeCalories: storedCalories,
+            recipeProtein: firstNumber(recipe.protein),
+            recipeCarbs: firstNumber(recipe.carbs),
+            recipeFats: firstNumber(recipe.fats),
+            recipeFiber: firstNumber(recipe.fiber),
+            totalRecipeGrams,
+            ingredients: recipe.ingredients,
+            isFamily,
+            targetCalories,
+            familyServings: familyCount,
+          })
+          return { index, pasteScaled: scaled, nutrition: null as UsdaNutritionResponse['nutrition'] | null }
+        }
+
         const res = await fetch('/api/admin/coaching/nutrition', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -670,12 +785,16 @@ export default function CoachingPlanEditor({
           }),
         })
         const data = await res.json().catch(() => ({} as UsdaNutritionResponse)) as UsdaNutritionResponse
-        return { index, nutrition: data.nutrition ?? null }
+        return { index, pasteScaled: null as ReturnType<typeof scalePasteRecipe> | null, nutrition: data.nutrition ?? null }
       }))
 
       const updatedRecipes = [...nextPlan.recipes]
-      for (const { index, nutrition } of results) {
+      for (const { index, nutrition, pasteScaled } of results) {
         const r = updatedRecipes[index]
+        if (pasteScaled) {
+          updatedRecipes[index] = { ...r, ...pasteScaled }
+          continue
+        }
         // Never overwrite macros with zeros when USDA matched nothing (e.g. cup/tbsp units).
         if (!nutrition || nutrition.ingredients.length === 0 || !nutrition.totalRecipe.calories) {
           skippedRecipes.push(r.name)

@@ -1187,7 +1187,16 @@ export default function CoachingPlanEditor({
               className="admin-input"
               style={{ width: 'auto', fontSize: '0.82rem', padding: '5px 28px 5px 10px' }}
               value={plan.status}
-              onChange={(e) => setPlan((current) => ({ ...current, status: e.target.value as CoachingPlanDraft['status'] }))}
+              onChange={(e) => {
+                const nextStatus = e.target.value as CoachingPlanDraft['status']
+                setPlan((current) => {
+                  const nextPlan = { ...current, status: nextStatus }
+                  if (nextStatus === 'published') {
+                    void savePlan(nextPlan)
+                  }
+                  return nextPlan
+                })
+              }}
             >
               <option value="draft">Draft</option>
               <option value="ready_for_client">Ready for Client</option>

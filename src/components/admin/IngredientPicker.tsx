@@ -23,6 +23,43 @@ type Props = {
   onAdd: (ingredient: string) => void
 }
 
+// Standard per-fruit weights for when USDA doesn't return a per-each measure.
+// `defaultGrams: true` keeps grams as the default unit (the per-each option is
+// still available in the dropdown) for fruits that are typically portioned.
+type FruitEntry = { match: string; label: string; grams: number; defaultGrams?: boolean }
+const FRUITS: FruitEntry[] = [
+  { match: 'apples?', label: '1 medium', grams: 182 },
+  { match: 'bananas?', label: '1 medium', grams: 118 },
+  { match: 'oranges?', label: '1 medium', grams: 131 },
+  { match: 'pears?', label: '1 medium', grams: 178 },
+  { match: 'peach(?:es)?', label: '1 medium', grams: 150 },
+  { match: 'plums?', label: '1 medium', grams: 66 },
+  { match: 'kiwi(?:fruit|s)?', label: '1 medium', grams: 76 },
+  { match: 'mangoe?s?', label: '1 medium', grams: 200, defaultGrams: true },
+  { match: 'cantaloupes?', label: '1 whole', grams: 552, defaultGrams: true },
+  { match: 'watermelons?', label: '1 whole', grams: 4500, defaultGrams: true },
+  { match: 'pineapples?', label: '1 whole', grams: 905, defaultGrams: true },
+  { match: 'honeydews?', label: '1 whole', grams: 1280, defaultGrams: true },
+  { match: 'papayas?', label: '1 small', grams: 152, defaultGrams: true },
+  { match: 'strawberr(?:y|ies)', label: '1 medium', grams: 12 },
+  { match: 'grapes?', label: '1 grape', grams: 5 },
+  { match: 'blueberr(?:y|ies)', label: '1 berry', grams: 1.4 },
+  { match: 'raspberr(?:y|ies)', label: '1 berry', grams: 4 },
+  { match: 'blackberr(?:y|ies)', label: '1 berry', grams: 5 },
+  { match: 'cherr(?:y|ies)', label: '1 cherry', grams: 8 },
+  { match: 'avocados?', label: '1 medium', grams: 200 },
+  { match: 'lemons?', label: '1 medium', grams: 58 },
+  { match: 'limes?', label: '1 medium', grams: 67 },
+  { match: 'grapefruits?', label: '1 medium', grams: 230 },
+  { match: 'pomegranates?', label: '1 medium', grams: 282, defaultGrams: true },
+  { match: 'nectarines?', label: '1 medium', grams: 142 },
+  { match: 'apricots?', label: '1 medium', grams: 35 },
+  { match: 'figs?', label: '1 medium', grams: 50 },
+  { match: 'dates?', label: '1 pitted', grams: 8 },
+  { match: 'tangerines?', label: '1 medium', grams: 88 },
+  { match: 'clementines?', label: '1 medium', grams: 74 },
+]
+
 function useDebounce(value: string, ms: number) {
   const [debounced, setDebounced] = useState(value)
   useEffect(() => {
@@ -101,9 +138,32 @@ export default function IngredientPicker({ onAdd }: Props) {
     return { ...food, measures: [{ label: '1 large', grams: 50 }, ...measures] }
   }
 
+  // Whole fruits should always offer a per-each option. Some are eaten whole
+  // (kiwi, apple) — default to "each". Some are portioned by weight
+  // (cantaloupe, watermelon, pineapple) — keep grams as default but still
+  // expose the per-each option in the dropdown.
+  function ensureFruitCountMeasure(food: UsdaFoodOption): UsdaFoodOption {
+    const desc = food.description.toLowerCase()
+    const match = FRUITS.find((f) => new RegExp(`\\b${f.match}\\b`).test(desc))
+    if (!match) return food
+    const measures = food.measures ?? []
+    if (measures.some((m) => /^1\s+(large|medium|small|extra large|jumbo|whole)\b/i.test(m.label))) return food
+    return { ...food, measures: [{ label: match.label, grams: match.grams }, ...measures] }
+  }
+
   function applyDefaultUnit(food: UsdaFoodOption) {
+    const desc = food.description.toLowerCase()
+    const fruit = FRUITS.find((f) => new RegExp(`\\b${f.match}\\b`).test(desc))
+    // Large fruits (cantaloupe, watermelon, pineapple) are portioned by weight
+    // even when a per-each option exists — keep them on grams by default.
+    if (fruit && fruit.defaultGrams) {
+      setMeasureIdx(-1)
+      setAmount('')
+      amountRef.current = ''
+      return
+    }
     // Count-style measures ("1 large", "1 medium") default to counting.
-    const countMeasure = (food.measures ?? []).findIndex((m) => /^1\s+(large|medium|small|extra large|jumbo|slice|piece|egg|banana|apple)\b/i.test(m.label))
+    const countMeasure = (food.measures ?? []).findIndex((m) => /^1\s+(large|medium|small|extra large|jumbo|slice|piece|egg|banana|apple|whole|berry|pitted)\b/i.test(m.label))
     setMeasureIdx(countMeasure)
     const defaultAmount = countMeasure >= 0 ? '1' : ''
     setAmount(defaultAmount)
@@ -112,7 +172,7 @@ export default function IngredientPicker({ onAdd }: Props) {
 
   function selectFood(food: UsdaFoodOption) {
     selectedFdcRef.current = food.fdcId
-    const prepared = ensureEggCountMeasure(food)
+    const prepared = ensureFruitCountMeasure(ensureEggCountMeasure(food))
     setSelected(prepared)
     setQuery(prepared.description)
     setOpen(false)
@@ -125,7 +185,7 @@ export default function IngredientPicker({ onAdd }: Props) {
         .then((data: { measures?: UsdaFoodMeasure[] }) => {
           const measures = data.measures ?? []
           if (measures.length === 0 || selectedFdcRef.current !== food.fdcId) return
-          const withMeasures = ensureEggCountMeasure({ ...food, measures })
+          const withMeasures = ensureFruitCountMeasure(ensureEggCountMeasure({ ...food, measures }))
           setSelected(withMeasures)
           // Don't disturb anything she already typed while measures loaded.
           if (!amountRef.current.trim()) applyDefaultUnit(withMeasures)

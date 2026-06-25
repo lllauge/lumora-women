@@ -7,6 +7,7 @@ import {
   cleanMealDescription, portionSummaryLine, ingredientWeighState, groceryDisplay,
 } from '@/lib/coaching-engagement'
 import GroceryChecklist from '@/components/coaching/GroceryChecklist'
+import InstructionSteps from '@/components/coaching/InstructionSteps'
 import type { CoachingPlanDraft } from '@/lib/coaching-plan-schema'
 
 export const metadata: Metadata = {
@@ -560,11 +561,10 @@ function RecipeDetail({ recipe }: { recipe: CoachingPlanDraft['recipes'][number]
       {recipe.instructions.length > 0 && (
         <>
           <h3 style={sectionTitle}>Instructions</h3>
-          <ol style={{ margin: 0, paddingLeft: '1.25rem' }}>
-            {recipe.instructions.map((step, i) => (
-              <li key={i} style={{ ...bodyText, marginBottom: '0.375rem' }}>{step}</li>
-            ))}
-          </ol>
+          <p style={{ ...bodyText, fontSize: '0.8125rem', fontStyle: 'italic', marginBottom: '0.625rem' }}>
+            Tap a step to check it off while you cook.
+          </p>
+          <InstructionSteps steps={recipe.instructions} />
         </>
       )}
 

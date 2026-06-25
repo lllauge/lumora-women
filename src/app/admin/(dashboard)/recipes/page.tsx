@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Trash2, ChevronDown, Plus, AlertCircle } from 'lucide-react'
+import { Trash2, ChevronDown, Plus, AlertCircle, X } from 'lucide-react'
 import IngredientPicker from '@/components/admin/IngredientPicker'
 import { parseIngredientBlock, formatGramsLine, type ParsedIngredient } from '@/lib/recipes/paste-parser'
 
@@ -37,9 +37,6 @@ const EMPTY_RECIPE = {
   total_recipe_grams: null as number | null,
 }
 
-function joinLines(arr: string[]) { return arr.join('\n') }
-function splitLines(s: string) { return s.split('\n').map(l => l.trim()).filter(Boolean) }
-
 const label: React.CSSProperties = {
   fontFamily: 'var(--font-hanken)',
   fontSize: '0.72rem',
@@ -49,6 +46,131 @@ const label: React.CSSProperties = {
   color: 'var(--admin-on-surface-variant)',
   display: 'block',
   marginBottom: 4,
+}
+
+// Drops leading numbering or bullets so steps pasted from any source line up
+// with the editor's own numbering. Handles "1.", "1)", "Step 1:", "•", "-", "*".
+function stripStepPrefix(line: string): string {
+  return line
+    .trim()
+    .replace(/^\s*(?:step\s*)?(\d+)\s*[.):\-]\s*/i, '')
+    .replace(/^[•\-*]\s+/, '')
+    .trim()
+}
+
+function InstructionListEditor({
+  steps,
+  onChange,
+}: {
+  steps: string[]
+  onChange: (next: string[]) => void
+}) {
+  // Display always shows at least one editable row so the user has a target
+  // to paste/type into when the recipe is brand new.
+  const displaySteps = steps.length > 0 ? steps : ['']
+
+  function updateStep(index: number, value: string) {
+    const next = [...displaySteps]
+    next[index] = value
+    onChange(next.filter((s, i) => s.trim() || i < next.length - 1))
+  }
+
+  function addStep() {
+    onChange([...steps, ''])
+  }
+
+  function removeStep(index: number) {
+    onChange(displaySteps.filter((_, i) => i !== index))
+  }
+
+  // When she pastes a multi-line blob into any single row, split it into the
+  // remaining rows instead of dumping all the text into one box.
+  function handlePaste(index: number, event: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const text = event.clipboardData.getData('text')
+    if (!text.includes('\n')) return
+    event.preventDefault()
+    const incoming = text.split('\n').map(stripStepPrefix).filter(Boolean)
+    if (incoming.length === 0) return
+    const next = [...displaySteps]
+    next.splice(index, 1, ...incoming)
+    onChange(next.filter(Boolean))
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {displaySteps.map((step, i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+          <span
+            aria-hidden="true"
+            style={{
+              flexShrink: 0,
+              width: 24,
+              height: 24,
+              borderRadius: '50%',
+              background: 'var(--admin-surface-low)',
+              color: 'var(--admin-on-surface-variant)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontFamily: 'var(--font-hanken)',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              marginTop: 6,
+            }}
+          >
+            {i + 1}
+          </span>
+          <textarea
+            className="admin-input"
+            rows={2}
+            value={step}
+            onChange={(e) => updateStep(i, e.target.value)}
+            onPaste={(e) => handlePaste(i, e)}
+            placeholder={i === 0 ? 'First step — or paste the whole list here and it will split into rows.' : `Step ${i + 1}`}
+            style={{ flex: 1, resize: 'vertical', fontFamily: 'var(--font-hanken)', fontSize: '0.86rem' }}
+          />
+          {(displaySteps.length > 1 || step.trim()) && (
+            <button
+              type="button"
+              onClick={() => removeStep(i)}
+              aria-label={`Remove step ${i + 1}`}
+              style={{
+                flexShrink: 0,
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--admin-on-surface-variant)',
+                padding: 6,
+                marginTop: 2,
+              }}
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={addStep}
+        style={{
+          alignSelf: 'flex-start',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 4,
+          background: 'none',
+          border: '1px dashed var(--admin-outline)',
+          borderRadius: 6,
+          padding: '4px 10px',
+          fontFamily: 'var(--font-hanken)',
+          fontSize: '0.78rem',
+          color: 'var(--admin-on-surface-variant)',
+          cursor: 'pointer',
+        }}
+      >
+        <Plus size={12} /> Add step
+      </button>
+    </div>
+  )
 }
 
 // Detects whether a recipe was built in paste-mode (any saved macro total)
@@ -352,16 +474,13 @@ function RecipeForm({
           Instructions &amp; Notes (optional)
         </summary>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 10 }}>
-          <label>
-            <span style={label}>Instructions (one per line)</span>
-            <textarea
-              className="admin-input"
-              rows={4}
-              value={joinLines(draft.instructions)}
-              onChange={e => onChange({ instructions: splitLines(e.target.value) })}
-              style={{ resize: 'vertical' }}
+          <div>
+            <span style={label}>Instructions</span>
+            <InstructionListEditor
+              steps={draft.instructions}
+              onChange={(steps) => onChange({ instructions: steps })}
             />
-          </label>
+          </div>
           <label>
             <span style={label}>Notes</span>
             <textarea

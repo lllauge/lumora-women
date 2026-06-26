@@ -1,3 +1,5 @@
+import { matchCommonFood } from './common-foods'
+
 type FoodSearchResult = {
   fdcId: number
   description: string
@@ -353,7 +355,13 @@ export async function searchFoodsForPicker(query: string, apiKey: string): Promi
     body: JSON.stringify(body),
   }).then((r) => r.ok ? r.json() as Promise<FoodSearchResponse> : null).catch(() => null)
 
-  const [mainData, brandedData] = await Promise.all([
+  // Check our curated common-foods list first. If the query matches a staple
+  // (chicken breast, brown rice, etc.), fire a precise USDA search for the
+  // canonical entry — the result gets pinned at the top with a clean label,
+  // so the admin sees what they actually wanted instead of derivatives.
+  const commonFood = matchCommonFood(query)
+
+  const [mainData, brandedData, commonData] = await Promise.all([
     fetchSearch({
       query,
       // USDA's relevance ranker buries core foods (e.g. "Rice, brown, long
@@ -367,6 +375,13 @@ export async function searchFoodsForPicker(query: string, apiKey: string): Promi
           query: brandLikeTokens.map((t) => `"${t}"`).join(' '),
           pageSize: 25,
           dataType: ['Branded'],
+        })
+      : Promise.resolve(null),
+    commonFood
+      ? fetchSearch({
+          query: commonFood.usdaQuery,
+          pageSize: 5,
+          dataType: ['Foundation', 'SR Legacy'],
         })
       : Promise.resolve(null),
   ])
@@ -439,9 +454,18 @@ export async function searchFoodsForPicker(query: string, apiKey: string): Promi
     .sort((a, b) => b.score - a.score)
     .slice(0, 10)
 
+  // Pin the curated common-food at the very top with its clean display name,
+  // and remove any duplicate further down the list.
+  const pinnedCommonFood = commonFood && commonData?.foods?.[0]
+    ? { food: { ...commonData.foods[0], description: commonFood.displayName }, macros: macrosPer100g(commonData.foods[0]) }
+    : null
+  const ranked = pinnedCommonFood
+    ? [pinnedCommonFood, ...scored.filter((s) => s.food.fdcId !== pinnedCommonFood.food.fdcId)]
+    : scored
+
   // Branded search rows can carry mis-normalized nutrients; pull the label-corrected
   // per-100g values from the detail endpoint so the preview matches the saved math.
-  return Promise.all(scored.map(async ({ food, macros }) => {
+  return Promise.all(ranked.map(async ({ food, macros }) => {
     let corrected = macros
     if (food.dataType === 'Branded') {
       const detail = await fetchFoodById(food.fdcId, apiKey).catch(() => null)

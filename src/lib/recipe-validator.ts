@@ -1,5 +1,18 @@
 import type { CoachingPlanDraft } from './coaching-plan-schema'
-import { cleanIngredientText, ingredientGrams } from './coaching-engagement'
+
+// Inlined from coaching-engagement.ts so this module has no server deps and
+// can be imported into the client-side CoachingPlanEditor without dragging in
+// next/headers via the supabase server client.
+const FDC_TOKEN = /\[fdc:\d+\]\s*/g
+
+function cleanIngredientText(value: string): string {
+  return value.replace(FDC_TOKEN, '').replace(/\s+/g, ' ').trim()
+}
+
+function ingredientGrams(value: string): number | null {
+  const match = cleanIngredientText(value).match(/^(\d+(?:\.\d+)?)\s*g\b/i)
+  return match ? parseFloat(match[1]) : null
+}
 
 export type RecipeIssue = {
   severity: 'error' | 'warning'

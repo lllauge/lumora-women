@@ -144,6 +144,48 @@ const COUNT_ITEMS: CountItem[] = [
 
 const DEFAULT_SOLID_CUP_GRAMS = 150 // unknown chopped solid
 
+// Standard per-can / per-jar drained weights for common pantry staples.
+// 15-oz can = 425g undrained; legumes/vegetables drain to ~240g.
+const CAN_ITEMS: Array<{ match: RegExp; grams: number }> = [
+  { match: /\b(black|kidney|pinto|cannellini|navy|great northern|chickpea|garbanzo|white|red) beans?\b/, grams: 240 },
+  { match: /\bchickpeas?\b|\bgarbanzos?\b/, grams: 240 },
+  { match: /\blentils?\b/, grams: 240 },
+  { match: /\brefried beans?\b/, grams: 454 },
+  { match: /\bcorn\b/, grams: 240 },
+  { match: /\bgreen beans?\b/, grams: 240 },
+  { match: /\bpeas?\b/, grams: 240 },
+  { match: /\bcrushed tomato/, grams: 411 },
+  { match: /\bdiced tomato/, grams: 411 },
+  { match: /\bwhole tomato/, grams: 411 },
+  { match: /\bfire[- ]roasted tomato/, grams: 411 },
+  { match: /\btomato sauce\b/, grams: 411 },
+  { match: /\btomato paste\b/, grams: 170 },
+  { match: /\btuna\b/, grams: 142 }, // 5 oz drained
+  { match: /\bchicken\b/, grams: 283 }, // 12.5 oz canned chicken
+  { match: /\bsalmon\b/, grams: 213 }, // 7.5 oz can
+  { match: /\bsardines?\b/, grams: 92 }, // 3.75 oz tin
+  { match: /\bcoconut milk\b|\bcoconut cream\b/, grams: 400 }, // 13.5 oz
+  { match: /\bolives?\b/, grams: 110 }, // pitted/drained
+  { match: /\bartichoke\b/, grams: 240 },
+  { match: /\bsalsa\b|\bmarinara\b|\bpasta sauce\b|\bpizza sauce\b|\bsauce\b/, grams: 454 }, // typical 16 oz jar
+  { match: /\bpumpkin\b/, grams: 425 }, // 15 oz
+  { match: /\bbroth\b|\bstock\b/, grams: 425 }, // 14.5 oz
+  { match: /\bsoup\b/, grams: 305 },
+  { match: /\bmushrooms?\b/, grams: 113 }, // 4 oz drained
+  { match: /\bgreen chiles?\b|\bdiced chiles?\b/, grams: 113 }, // 4 oz
+]
+
+function lookupCanGrams(name: string): number | null {
+  const lower = normalizeForLookup(name)
+  for (const { match, grams } of CAN_ITEMS) {
+    if (match.test(lower)) return grams
+  }
+  return null
+}
+
+// "can", "cans", "canned" all mean the same thing for parsing purposes.
+const CAN_UNITS = new Set(['can', 'cans', 'canned', 'jar', 'jars', 'tin', 'tins'])
+
 // "1 1/2", "1/2", "0.5", "1.5"
 function parseQuantity(text: string): number | null {
   const trimmed = text.trim()
@@ -256,6 +298,21 @@ export function parseIngredientLine(raw: string): ParsedIngredient {
   // Weight unit — exact
   if (unit && WEIGHT_UNITS[unit]) {
     return { raw, name: rest || line, grams: round1(qty * WEIGHT_UNITS[unit]), confidence: 'high' }
+  }
+
+  // Can / jar / tin — match by ingredient, fall back to generic 425g (15 oz)
+  if (unit && CAN_UNITS.has(unit)) {
+    const canGrams = lookupCanGrams(rest)
+    if (canGrams !== null) {
+      return { raw, name: rest, grams: round1(qty * canGrams), confidence: 'medium' }
+    }
+    return {
+      raw,
+      name: rest,
+      grams: round1(qty * 425),
+      confidence: 'fuzzy',
+      reason: `Unknown canned/jarred item — used standard 15 oz (425g) per ${unit}.`,
+    }
   }
 
   // Volume unit

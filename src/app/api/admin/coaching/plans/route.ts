@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getVerifiedAdminUser } from '@/lib/admin-guard'
 import { CoachingPlanSchema, parseCoachingPlan } from '@/lib/coaching-plan-schema'
+import { validatePlan, summarizeValidation } from '@/lib/recipe-validator'
 import { requireSameOrigin } from '@/lib/request-security'
 import { createAdminClient } from '@/lib/supabase/server'
 
@@ -34,6 +35,20 @@ export async function POST(req: NextRequest) {
   }
 
   const { clientId, plan, planningInputs } = parsed.data
+
+  // Block publishes that don't pass the Atwater + completeness check — a
+  // recipe whose macros don't sum to calories almost always means an
+  // ingredient silently failed to parse. Drafts can save with warnings.
+  if (plan.status === 'published') {
+    const validation = validatePlan(plan)
+    if (!validation.ok) {
+      return NextResponse.json({
+        error: `Can't publish: one or more recipes have macro problems. Fix these first, then publish:\n\n${summarizeValidation(validation)}`,
+        validation,
+      }, { status: 422 })
+    }
+  }
+
   const supabase = await createAdminClient()
 
   const { data: savedPlan, error } = await supabase

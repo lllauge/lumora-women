@@ -1,10 +1,11 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
-import { ChevronDown, Sparkles, Trash2 } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { AlertTriangle, ChevronDown, Sparkles, Trash2 } from 'lucide-react'
 import type { CoachingPlanDraft } from '@/lib/coaching-plan-schema'
 import { emptyCoachingPlan } from '@/lib/coaching-plan-schema'
+import { validatePlan } from '@/lib/recipe-validator'
 import IngredientPicker from './IngredientPicker'
 import {
   calculateMacroTargets,
@@ -986,6 +987,8 @@ export default function CoachingPlanEditor({
           {error}
         </p>
       )}
+      <ValidationPanel plan={plan} />
+
 
       {/* ── Section 1: Client Inputs ── */}
       <details style={sCard} open>
@@ -1668,3 +1671,34 @@ export default function CoachingPlanEditor({
     </div>
   )
 }
+
+function ValidationPanel({ plan }: { plan: CoachingPlanDraft }) {
+  const result = useMemo(() => validatePlan(plan), [plan])
+  const failing = result.recipes.filter((r) => r.issues.some((i) => i.severity === 'error'))
+  if (failing.length === 0) return null
+  return (
+    <div role="alert" style={{
+      fontFamily: 'var(--font-hanken)', fontSize: '0.85rem',
+      color: '#7c2d12', background: '#fff7ed', border: '1px solid #fdba74',
+      borderRadius: 8, padding: '12px 16px', margin: 0,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, marginBottom: 8 }}>
+        <AlertTriangle size={16} aria-hidden />
+        Macro math problems — fix before publishing
+      </div>
+      <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {failing.map((r) => (
+          <li key={r.recipeName}>
+            <div style={{ fontWeight: 700, color: '#9a3412' }}>{r.recipeName}</div>
+            <ul style={{ listStyle: 'disc', margin: '4px 0 0 20px', padding: 0, fontSize: '0.8rem' }}>
+              {r.issues.filter((i) => i.severity === 'error').map((i, j) => (
+                <li key={j}>{i.message}</li>
+              ))}
+            </ul>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+

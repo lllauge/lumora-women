@@ -356,7 +356,10 @@ export async function searchFoodsForPicker(query: string, apiKey: string): Promi
   const [mainData, brandedData] = await Promise.all([
     fetchSearch({
       query,
-      pageSize: 25,
+      // USDA's relevance ranker buries core foods (e.g. "Rice, brown, long
+      // grain, raw") under derivatives (rice cakes, rice flour, baby food).
+      // Fetch deep so the scorer below has the real food to promote.
+      pageSize: 100,
       dataType: ['Foundation', 'SR Legacy', 'Survey (FNDDS)', 'Branded'],
     }),
     brandLikeTokens.length > 0
@@ -393,6 +396,14 @@ export async function searchFoodsForPicker(query: string, apiKey: string): Promi
   // results when the query explicitly asks for ground. Whole-muscle cut
   // queries ("chicken breast", "pork loin") should never match ground.
   const wantsGround = queryTokens.includes('ground') || queryTokens.includes('minced')
+  // USDA descriptions follow a "Category, descriptor, descriptor" pattern.
+  // Descriptions that start with one of these tangential categories are
+  // rarely what someone cooking a meal wants — they're processed snack
+  // foods, baby food, restaurant prepared dishes, etc.
+  const TANGENTIAL_CATEGORY = /^(snacks|babyfood|fast foods|fast food|restaurant|cocktail|cereals ready[-\s]to[-\s]eat|infant formula|leavening agents|formulated bar)/i
+  // Whether the query itself sounds like a tangential category — if she
+  // searched "snacks", she actually wants snacks.
+  const wantsTangential = TANGENTIAL_CATEGORY.test(query.toLowerCase())
 
   const scored = foods
     .map((food) => {
@@ -413,7 +424,13 @@ export async function searchFoodsForPicker(query: string, apiKey: string): Promi
       const brandScore = food.dataType === 'Branded'
         ? queryTokens.reduce((s, t) => s + (brandTokens.includes(t) ? 8 : 0), 0)
         : 0
-      const score = tokenScore + brandScore + cookedScore + notCookedPenalty + rawPenalty + dryPenalty + processedPenalty + groundPenalty + dataTypeScore
+      const tangentialPenalty = !wantsTangential && TANGENTIAL_CATEGORY.test(description) ? -15 : 0
+      // USDA's descriptions follow "<noun>, <descriptor>..." pattern, where
+      // the leading noun IS the food (e.g. "Rice, brown, long-grain, raw").
+      // When that leading noun is one of the query tokens, it's almost
+      // certainly the core food — promote it above derivatives.
+      const corePrefixBonus = queryTokens.some((t) => description.startsWith(`${t},`)) ? 6 : 0
+      const score = tokenScore + brandScore + cookedScore + notCookedPenalty + rawPenalty + dryPenalty + processedPenalty + groundPenalty + tangentialPenalty + corePrefixBonus + dataTypeScore
       const macros = macrosPer100g(food)
       return { food, score, macros }
     })

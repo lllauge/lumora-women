@@ -197,11 +197,52 @@ function RecipeIngredientsSection({
   draft: typeof EMPTY_RECIPE
   onChange: (patch: Partial<typeof EMPTY_RECIPE>) => void
 }) {
-  const [mode, setMode] = useState<'usda' | 'paste'>(detectPasteMode(draft) ? 'paste' : 'usda')
+  const [mode, setMode] = useState<'usda' | 'paste' | 'url'>(detectPasteMode(draft) ? 'paste' : 'usda')
   const [pasteText, setPasteText] = useState('')
   // Parsed lines kept in local state so user can override fuzzy gram weights
   // before committing the structured ingredients back to the recipe draft.
   const [parsed, setParsed] = useState<ParsedIngredient[]>([])
+  const [importUrl, setImportUrl] = useState('')
+  const [importing, setImporting] = useState(false)
+  const [importError, setImportError] = useState('')
+
+  async function importFromUrl() {
+    if (!importUrl.trim()) return
+    setImporting(true)
+    setImportError('')
+    try {
+      const response = await fetch('/api/admin/coaching/recipes/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: importUrl.trim() }),
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        setImportError(data.error || 'Could not import that recipe.')
+        return
+      }
+      const r = data.recipe as { title: string; servings: number; ingredients: { line: string }[]; instructions: string[]; sourceUrl: string }
+      const patch: Partial<typeof EMPTY_RECIPE> = {
+        ingredients: [...draft.ingredients, ...r.ingredients.map((i) => i.line)],
+        instructions: r.instructions.length > 0 && draft.instructions.length === 0 ? r.instructions : draft.instructions,
+      }
+      if (!draft.name && r.title) patch.name = r.title
+      if (r.servings) patch.family_servings = String(r.servings)
+      if (r.sourceUrl) {
+        const sourceLine = `Source: ${r.sourceUrl}`
+        patch.notes = draft.notes && !draft.notes.includes(r.sourceUrl)
+          ? `${draft.notes}\n\n${sourceLine}`
+          : draft.notes || sourceLine
+      }
+      onChange(patch)
+      setImportUrl('')
+      setMode('usda')
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : 'Could not import that recipe.')
+    } finally {
+      setImporting(false)
+    }
+  }
 
   function convertPasted() {
     const lines = parseIngredientBlock(pasteText)
@@ -259,12 +300,58 @@ function RecipeIngredientsSection({
           >
             Paste recipe
           </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === 'url'}
+            onClick={() => setMode('url')}
+            style={{
+              padding: '4px 12px', fontFamily: 'var(--font-hanken)', fontSize: '0.78rem', fontWeight: 600,
+              border: 'none', borderRadius: 6, cursor: 'pointer',
+              background: mode === 'url' ? '#FFFFFF' : 'transparent',
+              color: mode === 'url' ? 'var(--admin-on-surface)' : 'var(--admin-on-surface-variant)',
+              boxShadow: mode === 'url' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+            }}
+          >
+            Import URL
+          </button>
         </div>
       </div>
 
       {mode === 'usda' ? (
         <div style={{ marginTop: 6 }}>
           <IngredientPicker onAdd={(ing) => onChange({ ingredients: [...draft.ingredients, ing] })} />
+        </div>
+      ) : mode === 'url' ? (
+        <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.8rem', color: 'var(--admin-on-surface-variant)', margin: 0 }}>
+            Paste a recipe URL (NYT Cooking, AllRecipes, blog posts, etc.). We pull title, servings, ingredients with USDA-matched grams, and instructions — review every line before saving.
+          </p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              className="admin-input"
+              type="url"
+              placeholder="https://cooking.nytimes.com/recipes/..."
+              value={importUrl}
+              onChange={(e) => setImportUrl(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); importFromUrl() } }}
+              disabled={importing}
+              style={{ flex: 1, fontFamily: 'var(--font-hanken)', fontSize: '0.86rem' }}
+            />
+            <button
+              type="button"
+              className="admin-btn-secondary"
+              disabled={importing || !importUrl.trim()}
+              onClick={importFromUrl}
+            >
+              {importing ? 'Importing…' : 'Import'}
+            </button>
+          </div>
+          {importError && (
+            <p role="alert" style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.8rem', color: '#B42318', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 6, padding: '8px 10px', margin: 0 }}>
+              {importError}
+            </p>
+          )}
         </div>
       ) : (
         <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 10 }}>

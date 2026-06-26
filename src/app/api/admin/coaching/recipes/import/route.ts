@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getVerifiedAdminUser } from '@/lib/admin-guard'
+import { hasEdamamCredentials } from '@/lib/edamam'
 import { importRecipeFromUrl } from '@/lib/recipes/url-importer'
 import { requireSameOrigin } from '@/lib/request-security'
-import { getUsdaApiKey } from '@/lib/usda/api-key'
 
 const ImportRequestSchema = z.object({
   url: z.string().trim().url('Enter a recipe URL.').max(2048),
@@ -19,9 +19,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 })
   }
 
+  if (!hasEdamamCredentials()) {
+    return NextResponse.json({
+      error: 'EDAMAM_APP_ID and EDAMAM_APP_KEY must be configured.',
+    }, { status: 503 })
+  }
+
   const openAiKey = process.env.OPENAI_API_KEY
   if (!openAiKey) {
-    return NextResponse.json({ error: 'OPENAI_API_KEY is not configured.' }, { status: 503 })
+    return NextResponse.json({
+      error: 'OPENAI_API_KEY is not configured (used as a fallback when a recipe page has no structured data).',
+    }, { status: 503 })
   }
 
   let body: unknown
@@ -37,7 +45,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const recipe = await importRecipeFromUrl(parsed.data.url, openAiKey, getUsdaApiKey().key)
+    const recipe = await importRecipeFromUrl(parsed.data.url, openAiKey)
     return NextResponse.json({ recipe })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Could not import that recipe.'

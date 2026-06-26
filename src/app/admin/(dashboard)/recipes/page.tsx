@@ -221,10 +221,25 @@ function RecipeIngredientsSection({
         setImportError(data.error || 'Could not import that recipe.')
         return
       }
-      const r = data.recipe as { title: string; servings: number; ingredients: { line: string }[]; instructions: string[]; sourceUrl: string }
+      const r = data.recipe as {
+        title: string
+        servings: number
+        ingredients: { line: string; unparsed: boolean }[]
+        instructions: string[]
+        sourceUrl: string
+        totals: { calories: number; protein: number; carbs: number; fats: number; fiber: number; grams: number }
+      }
       const patch: Partial<typeof EMPTY_RECIPE> = {
         ingredients: [...draft.ingredients, ...r.ingredients.map((i) => i.line)],
         instructions: r.instructions.length > 0 && draft.instructions.length === 0 ? r.instructions : draft.instructions,
+        // Edamam returned full-recipe macros — pre-fill them so admin doesn't
+        // have to recalculate. She still reviews + can edit any field.
+        calories: r.totals.calories,
+        protein: r.totals.protein,
+        carbs: r.totals.carbs,
+        fats: r.totals.fats,
+        fiber: r.totals.fiber,
+        total_recipe_grams: r.totals.grams,
       }
       if (!draft.name && r.title) patch.name = r.title
       if (r.servings) patch.family_servings = String(r.servings)
@@ -235,7 +250,12 @@ function RecipeIngredientsSection({
           : draft.notes || sourceLine
       }
       onChange(patch)
-      setImportUrl('')
+      const unparsedCount = r.ingredients.filter((i) => i.unparsed).length
+      if (unparsedCount > 0) {
+        setImportError(`Imported, but ${unparsedCount} ingredient${unparsedCount === 1 ? '' : 's'} couldn't be parsed. Look for lines that show "0g" and fix them before saving.`)
+      } else {
+        setImportUrl('')
+      }
       setMode('usda')
     } catch (err) {
       setImportError(err instanceof Error ? err.message : 'Could not import that recipe.')

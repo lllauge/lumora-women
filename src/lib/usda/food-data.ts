@@ -389,6 +389,10 @@ export async function searchFoodsForPicker(query: string, apiKey: string): Promi
   // be filtered out.
   const processedWords = ['flour', 'powder', 'powdered', 'flakes', 'flake', 'mix', 'concentrate', 'instant', 'protein']
   const wantsProcessed = processedWords.some((w) => queryTokens.includes(w))
+  // Same logic for ground meats: only return "ground beef/chicken/turkey"
+  // results when the query explicitly asks for ground. Whole-muscle cut
+  // queries ("chicken breast", "pork loin") should never match ground.
+  const wantsGround = queryTokens.includes('ground') || queryTokens.includes('minced')
 
   const scored = foods
     .map((food) => {
@@ -400,6 +404,7 @@ export async function searchFoodsForPicker(query: string, apiKey: string): Promi
       const rawPenalty = wantsCooked && /\b(raw|uncooked|dehydrated)\b/.test(description) ? -20 : 0
       const dryPenalty = wantsCooked && /\bdry\b/.test(description) ? -20 : 0
       const processedPenalty = !wantsProcessed && /\b(flour|powder|flakes?|mix|concentrate|instant|freeze.dried)\b/.test(description) ? -20 : 0
+      const groundPenalty = !wantsGround && /\b(ground|minced)\b/.test(description) ? -20 : 0
       // Lab-analyzed generics outrank label-reported branded products in ties.
       const dataTypeScore = food.dataType === 'Foundation' ? 3 : food.dataType === 'SR Legacy' ? 2 : food.dataType === 'Branded' ? 0 : 1
       const brandTokens = `${food.brandName ?? ''} ${food.brandOwner ?? ''}`.toLowerCase()
@@ -408,7 +413,7 @@ export async function searchFoodsForPicker(query: string, apiKey: string): Promi
       const brandScore = food.dataType === 'Branded'
         ? queryTokens.reduce((s, t) => s + (brandTokens.includes(t) ? 8 : 0), 0)
         : 0
-      const score = tokenScore + brandScore + cookedScore + notCookedPenalty + rawPenalty + dryPenalty + processedPenalty + dataTypeScore
+      const score = tokenScore + brandScore + cookedScore + notCookedPenalty + rawPenalty + dryPenalty + processedPenalty + groundPenalty + dataTypeScore
       const macros = macrosPer100g(food)
       return { food, score, macros }
     })

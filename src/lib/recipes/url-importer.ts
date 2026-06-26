@@ -143,7 +143,9 @@ Rules:
 - "food" is the cleaned, descriptive ingredient name (e.g. "black beans, canned, drained", "chicken breast", "kiwi").
 - "grams" is the TOTAL grams the recipe calls for, computed from the quantity + unit using standard food weights. Use drained weights for canned items unless the line says "with liquid".
 - "state" reflects whether the gram weight is "raw" / "cooked" / null. For ambiguous items default to null.
-- "fdcQuery" is a short 1-4 word USDA search term (e.g. "chicken breast raw", "brown rice cooked", "black beans canned"). Skip brand names. Avoid generic words like "of" or "the".
+- "fdcQuery" is a SPECIFIC USDA search term: include cut, preparation, and state. Examples: "chicken breast boneless skinless raw" NOT "chicken"; "ground beef 93% lean raw" NOT "beef"; "brown rice long grain cooked" NOT "rice"; "black beans canned drained" NOT "beans". The query must disambiguate from related foods (e.g. ground vs whole cuts, raw vs cooked, canned vs dry). Skip brand names. Avoid filler words ("of", "the").
+- If the source line lists alternates ("chicken tenders or chicken breast"), pick the FIRST option mentioned.
+- If the source line is a whole-muscle cut (breast, thigh, tender, loin, fillet), NEVER return "ground" in fdcQuery.
 - Skip pure water in unspecified amounts. For "to taste" / "for garnish" / "for serving", return grams: 1 and state: null.
 - Standard reference weights: 1 large egg 50g, 1 large egg white 33g, 1 medium banana 118g, 1 medium apple 182g, 1 cup uncooked rice 185g (cooked 158g/cup), 1 tbsp olive oil 14g, 1 tsp salt 6g, 1 garlic clove 3g, 1 medium onion 110g, 1 medium tomato 123g, 1 medium kiwi 76g, 1 cup chopped greens 30g, 15-oz can drained beans 240g, 15-oz can drained corn 240g, 14.5-oz can diced tomatoes 411g, 5-oz tuna can drained 142g.
 - Be precise. The numbers go straight into a client meal plan.`

@@ -1,3 +1,4 @@
+import { parseIngredientLine as pasteParseIngredientLine } from '../recipes/paste-parser'
 import { matchCommonFood } from './common-foods'
 
 type FoodSearchResult = {
@@ -688,24 +689,40 @@ export async function calculateRecipeNutritionFromUsda({
 
   for (const raw of ingredients) {
     const parsed = parseIngredientLine(raw)
-    if (parsed.warning) warnings.push(`${raw}: ${parsed.warning}`)
-    if (!parsed.grams) continue
+
+    // USDA's parser only handles weight units (g/oz/lb/kg/ml). Fall through to
+    // paste-parser for cans, cups, counts, and "1 large egg" style lines so
+    // they still contribute to the day total instead of silently zeroing out.
+    let grams = parsed.grams
+    let searchQuery = parsed.query
+    if (!grams && !parsed.fdcId) {
+      const paste = pasteParseIngredientLine(raw)
+      if (paste.grams > 0) {
+        grams = paste.grams
+        searchQuery = paste.name || parsed.query
+      }
+    }
+
+    if (!grams) {
+      if (parsed.warning) warnings.push(`${raw}: ${parsed.warning}`)
+      continue
+    }
 
     const food = parsed.fdcId
       ? await fetchFoodById(parsed.fdcId, apiKey)
-      : await searchFood(parsed.query, apiKey)
+      : await searchFood(searchQuery, apiKey)
     if (!food) {
       warnings.push(`${raw}: No USDA match found.`)
       continue
     }
 
     const per100g = macrosPer100g(food)
-    const scale = parsed.grams / 100
+    const scale = grams / 100
     results.push({
       input: raw,
       matchedFood: food.description,
       dataType: food.dataType ?? 'USDA',
-      grams: round(parsed.grams),
+      grams: round(grams),
       calories: round(per100g.calories * scale),
       protein: round(per100g.protein * scale),
       carbs: round(per100g.carbs * scale),

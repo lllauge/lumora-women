@@ -442,16 +442,48 @@ function DayMeals({ day, recipes }: { day: CoachingPlanDraft['mealPlan'][number]
               const portion = fraction && fraction.label !== 'the whole recipe'
                 ? `${fraction.label} of recipe · ${Math.round(factor * 100)}%`
                 : 'One full recipe serving'
+              const customIngredients = isAutoCustom
+                ? recipe.ingredients.map((ingredient) => {
+                    const cleaned = cleanIngredientText(ingredient)
+                    const match = cleaned.match(/^(\d+(?:\.\d+)?)\s*g\s+(.+)$/i)
+                    return match
+                      ? { amount: `${match[1]}g`, name: match[2].trim() }
+                      : { amount: '', name: cleaned }
+                  }).filter((ingredient) => ingredient.name)
+                : []
               return (
-                <div key={name} style={{ marginTop: '0.5rem', padding: '0.75rem 0.875rem', background: 'var(--section-tint)', borderRadius: '0.625rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
-                  <div>
-                    <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 700, color: '#3F6936', margin: 0 }}>{recipeLabel}</p>
-                    <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>{portion}</p>
-                  </div>
-                  {!isAutoCustom && (
-                    <Link href={recipeIndex >= 0 ? `/coaching/plan?recipe=${recipeIndex}#recipe-${recipeIndex}` : '#'} style={{ fontFamily: 'var(--font-sans)', fontSize: '0.78rem', fontWeight: 700, color: '#3F6936', textDecoration: 'none', whiteSpace: 'nowrap' }}>
-                      View recipe →
-                    </Link>
+                <div key={name} style={{ marginTop: '0.5rem', padding: '0.75rem 0.875rem', background: 'var(--section-tint)', borderRadius: '0.625rem' }}>
+                  {isAutoCustom ? (
+                    <>
+                      <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 700, color: '#3F6936', margin: 0 }}>{recipeLabel}</p>
+                      <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em', textTransform: 'uppercase', marginTop: '0.35rem' }}>
+                        Weigh out this portion
+                      </p>
+                      <ul style={{ listStyle: 'none', margin: '0.5rem 0 0', padding: 0, display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                        {customIngredients.map((ingredient, ingredientIndex) => (
+                          <li key={`${ingredient.name}-${ingredientIndex}`} style={{ display: 'flex', alignItems: 'baseline', gap: '0.625rem' }}>
+                            {ingredient.amount && (
+                              <span style={{ minWidth: '3.5rem', fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 800, color: '#3F6936', textAlign: 'right' }}>
+                                {ingredient.amount}
+                              </span>
+                            )}
+                            <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.35 }}>
+                              {ingredient.name}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
+                      <div>
+                        <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 700, color: '#3F6936', margin: 0 }}>{recipeLabel}</p>
+                        <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>{portion}</p>
+                      </div>
+                      <Link href={recipeIndex >= 0 ? `/coaching/plan?recipe=${recipeIndex}#recipe-${recipeIndex}` : '#'} style={{ fontFamily: 'var(--font-sans)', fontSize: '0.78rem', fontWeight: 700, color: '#3F6936', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                        View recipe →
+                      </Link>
+                    </div>
                   )}
                 </div>
               )

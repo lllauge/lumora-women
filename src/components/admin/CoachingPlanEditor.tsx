@@ -209,7 +209,7 @@ function parseMealMacroLine(value: string) {
 }
 
 function cleanIngredientLine(line: string) {
-  return line.replace(/^\[fdc:\d+\]\s*/, '').trim()
+  return line.replace(/^\[(?:fdc:\d+|curated:[a-z0-9-]+)\]\s*/i, '').trim()
 }
 
 // Paste-mode recipes carry stored macros on the library row. The plan recipe
@@ -1663,7 +1663,7 @@ export default function CoachingPlanEditor({
                           <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3 }}>
                             {ingredients.map((ing, i) => (
                               <li key={i} style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.72rem', color: 'var(--admin-on-surface-variant)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
-                                <span style={{ flex: 1 }}>{ing.replace(/^\[fdc:\d+\]\s*/, '')}</span>
+                                <span style={{ flex: 1 }}>{cleanIngredientLine(ing)}</span>
                                 <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--admin-on-surface-variant)', fontSize: '0.85rem', padding: '0 2px', flexShrink: 0 }}
                                   onClick={() => removeIngredientFromSlot(dayIndex, mealKey, i)}>×</button>
                               </li>
@@ -1740,7 +1740,7 @@ export default function CoachingPlanEditor({
                             <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3 }}>
                               {snackIngredients.map((ing, i) => (
                                 <li key={i} style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.72rem', color: 'var(--admin-on-surface-variant)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
-                                  <span style={{ flex: 1 }}>{ing.replace(/^\[fdc:\d+\]\s*/, '')}</span>
+                                  <span style={{ flex: 1 }}>{cleanIngredientLine(ing)}</span>
                                   <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--admin-on-surface-variant)', fontSize: '0.85rem', padding: '0 2px', flexShrink: 0 }}
                                     onClick={() => removeIngredientFromSnackSlot(dayIndex, snackIndex, i)}>×</button>
                                 </li>

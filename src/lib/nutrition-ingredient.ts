@@ -8,7 +8,7 @@ export function isExcludedNutritionIngredient(value: string) {
 
 export function isCanonicalZeroNutritionIngredient(value: string) {
   const normalized = value
-    .replace(/^\[fdc:\d+\]\s*/, '')
+    .replace(/^\[(?:fdc:\d+|curated:[a-z0-9-]+)\]\s*/i, '')
     .replace(/^\d+(?:\.\d+)?\s*g\s+/i, '')
     .trim()
   return PLAIN_WATER.test(normalized) || PLAIN_SALT.test(normalized)

@@ -4,10 +4,10 @@ import { isExcludedNutritionIngredient } from './nutrition-ingredient'
 // Inlined from coaching-engagement.ts so this module has no server deps and
 // can be imported into the client-side CoachingPlanEditor without dragging in
 // next/headers via the supabase server client.
-const FDC_TOKEN = /\[fdc:\d+\]\s*/g
+const FOOD_DATABASE_TOKEN = /\[(?:fdc:\d+|curated:[a-z0-9-]+)\]\s*/gi
 
 function cleanIngredientText(value: string): string {
-  return value.replace(FDC_TOKEN, '').replace(/\s+/g, ' ').trim()
+  return value.replace(FOOD_DATABASE_TOKEN, '').replace(/\s+/g, ' ').trim()
 }
 
 function ingredientGrams(value: string): number | null {

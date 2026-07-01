@@ -9,6 +9,7 @@ type UsdaFoodMeasure = {
 
 type UsdaFoodOption = {
   fdcId: number
+  curatedId?: string
   description: string
   dataType: string
   brand: string
@@ -84,7 +85,7 @@ export default function IngredientPicker({ onAdd }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const anchorRef = useRef<HTMLDivElement>(null)
   const gramsRef = useRef<HTMLInputElement>(null)
-  const selectedFdcRef = useRef<number | null>(null)
+  const selectedFoodRef = useRef<string | null>(null)
   const amountRef = useRef('')
   const debouncedQuery = useDebounce(query, 350)
 
@@ -163,7 +164,7 @@ export default function IngredientPicker({ onAdd }: Props) {
       return
     }
     // Count-style measures ("1 large", "1 medium") default to counting.
-    const countMeasure = (food.measures ?? []).findIndex((m) => /^1\s+(large|medium|small|extra large|jumbo|slice|piece|egg|banana|apple|whole|berry|pitted)\b/i.test(m.label))
+    const countMeasure = (food.measures ?? []).findIndex((m) => /^1\s+(large|medium|small|extra large|jumbo|slice|piece|egg|banana|apple|whole|berry|pitted|scoop)\b/i.test(m.label))
     setMeasureIdx(countMeasure)
     const defaultAmount = countMeasure >= 0 ? '1' : ''
     setAmount(defaultAmount)
@@ -171,7 +172,8 @@ export default function IngredientPicker({ onAdd }: Props) {
   }
 
   function selectFood(food: UsdaFoodOption) {
-    selectedFdcRef.current = food.fdcId
+    const selectedKey = food.curatedId ?? String(food.fdcId)
+    selectedFoodRef.current = selectedKey
     const prepared = ensureFruitCountMeasure(ensureEggCountMeasure(food))
     setSelected(prepared)
     setQuery(prepared.description)
@@ -179,12 +181,12 @@ export default function IngredientPicker({ onAdd }: Props) {
     applyDefaultUnit(prepared)
 
     // Search results rarely include household measures — fetch them for this food.
-    if ((food.measures ?? []).length === 0) {
+    if (!food.curatedId && (food.measures ?? []).length === 0) {
       fetch(`/api/admin/coaching/usda-search?fdcId=${food.fdcId}`)
         .then((r) => r.json())
         .then((data: { measures?: UsdaFoodMeasure[] }) => {
           const measures = data.measures ?? []
-          if (measures.length === 0 || selectedFdcRef.current !== food.fdcId) return
+          if (measures.length === 0 || selectedFoodRef.current !== selectedKey) return
           const withMeasures = ensureFruitCountMeasure(ensureEggCountMeasure({ ...food, measures }))
           setSelected(withMeasures)
           // Don't disturb anything she already typed while measures loaded.
@@ -209,11 +211,14 @@ export default function IngredientPicker({ onAdd }: Props) {
     const countText = activeMeasure
       ? ` (${/^1\s+/.test(activeMeasure.label) ? `${amountNum} ${activeMeasure.label.replace(/^1\s+/, '')}` : `${amountNum} × ${activeMeasure.label}`})`
       : ''
-    const ingredient = `[fdc:${selected.fdcId}] ${totalGrams}g ${selected.description}${countText}${selected.brand ? ` (${selected.brand})` : ''}`
+    const sourceToken = selected.curatedId
+      ? `[curated:${selected.curatedId}]`
+      : `[fdc:${selected.fdcId}]`
+    const ingredient = `${sourceToken} ${totalGrams}g ${selected.description}${countText}${selected.brand ? ` (${selected.brand})` : ''}`
     onAdd(ingredient)
     setQuery('')
     setSelected(null)
-    selectedFdcRef.current = null
+    selectedFoodRef.current = null
     setAmount('')
     amountRef.current = ''
     setMeasureIdx(-1)
@@ -229,7 +234,7 @@ export default function IngredientPicker({ onAdd }: Props) {
           className="admin-input"
           placeholder="Search USDA foods, e.g. chicken breast cooked…"
           value={query}
-          onChange={(e) => { setQuery(e.target.value); setSelected(null); selectedFdcRef.current = null }}
+          onChange={(e) => { setQuery(e.target.value); setSelected(null); selectedFoodRef.current = null }}
           onFocus={() => results.length > 0 && setOpen(true)}
           autoComplete="off"
         />
@@ -253,7 +258,7 @@ export default function IngredientPicker({ onAdd }: Props) {
                 : food.dataType === 'Branded' ? 'Brand label'
                 : food.dataType || 'USDA'
               return (
-                <li key={food.fdcId}>
+                <li key={food.curatedId ?? food.fdcId}>
                   <button
                     type="button"
                     onClick={() => selectFood(food)}
@@ -272,8 +277,8 @@ export default function IngredientPicker({ onAdd }: Props) {
                           <span style={{ fontWeight: 400, color: 'var(--admin-on-surface-variant)' }}> — {food.brand}</span>
                         )}
                       </p>
-                      {/* USDA verified checkmark */}
-                      <span title="USDA FoodData Central verified" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, borderRadius: '50%', backgroundColor: '#2e7d32', flexShrink: 0 }}>
+                      {/* USDA or package-label verified checkmark */}
+                      <span title={food.curatedId ? 'Nutrition-label verified' : 'USDA FoodData Central verified'} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, borderRadius: '50%', backgroundColor: '#2e7d32', flexShrink: 0 }}>
                         <svg width="9" height="9" viewBox="0 0 9 9" fill="none"><path d="M1.5 4.5L3.5 6.5L7.5 2.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                       </span>
                       {idx === 0 && (

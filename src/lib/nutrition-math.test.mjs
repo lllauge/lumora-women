@@ -12,6 +12,10 @@ import {
   isExcludedNutritionIngredient,
   setIngredientNutritionExcluded,
 } from './nutrition-ingredient.ts'
+import {
+  getCuratedBrandedFood,
+  searchCuratedBrandedFoods,
+} from './curated-branded-foods.ts'
 
 test('uses one declared serving for a family recipe', () => {
   assert.equal(declaredServingMultiplier(4, true), 0.25)
@@ -62,4 +66,25 @@ test('auto-excludes brine water and only the large brining salt amount', () => {
     'Drain the salt water, rinse the chicken, and pat dry.',
   ])
   assert.deepEqual([...excluded], [1, 2])
+})
+
+test('finds the label-verified Truvani chocolate protein and preserves its serving macros', () => {
+  const results = searchCuratedBrandedFoods('truvani pea protein chocolate')
+  assert.equal(results[0]?.curatedId, 'truvani-plant-protein-chocolate')
+  const food = getCuratedBrandedFood('truvani-plant-protein-chocolate')
+  assert.deepEqual({
+    grams: food?.servingGrams,
+    calories: food?.calories,
+    protein: food?.protein,
+    carbs: food?.carbs,
+    fats: food?.fats,
+    fiber: food?.fiber,
+  }, {
+    grams: 33,
+    calories: 130,
+    protein: 20,
+    carbs: 5,
+    fats: 3,
+    fiber: 2,
+  })
 })

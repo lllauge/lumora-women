@@ -539,7 +539,7 @@ function RecipeIngredientsSection({
       {draft.ingredients.length > 0 && (
         <ul style={{ margin: '8px 0 0', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4 }}>
           {draft.ingredients.map((ing, i) => {
-            const display = ing.replace(/^\[fdc:\d+\]\s*/, '')
+            const display = ing.replace(/^\[(?:fdc:\d+|curated:[a-z0-9-]+)\]\s*/i, '')
             const excluded = isExcludedNutritionIngredient(ing)
             return (
               <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: 'var(--admin-surface-low)', borderRadius: 7, fontFamily: 'var(--font-hanken)', fontSize: '0.84rem' }}>

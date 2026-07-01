@@ -83,7 +83,7 @@ export function displayRecipeName(name: string): string {
 export function cleanMealDescription(value: string): string {
   const v = value.trim()
   if (!v) return ''
-  if (/\[fdc:|details:|client portion:|plate by the ingredient|total client serving/i.test(v)) return ''
+  if (/\[(?:fdc|curated):|details:|client portion:|plate by the ingredient|total client serving/i.test(v)) return ''
   return v
 }
 
@@ -103,11 +103,11 @@ export function portionSummaryLine(recipe: CoachingPlanDraft['recipes'][number])
   }).join(' · ')
 }
 
-const FDC_TOKEN = /\[fdc:\d+\]\s*/gi
+const FOOD_DATABASE_TOKEN = /\[(?:fdc:\d+|curated:[a-z0-9-]+)\]\s*/gi
 
 /** Strip internal food-database tokens and collapse whitespace for client display. */
 export function cleanIngredientText(value: string): string {
-  return value.replace(FDC_TOKEN, '').replace(/\s+/g, ' ').trim()
+  return value.replace(FOOD_DATABASE_TOKEN, '').replace(/\s+/g, ' ').trim()
 }
 
 /** Leading gram amount of an ingredient line ("50g Sweet potato…" → 50). */
@@ -304,7 +304,7 @@ export function portionFraction(factor: number): PortionFraction | null {
 /** True when a stored portion string is clean enough to show a client. */
 export function isClientReadable(value: string): boolean {
   const v = value.trim()
-  return v.length > 0 && v.length <= 90 && !/\[fdc:/i.test(v) && !/details:/i.test(v)
+  return v.length > 0 && v.length <= 90 && !/\[(?:fdc|curated):/i.test(v) && !/details:/i.test(v)
 }
 
 /** "130" → "130g", but "130g" stays "130g" — values may already carry a unit. */

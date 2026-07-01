@@ -5,6 +5,7 @@ import {
   isExcludedNutritionIngredient,
 } from '../nutrition-ingredient'
 import { resolvedFoodCalories } from '../nutrition-math'
+import { getCuratedBrandedFood } from '../curated-branded-foods'
 
 type FoodSearchResult = {
   fdcId: number
@@ -124,13 +125,17 @@ function normalizeAmount(value: string) {
   return Number(value)
 }
 
-function parseIngredientLine(raw: string): ParsedIngredient & { fdcId?: number } {
+function parseIngredientLine(raw: string): ParsedIngredient & { fdcId?: number; curatedId?: string } {
   const line = raw.trim()
   const fdcMatch = line.match(/^\[fdc:(\d+)\]\s*/)
+  const curatedMatch = line.match(/^\[curated:([a-z0-9-]+)\]\s*/i)
   const fdcId = fdcMatch ? parseInt(fdcMatch[1]) : undefined
-  const lineWithoutFdc = fdcId ? line.slice(fdcMatch![0].length) : line
-  const parsed = parseIngredientLineInner(lineWithoutFdc, raw)
-  return fdcId ? { ...parsed, fdcId } : parsed
+  const curatedId = curatedMatch?.[1]
+  const tokenLength = fdcMatch?.[0].length ?? curatedMatch?.[0].length ?? 0
+  const parsed = parseIngredientLineInner(line.slice(tokenLength), raw)
+  if (fdcId) return { ...parsed, fdcId }
+  if (curatedId) return { ...parsed, curatedId }
+  return parsed
 }
 
 function parseIngredientLineInner(line: string, raw: string): ParsedIngredient {
@@ -174,6 +179,7 @@ function parseIngredientLineInner(line: string, raw: string): ParsedIngredient {
 function ingredientLabelFromInput(input: string) {
   return input
     .trim()
+    .replace(/^\[(?:fdc:\d+|curated:[a-z0-9-]+)\]\s*/i, '')
     .replace(/^(\d+(?:\.\d+)?(?:\s+\d+\/\d+)?|\d+\/\d+)\s*([a-zA-Z]+)\b\s*/i, '')
     .trim()
 }
@@ -291,6 +297,7 @@ export type UsdaFoodMeasure = {
 
 export type UsdaFoodOption = {
   fdcId: number
+  curatedId?: string
   description: string
   dataType: string
   brand: string
@@ -769,6 +776,28 @@ export async function calculateRecipeNutritionFromUsda({
     if (!grams) {
       if (parsed.warning) warnings.push(`${raw}: ${parsed.warning}`)
       unmatchedIngredients.push(raw)
+      continue
+    }
+
+    if (parsed.curatedId) {
+      const curated = getCuratedBrandedFood(parsed.curatedId)
+      if (!curated) {
+        warnings.push(`${raw}: Verified label food is no longer available.`)
+        unmatchedIngredients.push(raw)
+        continue
+      }
+      const scale = grams / curated.servingGrams
+      results.push({
+        input: raw,
+        matchedFood: `${curated.description} (${curated.brand})`,
+        dataType: 'Verified package label',
+        grams: round(grams),
+        calories: round(curated.calories * scale),
+        protein: round(curated.protein * scale),
+        carbs: round(curated.carbs * scale),
+        fats: round(curated.fats * scale),
+        fiber: round(curated.fiber * scale),
+      })
       continue
     }
 

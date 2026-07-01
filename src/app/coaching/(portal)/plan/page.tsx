@@ -4,7 +4,7 @@ import { Leaf, ShoppingBasket, UtensilsCrossed, CalendarDays, ChevronDown, Check
 import {
   getPortalContext, todayMealDayIndex, clientVisibleRecipes, withGrams, displayRecipeName,
   getDailyLogs, coachingToday, cleanIngredientText, clientPortionFactor, clientPortionLines, isClientReadable, portionFraction,
-  cleanMealDescription, portionSummaryLine, ingredientWeighState, groceryDisplay,
+  ingredientWeighState, groceryDisplay,
 } from '@/lib/coaching-engagement'
 import GroceryChecklist from '@/components/coaching/GroceryChecklist'
 import InstructionSteps from '@/components/coaching/InstructionSteps'
@@ -45,8 +45,13 @@ function exerciseDemoHref(exercise: CoachingPlanDraft['workoutPlan'][number]['ex
   return `https://www.youtube.com/results?search_query=${encodeURIComponent(`${name} exercise demo form`)}`
 }
 
-export default async function CoachingPlanPage() {
+export default async function CoachingPlanPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ recipe?: string }>
+}) {
   const { client, plan } = await getPortalContext()
+  const selectedRecipeIndex = Number((await searchParams).recipe)
   const t = plan.macroTargets
   const todayIdx = todayMealDayIndex(plan)
   const visibleRecipes = clientVisibleRecipes(plan)
@@ -325,7 +330,7 @@ export default async function CoachingPlanPage() {
           <div className="portal-card">
             <div className="portal-gold-line" aria-hidden="true" />
             {visibleRecipes.map(({ recipe, index }, position) => (
-              <details key={index} id={`recipe-${index}`} className="portal-details" style={{ borderTop: position === 0 ? 'none' : '1px solid rgba(200,220,192,0.3)' }}>
+              <details key={index} id={`recipe-${index}`} className="portal-details" open={selectedRecipeIndex === index} style={{ borderTop: position === 0 ? 'none' : '1px solid rgba(200,220,192,0.3)' }}>
                 <summary style={{
                   padding: '0.9375rem 1.25rem', minHeight: '52px',
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem',
@@ -396,10 +401,8 @@ function DayMeals({ day, recipes }: { day: CoachingPlanDraft['mealPlan'][number]
         const mealRecipes = mealRecipeNames(row.meal)
           .map((name) => ({ recipe: recipes.find((item) => item.name === name), name }))
           .filter((entry): entry is { recipe: CoachingPlanDraft['recipes'][number]; name: string } => Boolean(entry.recipe))
-        const description = cleanMealDescription(row.meal.description)
         const displayName = mealRecipes.map(({ name }) => displayRecipeName(name)).filter(Boolean).join(' + ')
           || displayRecipeName(row.meal.name)
-          || description
         return (
           <details
             key={i}
@@ -426,37 +429,30 @@ function DayMeals({ day, recipes }: { day: CoachingPlanDraft['mealPlan'][number]
                 <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {displayName || '—'}
                 </p>
-                {row.meal.macros.trim() && (
-                  <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>
-                    {row.meal.macros.trim()}
-                  </p>
-                )}
               </div>
               <span aria-hidden="true" style={{ color: 'var(--text-muted)', fontSize: '0.875rem', flexShrink: 0 }}>▸</span>
             </summary>
             <div style={{ paddingTop: '0.5rem' }}>
-            {row.meal.name.trim() && description && (
-              <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-secondary)', marginTop: '0.125rem' }}>
-                {description}
-              </p>
-            )}
             {mealRecipes.map(({ recipe, name }) => {
               const recipeIndex = recipes.findIndex((item) => item.name === name)
               const recipeLabel = displayRecipeName(name)
               const isAutoCustom = /^Custom\s+/i.test(recipeLabel)
+              const factor = clientPortionFactor(recipe)
+              const fraction = portionFraction(factor)
+              const portion = fraction && fraction.label !== 'the whole recipe'
+                ? `${fraction.label} of recipe · ${Math.round(factor * 100)}%`
+                : 'One full recipe serving'
               return (
-                <div key={name} style={{ marginTop: '0.5rem', padding: '0.625rem 0.75rem', background: 'var(--section-tint)', borderRadius: '0.625rem' }}>
-                  {isAutoCustom ? (
-                    <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 700, color: '#3F6936' }}>{recipeLabel}</span>
-                  ) : (
-                    <Link href={recipeIndex >= 0 ? `#recipe-${recipeIndex}` : '#'} style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 700, color: '#3F6936', textDecoration: 'none' }}>
-                      {recipeLabel}
+                <div key={name} style={{ marginTop: '0.5rem', padding: '0.75rem 0.875rem', background: 'var(--section-tint)', borderRadius: '0.625rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
+                  <div>
+                    <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 700, color: '#3F6936', margin: 0 }}>{recipeLabel}</p>
+                    <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>{portion}</p>
+                  </div>
+                  {!isAutoCustom && (
+                    <Link href={recipeIndex >= 0 ? `/coaching/plan?recipe=${recipeIndex}#recipe-${recipeIndex}` : '#'} style={{ fontFamily: 'var(--font-sans)', fontSize: '0.78rem', fontWeight: 700, color: '#3F6936', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                      View recipe →
                     </Link>
                   )}
-                  <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
-                    {portionSummaryLine(recipe) || 'One listed serving'}
-                    {recipe.calories.trim() ? ` · ${recipe.calories.replace(/\s*k?cal$/i, '')} cal` : ''}
-                  </p>
                 </div>
               )
             })}

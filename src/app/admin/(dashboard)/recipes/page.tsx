@@ -4,6 +4,10 @@ import { useEffect, useState, useCallback } from 'react'
 import { Trash2, ChevronDown, Plus, AlertCircle, X } from 'lucide-react'
 import IngredientPicker from '@/components/admin/IngredientPicker'
 import { parseIngredientBlock, formatGramsLine, type ParsedIngredient } from '@/lib/recipes/paste-parser'
+import {
+  isExcludedNutritionIngredient,
+  setIngredientNutritionExcluded,
+} from '@/lib/nutrition-ingredient'
 
 type LibraryRecipe = {
   id: string
@@ -206,6 +210,21 @@ function RecipeIngredientsSection({
   const [importing, setImporting] = useState(false)
   const [importError, setImportError] = useState('')
 
+  function changeIngredients(ingredients: string[]) {
+    // Ingredient edits invalidate any imported/manual whole-recipe totals.
+    // The coaching calculator will rebuild all nutrients from the reviewed
+    // ingredient list instead of scaling stale numbers.
+    onChange({
+      ingredients,
+      calories: null,
+      protein: null,
+      carbs: null,
+      fats: null,
+      fiber: null,
+      total_recipe_grams: null,
+    })
+  }
+
   async function importFromUrl() {
     if (!importUrl.trim()) return
     setImporting(true)
@@ -274,6 +293,11 @@ function RecipeIngredientsSection({
     const totalGrams = parsed.reduce((sum, p) => sum + p.grams, 0)
     onChange({
       ingredients: [...draft.ingredients, ...lines],
+      calories: null,
+      protein: null,
+      carbs: null,
+      fats: null,
+      fiber: null,
       total_recipe_grams: Math.round(totalGrams * 10) / 10,
     })
     setParsed([])
@@ -340,7 +364,7 @@ function RecipeIngredientsSection({
 
       {mode === 'usda' ? (
         <div style={{ marginTop: 6 }}>
-          <IngredientPicker onAdd={(ing) => onChange({ ingredients: [...draft.ingredients, ing] })} />
+          <IngredientPicker onAdd={(ing) => changeIngredients([...draft.ingredients, ing])} />
         </div>
       ) : mode === 'url' ? (
         <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -516,13 +540,32 @@ function RecipeIngredientsSection({
         <ul style={{ margin: '8px 0 0', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4 }}>
           {draft.ingredients.map((ing, i) => {
             const display = ing.replace(/^\[fdc:\d+\]\s*/, '')
+            const excluded = isExcludedNutritionIngredient(ing)
             return (
               <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: 'var(--admin-surface-low)', borderRadius: 7, fontFamily: 'var(--font-hanken)', fontSize: '0.84rem' }}>
-                <span style={{ color: '#2e7d32', fontSize: '0.7rem' }}>✓</span>
+                <span style={{ color: excluded ? '#9a3412' : '#2e7d32', fontSize: '0.7rem' }}>{excluded ? '—' : '✓'}</span>
                 <span style={{ flex: 1, color: 'var(--admin-on-surface-variant)' }}>{display}</span>
                 <button
                   type="button"
-                  onClick={() => onChange({ ingredients: draft.ingredients.filter((_, j) => j !== i) })}
+                  onClick={() => changeIngredients(draft.ingredients.map((line, j) => (
+                    j === i ? setIngredientNutritionExcluded(line, !excluded) : line
+                  )))}
+                  style={{
+                    background: excluded ? '#fff7ed' : 'none',
+                    border: '1px solid var(--admin-outline-variant)',
+                    borderRadius: 5,
+                    cursor: 'pointer',
+                    color: excluded ? '#9a3412' : 'var(--admin-on-surface-variant)',
+                    padding: '2px 7px',
+                    fontFamily: 'inherit',
+                    fontSize: '0.72rem',
+                  }}
+                >
+                  {excluded ? 'Include in nutrition' : 'Exclude from nutrition'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => changeIngredients(draft.ingredients.filter((_, j) => j !== i))}
                   style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--admin-on-surface-variant)', padding: '0 4px', fontSize: '1rem' }}
                   aria-label="Remove"
                 >×</button>

@@ -17,6 +17,8 @@ import {
   type LibraryExercise,
 } from '@/lib/workout-generator'
 import { cookedGramsToRaw } from '@/lib/cooked-to-raw'
+import { isExcludedNutritionIngredient } from '@/lib/nutrition-ingredient'
+import { declaredServingMultiplier } from '@/lib/nutrition-math'
 
 type UsdaNutritionResponse = {
   error?: string
@@ -30,12 +32,14 @@ type UsdaNutritionResponse = {
       protein: number
       carbs: number
       fats: number
+      fiber: number
     }
     totalRecipe: {
       calories: number
       protein: number
       carbs: number
       fats: number
+      fiber: number
     }
     ingredients: Array<{
       input: string
@@ -45,7 +49,10 @@ type UsdaNutritionResponse = {
       protein: number
       carbs: number
       fats: number
+      fiber: number
     }>
+    excludedIngredients: string[]
+    unmatchedIngredients: string[]
     warnings: string[]
   }
 }
@@ -155,19 +162,6 @@ function firstNumber(value: string) {
   return match ? Number(match[0]) : 0
 }
 
-function mealCalorieTarget(mealType: string, dailyCalories: number, inputs: MacroCalculationInputs) {
-  const type = mealType.toLowerCase()
-  const bPct = (firstNumber(inputs.breakfastPct) || 35) / 100
-  const lPct = (firstNumber(inputs.lunchPct) || 30) / 100
-  const dPct = (firstNumber(inputs.dinnerPct) || 25) / 100
-  const sPct = (firstNumber(inputs.snackPct) || 10) / 100
-  if (type.includes('breakfast')) return dailyCalories * bPct
-  if (type.includes('lunch')) return dailyCalories * lPct
-  if (type.includes('dinner')) return dailyCalories * dPct
-  if (type.includes('snack')) return dailyCalories * sPct
-  return dailyCalories * lPct
-}
-
 function macroPart(value: string, label: string) {
   if (!value.trim()) return ''
   return value.toLowerCase().includes(label) ? value : `${value} ${label}`
@@ -262,7 +256,6 @@ function scalePasteRecipe({
   totalRecipeGrams,
   ingredients,
   isFamily,
-  targetCalories,
   familyServings,
 }: {
   recipeCalories: number
@@ -273,21 +266,14 @@ function scalePasteRecipe({
   totalRecipeGrams: number
   ingredients: string[]
   isFamily: boolean
-  targetCalories: number | undefined
   familyServings: number
 }) {
   let multiplier = 1
-  if (!isFamily) {
-    multiplier = 1
-  } else if (targetCalories && recipeCalories > 0) {
-    multiplier = Math.min(1, targetCalories / recipeCalories)
-  } else if (familyServings > 1) {
-    multiplier = 1 / familyServings
-  }
+  multiplier = declaredServingMultiplier(familyServings, isFamily)
 
   const clientServingGrams = Math.round(totalRecipeGrams * multiplier)
   const sharePct = multiplier >= 1 ? 'the full recipe' : `${Math.round(multiplier * 100)}% of the full recipe`
-  const clientServingMeasure = `Plate by the ingredient weights below. Total client serving is about ${clientServingGrams}g (${sharePct}).`
+  const clientServingMeasure = `Prepare the ingredient weights below, then serve ${sharePct} of the finished recipe. The listed inputs total about ${clientServingGrams}g before cooking or draining.`
 
   const breakdownParts: string[] = []
   for (const raw of ingredients) {
@@ -532,23 +518,13 @@ export default function CoachingPlanEditor({
           fats: recipe.fats,
           fiber: recipe.fiber,
         })),
-      dailyCalories: plan.macroTargets.calories,
       mealPlanStyle: planningInputs.mealPlanStyle,
-      breakfastPct: planningInputs.breakfastPct,
-      lunchPct: planningInputs.lunchPct,
-      dinnerPct: planningInputs.dinnerPct,
-      snackPct: planningInputs.snackPct,
     })
   }, [
     libraryRecipes,
-    plan.macroTargets.calories,
     plan.mealPlan,
     plan.recipes,
-    planningInputs.breakfastPct,
-    planningInputs.dinnerPct,
-    planningInputs.lunchPct,
     planningInputs.mealPlanStyle,
-    planningInputs.snackPct,
   ])
 
   useEffect(() => {
@@ -557,27 +533,18 @@ export default function CoachingPlanEditor({
     const controller = new AbortController()
     let cancelled = false
     const timer = window.setTimeout(async () => {
-      const pcts = {
-        breakfast: (firstNumber(planningInputs.breakfastPct) || 35) / 100,
-        lunch: (firstNumber(planningInputs.lunchPct) || 30) / 100,
-        dinner: (firstNumber(planningInputs.dinnerPct) || 25) / 100,
-        snack: (firstNumber(planningInputs.snackPct) || 10) / 100,
-      }
-      const slotPctByRecipe = new Map<string, number>()
+      const assignedRecipeNames = new Set<string>()
       for (const day of plan.mealPlan) {
         for (const mealKey of ['breakfast', 'lunch', 'dinner'] as const) {
           const name = day[mealKey].recipeName
-          if (name && !slotPctByRecipe.has(name)) slotPctByRecipe.set(name, pcts[mealKey])
+          if (name) assignedRecipeNames.add(name)
         }
-        const snackCount = Math.max(1, day.snacks.filter((snack) => snack.recipeName).length)
         for (const snack of day.snacks) {
-          if (snack.recipeName && !slotPctByRecipe.has(snack.recipeName)) {
-            slotPctByRecipe.set(snack.recipeName, pcts.snack / snackCount)
-          }
+          if (snack.recipeName) assignedRecipeNames.add(snack.recipeName)
         }
       }
 
-      const activeRecipes = plan.recipes.filter((recipe) => slotPctByRecipe.has(recipe.name))
+      const activeRecipes = plan.recipes.filter((recipe) => assignedRecipeNames.has(recipe.name))
       if (activeRecipes.length === 0) {
         setLiveNutritionPending(false)
         setLiveNutritionError('')
@@ -586,24 +553,18 @@ export default function CoachingPlanEditor({
 
       setLiveNutritionPending(true)
       setLiveNutritionError('')
-      const dailyCalories = firstNumber(plan.macroTargets.calories)
       const individualPlanStyle = planningInputs.mealPlanStyle === 'individual_only'
 
       const results = await Promise.all(activeRecipes.map(async (recipe) => {
         const familyCount = firstNumber(recipe.familyServings || recipe.servings)
         const isFamily = !individualPlanStyle && familyCount > 1
-        const slotPct = slotPctByRecipe.get(recipe.name)
-        const targetCalories = isFamily && dailyCalories
-          ? (slotPct !== undefined
-            ? dailyCalories * slotPct
-            : mealCalorieTarget(recipe.mealType, dailyCalories, planningInputs))
-          : undefined
         const isCustomSlot = /\(d\d+-(?:breakfast|lunch|dinner|snack\d+)\)$/.test(recipe.name)
         const libraryRecipe = isCustomSlot
           ? undefined
           : libraryRecipes.find((candidate) => candidate.name === recipe.name)
 
-        if (libraryRecipe?.calories && libraryRecipe.calories > 0) {
+        const hasNutritionExclusions = recipe.ingredients.some(isExcludedNutritionIngredient)
+        if (libraryRecipe?.calories && libraryRecipe.calories > 0 && !hasNutritionExclusions) {
           const totalRecipeGrams = recipe.ingredients.reduce(
             (sum, line) => sum + (extractLeadingGrams(line)?.grams ?? 0),
             0,
@@ -619,7 +580,6 @@ export default function CoachingPlanEditor({
               totalRecipeGrams,
               ingredients: recipe.ingredients,
               isFamily,
-              targetCalories,
               familyServings: familyCount,
             }),
             failed: false,
@@ -636,8 +596,7 @@ export default function CoachingPlanEditor({
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               ingredients: recipe.ingredients,
-              clientServingMultiplier: isFamily ? undefined : '1',
-              targetCalories,
+              clientServingMultiplier: `${declaredServingMultiplier(familyCount, isFamily)}`,
               familyServings: recipe.familyServings || recipe.servings,
             }),
             signal: controller.signal,
@@ -659,6 +618,7 @@ export default function CoachingPlanEditor({
               protein: `${nutrition.clientServing.protein}g`,
               carbs: `${nutrition.clientServing.carbs}g`,
               fats: `${nutrition.clientServing.fats}g`,
+              fiber: `${nutrition.clientServing.fiber}g`,
             },
             failed: false,
           }
@@ -973,48 +933,27 @@ export default function CoachingPlanEditor({
 
     nextPlan = removeOrphanSlotRecipes(nextPlan)
 
-    // Map each recipe to the meal slot where it's actually used (first use wins),
-    // so portions size to the right meal and multiple snacks share the snack budget.
-    const pcts = {
-      breakfast: (firstNumber(planningInputs.breakfastPct) || 35) / 100,
-      lunch: (firstNumber(planningInputs.lunchPct) || 30) / 100,
-      dinner: (firstNumber(planningInputs.dinnerPct) || 25) / 100,
-      snack: (firstNumber(planningInputs.snackPct) || 10) / 100,
-    }
-    const slotPctByRecipe = new Map<string, number>()
-    for (const day of nextPlan.mealPlan) {
-      for (const mealKey of ['breakfast', 'lunch', 'dinner'] as const) {
-        const name = day[mealKey].recipeName
-        if (name && !slotPctByRecipe.has(name)) slotPctByRecipe.set(name, pcts[mealKey])
-      }
-      const snackCount = Math.max(1, day.snacks.filter((s) => s.recipeName).length)
-      for (const snack of day.snacks) {
-        if (snack.recipeName && !slotPctByRecipe.has(snack.recipeName)) {
-          slotPctByRecipe.set(snack.recipeName, pcts.snack / snackCount)
-        }
-      }
-    }
-
     // Auto-calculate USDA macros for any recipe that has ingredients
-    const dailyCalories = firstNumber(nextPlan.macroTargets.calories)
     const individualPlanStyle = planningInputs.mealPlanStyle === 'individual_only'
+    const referencedRecipeNames = new Set(
+      nextPlan.mealPlan.flatMap((day) => [
+        day.breakfast.recipeName,
+        day.lunch.recipeName,
+        day.dinner.recipeName,
+        ...day.snacks.map((snack) => snack.recipeName),
+      ]).filter(Boolean),
+    )
     const recipesToCalc = nextPlan.recipes
       .map((recipe, index) => ({ recipe, index }))
-      .filter(({ recipe }) => recipe.ingredients.length > 0)
+      .filter(({ recipe }) => referencedRecipeNames.has(recipe.name) && recipe.ingredients.length > 0)
     const skippedRecipes: string[] = []
 
     if (recipesToCalc.length > 0) {
       const results = await Promise.all(recipesToCalc.map(async ({ recipe, index }) => {
-        // Family recipes (serves more than 1) get the client's portion carved out
-        // to her meal calorie target. Individual recipes are eaten as entered.
+        // Family recipes use one declared recipe serving. Meal calorie targets
+        // are comparison goals, not permission to silently resize a recipe.
         const familyCount = firstNumber(recipe.familyServings || recipe.servings)
         const isFamily = !individualPlanStyle && familyCount > 1
-        const slotPct = slotPctByRecipe.get(recipe.name)
-        const targetCalories = isFamily && dailyCalories
-          ? (slotPct !== undefined
-            ? dailyCalories * slotPct
-            : mealCalorieTarget(recipe.mealType, dailyCalories, planningInputs))
-          : undefined
 
         // Paste-mode signal: stored calories on the recipe row. Scale locally
         // using the publisher's macros — no USDA call needed. Custom per-slot
@@ -1024,7 +963,8 @@ export default function CoachingPlanEditor({
         // change (e.g. adding a banana wouldn't update the day count).
         const isCustomSlot = /\(d\d+-(?:breakfast|lunch|dinner|snack\d+)\)$/.test(recipe.name)
         const storedCalories = firstNumber(recipe.calories)
-        if (storedCalories > 0 && !isCustomSlot) {
+        const hasNutritionExclusions = recipe.ingredients.some(isExcludedNutritionIngredient)
+        if (storedCalories > 0 && !isCustomSlot && !hasNutritionExclusions) {
           const totalRecipeGrams = recipe.ingredients.reduce((sum, line) => sum + (extractLeadingGrams(line)?.grams ?? 0), 0)
           const scaled = scalePasteRecipe({
             recipeCalories: storedCalories,
@@ -1035,7 +975,6 @@ export default function CoachingPlanEditor({
             totalRecipeGrams,
             ingredients: recipe.ingredients,
             isFamily,
-            targetCalories,
             familyServings: familyCount,
           })
           return { index, pasteScaled: scaled, nutrition: null as UsdaNutritionResponse['nutrition'] | null }
@@ -1046,13 +985,16 @@ export default function CoachingPlanEditor({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             ingredients: recipe.ingredients,
-            clientServingMultiplier: isFamily ? undefined : '1',
-            targetCalories,
+            clientServingMultiplier: `${declaredServingMultiplier(familyCount, isFamily)}`,
             familyServings: recipe.familyServings || recipe.servings,
           }),
         })
         const data = await res.json().catch(() => ({} as UsdaNutritionResponse)) as UsdaNutritionResponse
-        return { index, pasteScaled: null as ReturnType<typeof scalePasteRecipe> | null, nutrition: data.nutrition ?? null }
+        return {
+          index,
+          pasteScaled: null as ReturnType<typeof scalePasteRecipe> | null,
+          nutrition: res.ok ? data.nutrition ?? null : null,
+        }
       }))
 
       const updatedRecipes = [...nextPlan.recipes]
@@ -1078,6 +1020,7 @@ export default function CoachingPlanEditor({
           protein: `${nutrition.clientServing.protein}g`,
           carbs: `${nutrition.clientServing.carbs}g`,
           fats: `${nutrition.clientServing.fats}g`,
+          fiber: `${nutrition.clientServing.fiber}g`,
         }
       }
 
@@ -1088,7 +1031,6 @@ export default function CoachingPlanEditor({
         return {
           ...meal,
           description: [
-            recipe.clientServingGrams ? `Client portion: ${recipe.clientServingGrams}.` : '',
             recipe.clientServingMeasure ? `${recipe.clientServingMeasure}.` : '',
             recipe.familyServings ? `Serves ${recipe.familyServings}.` : '',
           ].filter(Boolean).join(' '),
@@ -1107,6 +1049,16 @@ export default function CoachingPlanEditor({
           snacks: day.snacks.map(updateMealMacros),
         })),
       }
+    }
+
+    if (nextPlan.status === 'published' && skippedRecipes.length > 0) {
+      setPlan(nextPlan)
+      setError(
+        `Cannot publish because nutrition could not be verified for: ${skippedRecipes.join(', ')}. ` +
+        'Review every ingredient and make sure each consumed item has a gram weight and a valid USDA match.',
+      )
+      setPending(false)
+      return
     }
 
     // Fill the grocery list from the recipes in the meal plan when it's empty.
@@ -1950,24 +1902,27 @@ export default function CoachingPlanEditor({
 
 function ValidationPanel({ plan }: { plan: CoachingPlanDraft }) {
   const result = useMemo(() => validatePlan(plan), [plan])
-  const failing = result.recipes.filter((r) => r.issues.some((i) => i.severity === 'error'))
-  if (failing.length === 0) return null
+  const recipesWithIssues = result.recipes.filter((r) => r.issues.length > 0)
+  const hasErrors = recipesWithIssues.some((r) => r.issues.some((i) => i.severity === 'error'))
+  if (recipesWithIssues.length === 0) return null
   return (
-    <div role="alert" style={{
+    <div role={hasErrors ? 'alert' : 'status'} style={{
       fontFamily: 'var(--font-hanken)', fontSize: '0.85rem',
-      color: '#7c2d12', background: '#fff7ed', border: '1px solid #fdba74',
+      color: hasErrors ? '#7c2d12' : '#713f12',
+      background: hasErrors ? '#fff7ed' : '#fffbeb',
+      border: `1px solid ${hasErrors ? '#fdba74' : '#fcd34d'}`,
       borderRadius: 8, padding: '12px 16px', margin: 0,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, marginBottom: 8 }}>
         <AlertTriangle size={16} aria-hidden />
-        Macro math problems — fix before publishing
+        {hasErrors ? 'Nutrition problems — fix before publishing' : 'Nutrition review'}
       </div>
       <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {failing.map((r) => (
+        {recipesWithIssues.map((r) => (
           <li key={r.recipeName}>
             <div style={{ fontWeight: 700, color: '#9a3412' }}>{r.recipeName}</div>
             <ul style={{ listStyle: 'disc', margin: '4px 0 0 20px', padding: 0, fontSize: '0.8rem' }}>
-              {r.issues.filter((i) => i.severity === 'error').map((i, j) => (
+              {r.issues.map((i, j) => (
                 <li key={j}>{i.message}</li>
               ))}
             </ul>

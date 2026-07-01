@@ -519,7 +519,7 @@ function RecipeDetail({ recipe }: { recipe: CoachingPlanDraft['recipes'][number]
     : ''
   const totalPortionGrams = portionLines.reduce((sum, line) => sum + (line.grams ?? 0), 0)
   const portionGramSubtext = fractionHeadline && totalPortionGrams > 0
-    ? `about ${Math.round(totalPortionGrams)}g of finished food`
+    ? `about ${Math.round(totalPortionGrams)}g across the ingredient weights listed below`
     : ''
   const headline = fractionHeadline
     ? [] // fraction headline replaces the gram-based headline for family recipes
@@ -590,7 +590,6 @@ function RecipeDetail({ recipe }: { recipe: CoachingPlanDraft['recipes'][number]
           {(() => {
             const fraction = portionFraction(clientPortionFactor(recipe))
             if (!fraction) return null
-            const grams = recipe.clientServingGrams.trim()
             const serving = fraction.qualifier
               ? `a ${fraction.qualifier} ${fraction.label}`
               : `about ${fraction.label}`
@@ -604,7 +603,7 @@ function RecipeDetail({ recipe }: { recipe: CoachingPlanDraft['recipes'][number]
                   ? 'This whole recipe is your portion, enjoy all of it.'
                   : `Cook the full recipe, then serve yourself ${serving} of it${
                       fraction.qualifier === 'generous' ? ', a little over is right' : fraction.qualifier === 'scant' ? ', a little under is right' : ''
-                    }.${grams ? ` That matches your ${withGrams(grams)} portion, so your macros stay on track.` : ''}`}
+                    }. That division keeps the listed calories and macros on track.`}
               </p>
             )
           })()}

@@ -36,9 +36,9 @@ export async function POST(req: NextRequest) {
 
   const { clientId, plan, planningInputs } = parsed.data
 
-  // Block publishes that don't pass the Atwater + completeness check — a
-  // recipe whose macros don't sum to calories almost always means an
-  // ingredient silently failed to parse. Drafts can save with warnings.
+  // Block incomplete recipes. A calorie-vs-4/4/9 difference alone is only a
+  // review warning because USDA-specific Atwater factors, fiber, and label
+  // rounding can legitimately produce different totals.
   if (plan.status === 'published') {
     const validation = validatePlan(plan)
     if (!validation.ok) {

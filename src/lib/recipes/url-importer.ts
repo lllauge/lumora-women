@@ -1,4 +1,8 @@
 import { analyzeIngredientsWithEdamam, type EdamamLineMacros } from '@/lib/edamam'
+import {
+  inferredDiscardedBrineIndexes,
+  setIngredientNutritionExcluded,
+} from '@/lib/nutrition-ingredient'
 
 export type ImportedIngredient = {
   /** The original ingredient string from the recipe (e.g. "1.5 lbs chicken breast"). */
@@ -239,18 +243,23 @@ export async function importRecipeFromUrl(
   // Edamam owns the parse + macro math. One call returns grams + macros per line.
   const edamam = await analyzeIngredientsWithEdamam(ingredientStrings, title || 'Imported recipe')
 
-  const ingredients: ImportedIngredient[] = edamam.ingredients.map((line) => ({
+  const excludedIndexes = inferredDiscardedBrineIndexes(
+    edamam.ingredients.map((line) => ({ name: line.food || line.text, grams: line.grams })),
+    instructions,
+  )
+  const ingredients: ImportedIngredient[] = edamam.ingredients.map((line, index) => ({
     raw: line.text,
     food: line.food,
     grams: line.grams,
-    calories: line.calories,
-    protein: line.protein,
-    carbs: line.carbs,
-    fats: line.fats,
-    fiber: line.fiber,
+    calories: excludedIndexes.has(index) ? 0 : line.calories,
+    protein: excludedIndexes.has(index) ? 0 : line.protein,
+    carbs: excludedIndexes.has(index) ? 0 : line.carbs,
+    fats: excludedIndexes.has(index) ? 0 : line.fats,
+    fiber: excludedIndexes.has(index) ? 0 : line.fiber,
     unparsed: line.unparsed,
-    line: formatLine(line),
+    line: setIngredientNutritionExcluded(formatLine(line), excludedIndexes.has(index)),
   }))
+  const included = ingredients.filter((_, index) => !excludedIndexes.has(index))
 
   return {
     title: title || 'Imported recipe',
@@ -262,12 +271,12 @@ export async function importRecipeFromUrl(
     sourceUrl: url,
     notes: `Imported from ${url}. Review every ingredient before publishing.`,
     totals: {
-      calories: edamam.totalCalories,
-      protein: edamam.totalProtein,
-      carbs: edamam.totalCarbs,
-      fats: edamam.totalFats,
-      fiber: edamam.totalFiber,
-      grams: edamam.totalGrams,
+      calories: Math.round(included.reduce((sum, line) => sum + line.calories, 0)),
+      protein: Math.round(included.reduce((sum, line) => sum + line.protein, 0) * 10) / 10,
+      carbs: Math.round(included.reduce((sum, line) => sum + line.carbs, 0) * 10) / 10,
+      fats: Math.round(included.reduce((sum, line) => sum + line.fats, 0) * 10) / 10,
+      fiber: Math.round(included.reduce((sum, line) => sum + line.fiber, 0) * 10) / 10,
+      grams: Math.round(included.reduce((sum, line) => sum + line.grams, 0) * 10) / 10,
     },
   }
 }

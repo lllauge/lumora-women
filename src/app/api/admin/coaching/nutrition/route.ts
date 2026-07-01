@@ -47,9 +47,11 @@ export async function POST(req: NextRequest) {
       apiKey: apiKey.key,
     })
 
-    if (nutrition.ingredients.length === 0) {
+    if (nutrition.ingredients.length === 0 || nutrition.unmatchedIngredients.length > 0) {
       return NextResponse.json({
-        error: 'USDA could not calculate this recipe. Use ingredient lines like "150g cooked chicken breast" or "2 oz cheddar cheese".',
+        error: nutrition.unmatchedIngredients.length > 0
+          ? `USDA could not safely calculate: ${nutrition.unmatchedIngredients.join('; ')}. Fix or replace those ingredients before using these totals.`
+          : 'USDA could not calculate this recipe. Use ingredient lines like "150g cooked chicken breast" or "2 oz cheddar cheese".',
         nutrition,
       }, { status: 422 })
     }

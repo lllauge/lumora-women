@@ -1,4 +1,5 @@
 import type { CoachingPlanDraft } from './coaching-plan-schema'
+import { isExcludedNutritionIngredient } from './nutrition-ingredient'
 
 // Inlined from coaching-engagement.ts so this module has no server deps and
 // can be imported into the client-side CoachingPlanEditor without dragging in
@@ -40,11 +41,12 @@ const ALLOWED_WEIGHTLESS = /\b(to taste|for garnish|for serving|for drizzling|fo
 /**
  * The Atwater system: macros must roughly multiply out to calories.
  *   calories ≈ protein × 4 + carbs × 4 + fat × 9
- * A recipe whose stored calories diverge from the macro sum by more than 7%
- * is almost always a parse failure — some ingredient computed grams=0 and
- * its macros silently dropped out.
+ * USDA and food-label energy can legitimately differ from simple 4/4/9 math
+ * because of specific Atwater factors, fiber, sugar alcohols, rounding, and
+ * analytical variability. A large difference deserves review, but is not by
+ * itself proof that the underlying nutrient data is invalid.
  */
-const ATWATER_TOLERANCE = 0.07
+const ATWATER_REVIEW_THRESHOLD = 0.15
 
 function num(value: string): number | null {
   if (!value || !value.trim()) return null
@@ -68,12 +70,11 @@ export function validateRecipe(recipe: CoachingPlanDraft['recipes'][number]): Re
   } else if (cal > 0) {
     const atwater = protein * 4 + carbs * 4 + fats * 9
     const drift = Math.abs(cal - atwater) / cal
-    if (drift > ATWATER_TOLERANCE) {
-      const direction = atwater < cal ? 'fewer' : 'more'
+    if (drift > ATWATER_REVIEW_THRESHOLD) {
       issues.push({
-        severity: 'error',
+        severity: 'warning',
         code: 'atwater_mismatch',
-        message: `Macros don't add up to calories: ${Math.round(atwater)} cal from P/C/F vs. ${Math.round(cal)} stored (${Math.round(drift * 100)}% off, expected within ${Math.round(ATWATER_TOLERANCE * 100)}%). Usually means one or more ingredients failed to parse and is missing ${direction} macros.`,
+        message: `Review energy: ${Math.round(cal)} database calories vs. ${Math.round(atwater)} from simple 4/4/9 math (${Math.round(drift * 100)}% difference). Database calories remain authoritative when every ingredient matched; fiber, food-specific Atwater factors, and label rounding can cause a legitimate difference.`,
       })
     }
   }
@@ -81,6 +82,7 @@ export function validateRecipe(recipe: CoachingPlanDraft['recipes'][number]): Re
   for (const line of recipe.ingredients) {
     const cleaned = cleanIngredientText(line).trim()
     if (!cleaned) continue
+    if (isExcludedNutritionIngredient(cleaned)) continue
     if (ALLOWED_WEIGHTLESS.test(cleaned)) continue
     if (ingredientGrams(line) === null) {
       issues.push({

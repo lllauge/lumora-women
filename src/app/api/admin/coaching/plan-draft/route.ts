@@ -11,6 +11,7 @@ import { requireSameOrigin } from '@/lib/request-security'
 import { createAdminClient } from '@/lib/supabase/server'
 import { getUsdaApiKey } from '@/lib/usda/api-key'
 import { calculateRecipeNutritionFromUsda } from '@/lib/usda/food-data'
+import { declaredServingMultiplier } from '@/lib/nutrition-math'
 
 const LibraryRecipeSchema = z.object({
   name: z.string(),
@@ -51,17 +52,6 @@ function firstNumber(value: string | undefined) {
   return match ? Number(match[0]) : 0
 }
 
-// Same defaults as the plan editor so draft numbers don't shift on save.
-function mealCalorieTarget(mealType: string, dailyCalories: number, planningInputs: Record<string, string>) {
-  const pct = (key: string, fallback: number) => (firstNumber(planningInputs[key]) || fallback) / 100
-  const type = mealType.toLowerCase()
-  if (type.includes('breakfast')) return dailyCalories * pct('breakfastPct', 35)
-  if (type.includes('lunch')) return dailyCalories * pct('lunchPct', 30)
-  if (type.includes('dinner')) return dailyCalories * pct('dinnerPct', 25)
-  if (type.includes('snack')) return dailyCalories * pct('snackPct', 10)
-  return dailyCalories * pct('lunchPct', 30)
-}
-
 function recipeMacroLabel(recipe: CoachingPlanDraft['recipes'][number]) {
   return [
     recipe.calories ? `${recipe.calories} cal` : '',
@@ -78,33 +68,29 @@ async function addUsdaServingMathToDraft(plan: CoachingPlanDraft, planningInputs
     return plan
   }
 
-  const dailyCalories = firstNumber(plan.macroTargets.calories)
-  if (!dailyCalories) return plan
-
   const individualPlanStyle = planningInputs.mealPlanStyle === 'individual_only'
 
   const recipes = await Promise.all(plan.recipes.map(async (recipe) => {
     if (recipe.ingredients.length === 0) return recipe
 
-    // Family recipes (serves >1) get the client's portion carved out to her meal
-    // calorie target; individual recipes are eaten exactly as written.
+    // A family recipe contributes one declared serving. The calorie target is
+    // a comparison goal; it must never silently resize the food portion.
     const familyCount = firstNumber(recipe.familyServings || recipe.servings)
     const isFamily = !individualPlanStyle && familyCount > 1
 
     try {
       const nutrition = await calculateRecipeNutritionFromUsda({
         ingredients: recipe.ingredients,
-        clientServingMultiplier: recipe.clientServingMultiplier || (isFamily ? undefined : '1'),
-        targetCalories: isFamily ? mealCalorieTarget(recipe.mealType, dailyCalories, planningInputs) : undefined,
+        clientServingMultiplier: `${declaredServingMultiplier(familyCount, isFamily)}`,
         familyServings: recipe.familyServings || recipe.servings,
         apiKey: apiKey.key,
       })
 
-      if (!nutrition.totalRecipe.calories) return recipe
+      if (!nutrition.totalRecipe.calories || nutrition.unmatchedIngredients.length > 0) return recipe
 
       const sourceNote = [
-        `USDA auto-scaled client serving for ${recipe.mealType || 'this meal'}.`,
-        `Client portion: ${nutrition.clientServingGrams}g. ${nutrition.clientServingMeasure}`,
+        `USDA calculated one declared serving for ${recipe.mealType || 'this meal'}.`,
+        `Ingredient input weight for one serving: ${nutrition.clientServingGrams}g. ${nutrition.clientServingMeasure}`,
         nutrition.clientServingBreakdown ? `Ingredient breakdown: ${nutrition.clientServingBreakdown}.` : '',
         `Client serving share: ${nutrition.clientServingMultiplier.toFixed(2)} of the full recipe.`,
         `Full recipe USDA total: ${nutrition.totalRecipe.calories} cal, ${nutrition.totalRecipe.protein}g protein, ${nutrition.totalRecipe.carbs}g carbs, ${nutrition.totalRecipe.fats}g fats.`,
@@ -122,6 +108,7 @@ async function addUsdaServingMathToDraft(plan: CoachingPlanDraft, planningInputs
         protein: `${nutrition.clientServing.protein}g`,
         carbs: `${nutrition.clientServing.carbs}g`,
         fats: `${nutrition.clientServing.fats}g`,
+        fiber: `${nutrition.clientServing.fiber}g`,
         notes: [recipe.notes, sourceNote].filter(Boolean).join('\n\n'),
       }
     } catch (error) {

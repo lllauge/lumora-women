@@ -96,6 +96,7 @@ export const COMMON_FOODS: CommonFood[] = [
   { aliases: ['cherry tomato', 'grape tomato'], displayName: 'Cherry tomato, raw', usdaQuery: 'tomatoes red ripe raw year round average' },
   { aliases: ['tomato', 'tomatoes'], displayName: 'Tomato, raw', usdaQuery: 'tomatoes red ripe raw year round average' },
   { aliases: ['onion', 'yellow onion'], displayName: 'Onion, raw', usdaQuery: 'onions raw' },
+  { aliases: ['garlic powder'], displayName: 'Garlic powder', usdaQuery: 'spices garlic powder' },
   { aliases: ['garlic'], displayName: 'Garlic, raw', usdaQuery: 'garlic raw' },
   { aliases: ['bell pepper', 'red bell pepper', 'green bell pepper'], displayName: 'Bell pepper, raw', usdaQuery: 'peppers sweet red raw' },
   { aliases: ['jalapeno'], displayName: 'Jalapeño pepper, raw', usdaQuery: 'peppers jalapeno raw' },
@@ -191,6 +192,10 @@ export const COMMON_FOODS: CommonFood[] = [
   { aliases: ['mayonnaise', 'mayo'], displayName: 'Mayonnaise', usdaQuery: 'salad dressing mayonnaise regular' },
   { aliases: ['mustard'], displayName: 'Yellow mustard', usdaQuery: 'mustard prepared yellow' },
   { aliases: ['ketchup'], displayName: 'Ketchup', usdaQuery: 'catsup' },
+  // USDA has no generic unbranded Italian herb blend. Dried oregano is the
+  // closest stable SR Legacy proxy and avoids the clearly wrong Italian salad
+  // dressing match produced by a loose text search.
+  { aliases: ['italian seasoning'], displayName: 'Italian seasoning (dried-herb proxy)', usdaQuery: 'spices oregano dried' },
   { aliases: ['hot sauce'], displayName: 'Hot sauce', usdaQuery: 'sauce hot chile sriracha' },
   { aliases: ['salsa'], displayName: 'Salsa, jarred', usdaQuery: 'sauce ready-to-serve pace picante' },
 ]

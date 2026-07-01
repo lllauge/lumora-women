@@ -1,5 +1,10 @@
 import { parseIngredientLine as pasteParseIngredientLine } from '../recipes/paste-parser'
 import { matchCommonFood } from './common-foods'
+import {
+  isCanonicalZeroNutritionIngredient,
+  isExcludedNutritionIngredient,
+} from '../nutrition-ingredient'
+import { resolvedFoodCalories } from '../nutrition-math'
 
 type FoodSearchResult = {
   fdcId: number
@@ -39,6 +44,7 @@ type NutritionTotals = {
   protein: number
   carbs: number
   fats: number
+  fiber: number
 }
 
 export type UsdaIngredientResult = {
@@ -50,6 +56,7 @@ export type UsdaIngredientResult = {
   protein: number
   carbs: number
   fats: number
+  fiber: number
   warning?: string
 }
 
@@ -61,6 +68,7 @@ export type UsdaClientServingIngredient = {
   protein: number
   carbs: number
   fats: number
+  fiber: number
 }
 
 export type UsdaRecipeNutrition = {
@@ -73,6 +81,8 @@ export type UsdaRecipeNutrition = {
   clientServing: NutritionTotals
   clientServingIngredients: UsdaClientServingIngredient[]
   ingredients: UsdaIngredientResult[]
+  excludedIngredients: string[]
+  unmatchedIngredients: string[]
   warnings: string[]
 }
 
@@ -170,8 +180,13 @@ function ingredientLabelFromInput(input: string) {
 
 function nutrientValue(food: FoodSearchResult, nutrientIds: number[], nutrientNames: string[], excludeNames: string[] = []) {
   const nutrients = food.foodNutrients ?? []
-  const byId = nutrients.find((nutrient) => nutrient.nutrientId && nutrientIds.includes(nutrient.nutrientId))
-  if (typeof byId?.value === 'number') return byId.value
+  // The order of nutrient IDs is intentional. FoodData Central can return
+  // multiple energy records (legacy, Atwater general, Atwater specific), and
+  // array order is not a reliable way to choose the preferred value.
+  for (const nutrientId of nutrientIds) {
+    const byId = nutrients.find((nutrient) => nutrient.nutrientId === nutrientId)
+    if (typeof byId?.value === 'number') return byId.value
+  }
 
   const byName = nutrients.find((nutrient) => {
     const name = nutrient.nutrientName?.toLowerCase() ?? ''
@@ -183,16 +198,33 @@ function nutrientValue(food: FoodSearchResult, nutrientIds: number[], nutrientNa
 }
 
 function macrosPer100g(food: FoodSearchResult) {
-  return {
-    // IDs 1008, 2047, 2048 are all kcal variants. Exclude kJ from name fallback — kJ values are ~4x higher and would massively inflate calorie counts.
-    calories: nutrientValue(food, [1008, 2047, 2048], ['energy'], ['kj', 'kilojoule']),
+  const energyIds = food.dataType === 'Branded'
+    ? [1008, 2048, 2047]
+    : [2048, 2047, 1008]
+  const macros = {
+    // Prefer USDA's current Atwater-specific/general energy records for
+    // Foundation/SR foods and the label calorie record for Branded foods.
+    calories: nutrientValue(food, energyIds, ['energy'], ['kj', 'kilojoule']),
     protein: nutrientValue(food, [1003], ['protein']),
     carbs: nutrientValue(food, [1005], ['carbohydrate']),
     fats: nutrientValue(food, [1004], ['total lipid', 'fat']),
+    fiber: nutrientValue(food, [1079], ['fiber']),
   }
+  // A few otherwise-valid USDA records omit energy while still reporting
+  // macros. In that narrow case, use the Atwater general fallback rather than
+  // silently treating oil (or another food) as zero calories.
+  macros.calories = resolvedFoodCalories({
+    reportedCalories: macros.calories,
+    protein: macros.protein,
+    carbs: macros.carbs,
+    fats: macros.fats,
+  })
+  return macros
 }
 
 async function searchFood(query: string, apiKey: string) {
+  const commonFood = matchCommonFood(query)
+  const searchQuery = commonFood?.usdaQuery ?? query
   const url = new URL(USDA_SEARCH_URL)
   url.searchParams.set('api_key', apiKey)
 
@@ -200,8 +232,8 @@ async function searchFood(query: string, apiKey: string) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      query,
-      pageSize: 10,
+      query: searchQuery,
+      pageSize: commonFood ? 25 : 50,
       dataType: ['Foundation', 'SR Legacy', 'Survey (FNDDS)'],
     }),
   })
@@ -214,8 +246,12 @@ async function searchFood(query: string, apiKey: string) {
   const data = await response.json() as FoodSearchResponse
   const foods = data.foods ?? []
   if (foods.length === 0) return null
+  // Curated queries are deliberately precise and USDA returns the canonical
+  // record first. Do not run that result back through the generic scorer,
+  // which can over-weight shared words such as "spices" and "powder."
+  if (commonFood) return foods[0]
 
-  const queryTokens = query
+  const queryTokens = searchQuery
     .toLowerCase()
     .split(/\s+/)
     .map((token) => token.replace(/[^a-z0-9]/g, ''))
@@ -670,7 +706,7 @@ function practicalServingMeasure({
   clientServingGrams: number
 }) {
   const recipeShare = multiplier >= 1 ? 'the full recipe' : `${Math.round(multiplier * 100)}% of the full recipe`
-  return `Plate by the ingredient weights below. Total client serving is about ${clientServingGrams}g (${recipeShare}).`
+  return `Prepare the ingredient weights below, then serve ${recipeShare} of the finished recipe. The listed inputs total about ${clientServingGrams}g before cooking or draining.`
 }
 
 function clientServingBreakdown(ingredients: UsdaClientServingIngredient[]) {
@@ -682,7 +718,7 @@ function clientServingBreakdown(ingredients: UsdaClientServingIngredient[]) {
 function clientServingMacroBreakdown(ingredients: UsdaClientServingIngredient[]) {
   return ingredients
     .map((ingredient) => (
-      `${ingredient.grams}g ${ingredient.label}: ${ingredient.calories} cal, ${ingredient.protein}g protein, ${ingredient.carbs}g carbs, ${ingredient.fats}g fats`
+      `${ingredient.grams}g ${ingredient.label}: ${ingredient.calories} cal, ${ingredient.protein}g protein, ${ingredient.carbs}g carbs, ${ingredient.fats}g fats, ${ingredient.fiber}g fiber`
     ))
     .join(' | ')
 }
@@ -702,8 +738,15 @@ export async function calculateRecipeNutritionFromUsda({
 }): Promise<UsdaRecipeNutrition> {
   const warnings: string[] = []
   const results: UsdaIngredientResult[] = []
+  const excludedIngredients: string[] = []
+  const unmatchedIngredients: string[] = []
 
   for (const raw of ingredients) {
+    if (isExcludedNutritionIngredient(raw)) {
+      excludedIngredients.push(raw)
+      continue
+    }
+
     const parsed = parseIngredientLine(raw)
 
     // USDA's parser only handles weight units (g/oz/lb/kg/ml). Fall through to
@@ -721,6 +764,22 @@ export async function calculateRecipeNutritionFromUsda({
 
     if (!grams) {
       if (parsed.warning) warnings.push(`${raw}: ${parsed.warning}`)
+      unmatchedIngredients.push(raw)
+      continue
+    }
+
+    if (isCanonicalZeroNutritionIngredient(raw)) {
+      results.push({
+        input: raw,
+        matchedFood: 'Plain water or salt',
+        dataType: 'Canonical zero-nutrient ingredient',
+        grams: round(grams),
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fats: 0,
+        fiber: 0,
+      })
       continue
     }
 
@@ -729,23 +788,21 @@ export async function calculateRecipeNutritionFromUsda({
       : await searchFood(searchQuery, apiKey)
     if (!food) {
       warnings.push(`${raw}: No USDA match found.`)
+      unmatchedIngredients.push(raw)
       continue
     }
 
-    // USDA's search endpoint sometimes ships Foundation foods with an empty
-    // foodNutrients array (Energy lives under 2047/2048 Atwater IDs in the
-    // detail endpoint but is absent from search). That silently zeros an
-    // ingredient's contribution. Refetch details when we came in without an
-    // fdcId and the search-picked food has no macros.
-    let per100g = macrosPer100g(food)
-    if (!parsed.fdcId && per100g.calories === 0 && per100g.protein === 0
-      && per100g.carbs === 0 && per100g.fats === 0) {
+    // Search results are abridged and can omit current Atwater energy IDs.
+    // Always hydrate the selected record from the detail endpoint before
+    // calculating; this prevents foods such as olive oil from carrying fat
+    // but zero calories.
+    if (!parsed.fdcId) {
       const detail = await fetchFoodById(food.fdcId, apiKey).catch(() => null)
       if (detail) {
         food = detail
-        per100g = macrosPer100g(detail)
       }
     }
+    const per100g = macrosPer100g(food)
 
     const scale = grams / 100
     results.push({
@@ -757,6 +814,7 @@ export async function calculateRecipeNutritionFromUsda({
       protein: round(per100g.protein * scale),
       carbs: round(per100g.carbs * scale),
       fats: round(per100g.fats * scale),
+      fiber: round(per100g.fiber * scale),
       warning: parsed.warning,
     })
   }
@@ -766,7 +824,8 @@ export async function calculateRecipeNutritionFromUsda({
     protein: total.protein + ingredient.protein,
     carbs: total.carbs + ingredient.carbs,
     fats: total.fats + ingredient.fats,
-  }), { calories: 0, protein: 0, carbs: 0, fats: 0 })
+    fiber: total.fiber + ingredient.fiber,
+  }), { calories: 0, protein: 0, carbs: 0, fats: 0, fiber: 0 })
   const totalRecipeGrams = results.reduce((total, ingredient) => total + ingredient.grams, 0)
 
   const manualMult = String(clientServingMultiplier ?? '').trim()
@@ -790,6 +849,7 @@ export async function calculateRecipeNutritionFromUsda({
     protein: round(ingredient.protein * multiplier),
     carbs: round(ingredient.carbs * multiplier),
     fats: round(ingredient.fats * multiplier),
+    fiber: round(ingredient.fiber * multiplier),
   }))
   const breakdown = clientServingBreakdown(clientServingIngredients)
   const macroBreakdown = clientServingMacroBreakdown(clientServingIngredients)
@@ -808,15 +868,19 @@ export async function calculateRecipeNutritionFromUsda({
       protein: round(totalRecipe.protein),
       carbs: round(totalRecipe.carbs),
       fats: round(totalRecipe.fats),
+      fiber: round(totalRecipe.fiber),
     },
     clientServing: {
       calories: Math.round(totalRecipe.calories * multiplier),
       protein: round(totalRecipe.protein * multiplier),
       carbs: round(totalRecipe.carbs * multiplier),
       fats: round(totalRecipe.fats * multiplier),
+      fiber: round(totalRecipe.fiber * multiplier),
     },
     clientServingIngredients,
     ingredients: results,
+    excludedIngredients,
+    unmatchedIngredients,
     warnings,
   }
 }

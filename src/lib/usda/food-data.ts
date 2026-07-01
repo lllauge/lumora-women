@@ -264,16 +264,35 @@ export type UsdaFoodOption = {
   measures: UsdaFoodMeasure[]
 }
 
+// Any USDA description that describes a pourable food. Used to decide whether
+// fl oz belongs in the unit dropdown even when USDA didn't return a volume measure.
+const LIQUID_PATTERN = /\b(milk|juice|broth|stock|water|beverage|coffee|tea|kombucha|kefir|nectar|smoothie|shake|wine|beer|liquor|spirit|oil|vinegar|syrup|honey|molasses|cream|creamer|half.?and.?half|sauce|dressing|soda|cola|soymilk|beverages?)\b/i
+
+// Grams per fl oz by liquid family, used as a fallback when USDA gave us no
+// cup/Tbsp to derive from. Numbers come from USDA density tables.
+function gramsPerFlOz(description: string): number {
+  const desc = description.toLowerCase()
+  if (/\boil\b/.test(desc)) return 27.6
+  if (/\b(honey|molasses|maple syrup|corn syrup|syrup)\b/.test(desc)) return 42
+  if (/\b(juice|nectar|soda|cola|energy drink|sports drink|kombucha|lemonade)\b/.test(desc)) return 30.9
+  if (/\bheavy cream\b/.test(desc)) return 29.3
+  if (/\b(half.?and.?half|cream|creamer)\b/.test(desc)) return 30.1
+  if (/\b(milk|kefir|smoothie|shake|soymilk)\b/.test(desc)) return 30.3
+  // Water, broth, stock, coffee, tea, wine, beer, vinegar
+  return 29.57
+}
+
 // USDA often gives one volume measure (e.g. "1 Tbsp") but not its sibling units.
 // Fill in tsp/Tbsp/cup from whichever volume measure we do have, so a recipe
 // written in teaspoons doesn't force the user to convert by hand.
-function augmentVolumeMeasures(measures: UsdaFoodMeasure[]): UsdaFoodMeasure[] {
+function augmentVolumeMeasures(measures: UsdaFoodMeasure[], description = ''): UsdaFoodMeasure[] {
   const has = (re: RegExp) => measures.some((m) => re.test(m.label))
   const find = (re: RegExp) => measures.find((m) => re.test(m.label))
 
   const tbsp = find(/^1\s*(tbsp|tablespoon)\b/i)
   const tsp = find(/^1\s*(tsp|teaspoon)\b/i)
   const cup = find(/^1\s*cup\b/i)
+  const flOz = find(/^1\s*fl\.?\s*oz\b/i)
 
   const derived: UsdaFoodMeasure[] = []
   // 1 Tbsp = 3 tsp, 1 cup = 16 Tbsp = 48 tsp
@@ -282,6 +301,19 @@ function augmentVolumeMeasures(measures: UsdaFoodMeasure[]): UsdaFoodMeasure[] {
   if (tbsp && !cup) derived.push({ label: '1 cup', grams: Math.round(tbsp.grams * 16 * 10) / 10 })
   if (cup && !tbsp) derived.push({ label: '1 Tbsp', grams: Math.round((cup.grams / 16) * 10) / 10 })
   if (cup && !has(/^1\s*(tsp|teaspoon)\b/i)) derived.push({ label: '1 tsp', grams: Math.round((cup.grams / 48) * 10) / 10 })
+
+  // Liquids should also expose fl oz. Prefer USDA-derived (cup ÷ 8 or Tbsp × 2)
+  // when a volume measure exists; fall back to per-liquid density otherwise.
+  const isLiquid = LIQUID_PATTERN.test(description.toLowerCase())
+  if (!flOz && (isLiquid || cup || tbsp)) {
+    const flOzGrams = cup ? cup.grams / 8
+      : tbsp ? tbsp.grams * 2
+      : isLiquid ? gramsPerFlOz(description)
+      : null
+    if (flOzGrams !== null) {
+      derived.push({ label: '1 fl oz', grams: Math.round(flOzGrams * 10) / 10 })
+    }
+  }
 
   return [...measures, ...derived]
 }
@@ -312,7 +344,7 @@ function foodMeasureOptions(food: FoodSearchResult): UsdaFoodMeasure[] {
     })
   }
 
-  return augmentVolumeMeasures(measures)
+  return augmentVolumeMeasures(measures, food.description)
 }
 
 // Common food vocabulary — tokens in this set are NOT treated as brand names,
@@ -522,7 +554,7 @@ export async function getFoodMeasuresById(fdcId: number, apiKey: string): Promis
     }
   }
 
-  return augmentVolumeMeasures(measures.slice(0, 8))
+  return augmentVolumeMeasures(measures.slice(0, 8), String(data.description ?? ''))
 }
 
 async function fetchFoodById(fdcId: number, apiKey: string): Promise<FoodSearchResult | null> {

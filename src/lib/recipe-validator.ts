@@ -96,7 +96,18 @@ export function validateRecipe(recipe: CoachingPlanDraft['recipes'][number]): Re
 }
 
 export function validatePlan(plan: CoachingPlanDraft): PlanValidationResult {
-  const recipes = plan.recipes.map((r) => validateRecipe(r))
+  // Only validate recipes that are actually referenced by a meal — an old
+  // recipe left behind in plan.recipes[] after the admin swapped it out
+  // shouldn't block publishing, since the client never sees it.
+  const referenced = new Set<string>()
+  for (const day of plan.mealPlan) {
+    for (const meal of [day.breakfast, day.lunch, day.dinner, ...day.snacks]) {
+      if (meal.recipeName?.trim()) referenced.add(meal.recipeName.trim())
+    }
+  }
+  const recipes = plan.recipes
+    .filter((r) => referenced.has((r.name ?? '').trim()))
+    .map((r) => validateRecipe(r))
   const ok = recipes.every((r) => r.issues.every((i) => i.severity !== 'error'))
   return { ok, recipes }
 }

@@ -400,14 +400,42 @@ function DayMeals({ day, recipes }: { day: CoachingPlanDraft['mealPlan'][number]
         const fallbackWeighOut = recipe && portionLines.length === 0 ? portionSummaryLine(recipe) : ''
         const fraction = recipe ? portionFraction(clientPortionFactor(recipe)) : null
         const description = cleanMealDescription(row.meal.description)
+        const displayName = displayRecipeName(row.meal.name) || description || displayRecipeName(row.meal.recipeName)
         return (
-          <div key={i} style={{ padding: '0.75rem 0', borderTop: i === 0 ? 'none' : '1px solid rgba(200,220,192,0.25)' }}>
-            <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 600, color: '#3F6936', marginBottom: '0.125rem' }}>
-              {row.slot}{row.meal.macros.trim() ? ` · ${row.meal.macros.trim()}` : ''}
-            </p>
-            <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-              {displayRecipeName(row.meal.name) || description || displayRecipeName(row.meal.recipeName)}
-            </p>
+          <details
+            key={i}
+            style={{
+              padding: '0.5rem 0',
+              borderTop: i === 0 ? 'none' : '1px solid rgba(200,220,192,0.25)',
+            }}
+          >
+            <summary
+              style={{
+                listStyle: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '0.75rem',
+                padding: '0.375rem 0',
+              }}
+            >
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9375rem', fontWeight: 700, color: '#3F6936', marginBottom: '0.125rem' }}>
+                  {row.slot}
+                </p>
+                <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {displayName || '—'}
+                </p>
+                {row.meal.macros.trim() && (
+                  <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>
+                    {row.meal.macros.trim()}
+                  </p>
+                )}
+              </div>
+              <span aria-hidden="true" style={{ color: 'var(--text-muted)', fontSize: '0.875rem', flexShrink: 0 }}>▸</span>
+            </summary>
+            <div style={{ paddingTop: '0.5rem' }}>
             {row.meal.name.trim() && description && (
               <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-secondary)', marginTop: '0.125rem' }}>
                 {description}
@@ -447,7 +475,8 @@ function DayMeals({ day, recipes }: { day: CoachingPlanDraft['mealPlan'][number]
                 Cook the full recipe, then serve yourself {fraction.qualifier ? `a ${fraction.qualifier} ${fraction.label}` : `about ${fraction.label}`} of it.
               </p>
             )}
-          </div>
+            </div>
+          </details>
         )
       })}
       {day.notes.trim() && (
@@ -469,19 +498,44 @@ function RecipeDetail({ recipe }: { recipe: CoachingPlanDraft['recipes'][number]
   }
   const isFamily = Number(recipe.familyServings) > 1
   const portionLines = clientPortionLines(recipe).filter((line) => line.grams !== null)
-  const headline = [
-    recipe.clientServingGrams.trim() && withGrams(recipe.clientServingGrams),
-    isClientReadable(recipe.clientServingMeasure) && recipe.clientServingMeasure.trim(),
-    isClientReadable(recipe.clientServing) && cleanIngredientText(recipe.clientServing),
-  ].filter(Boolean) as string[]
+  const detailFraction = portionFraction(clientPortionFactor(recipe))
+  // For family recipes the headline is "¼ of the recipe" (human-friendly),
+  // with the gram total kept as small subtext. For individual recipes the
+  // gram weight IS the meaningful headline, so we show it as before.
+  const fractionHeadline = isFamily && detailFraction && detailFraction.label !== 'the whole recipe'
+    ? `${detailFraction.qualifier ? `A ${detailFraction.qualifier} ${detailFraction.label}` : detailFraction.label} of the recipe`
+    : ''
+  const totalPortionGrams = portionLines.reduce((sum, line) => sum + (line.grams ?? 0), 0)
+  const portionGramSubtext = fractionHeadline && totalPortionGrams > 0
+    ? `about ${Math.round(totalPortionGrams)}g of finished food`
+    : ''
+  const headline = fractionHeadline
+    ? [] // fraction headline replaces the gram-based headline for family recipes
+    : ([
+        recipe.clientServingGrams.trim() && withGrams(recipe.clientServingGrams),
+        isClientReadable(recipe.clientServingMeasure) && recipe.clientServingMeasure.trim(),
+        isClientReadable(recipe.clientServing) && cleanIngredientText(recipe.clientServing),
+      ].filter(Boolean) as string[])
 
   return (
     <div>
-      {(headline.length > 0 || portionLines.length > 0) && (
+      {(headline.length > 0 || portionLines.length > 0 || fractionHeadline) && (
         <div style={{ background: 'var(--section-tint)', borderRadius: '0.75rem', padding: '0.75rem 0.875rem', marginTop: '0.5rem' }}>
           <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 700, color: '#3F6936', marginBottom: '0.125rem' }}>
             {isFamily ? 'YOUR PORTION (family recipe)' : 'YOUR PORTION'}
           </p>
+          {fractionHeadline && (
+            <>
+              <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)', margin: '0.125rem 0 0.25rem' }}>
+                {fractionHeadline}
+              </p>
+              {portionGramSubtext && (
+                <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
+                  {portionGramSubtext}
+                </p>
+              )}
+            </>
+          )}
           {headline.length > 0 && (
             <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
               {headline.join(' · ')}

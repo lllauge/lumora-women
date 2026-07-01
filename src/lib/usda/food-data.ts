@@ -708,7 +708,7 @@ export async function calculateRecipeNutritionFromUsda({
       continue
     }
 
-    const food = parsed.fdcId
+    let food = parsed.fdcId
       ? await fetchFoodById(parsed.fdcId, apiKey)
       : await searchFood(searchQuery, apiKey)
     if (!food) {
@@ -716,7 +716,21 @@ export async function calculateRecipeNutritionFromUsda({
       continue
     }
 
-    const per100g = macrosPer100g(food)
+    // USDA's search endpoint sometimes ships Foundation foods with an empty
+    // foodNutrients array (Energy lives under 2047/2048 Atwater IDs in the
+    // detail endpoint but is absent from search). That silently zeros an
+    // ingredient's contribution. Refetch details when we came in without an
+    // fdcId and the search-picked food has no macros.
+    let per100g = macrosPer100g(food)
+    if (!parsed.fdcId && per100g.calories === 0 && per100g.protein === 0
+      && per100g.carbs === 0 && per100g.fats === 0) {
+      const detail = await fetchFoodById(food.fdcId, apiKey).catch(() => null)
+      if (detail) {
+        food = detail
+        per100g = macrosPer100g(detail)
+      }
+    }
+
     const scale = grams / 100
     results.push({
       input: raw,

@@ -756,9 +756,14 @@ export default function CoachingPlanEditor({
           : undefined
 
         // Paste-mode signal: stored calories on the recipe row. Scale locally
-        // using the publisher's macros — no USDA call needed.
+        // using the publisher's macros — no USDA call needed. Custom per-slot
+        // recipes (name ends in "(d1-breakfast)" etc.) always come through
+        // USDA — their stored calories are just the last USDA calc, so treating
+        // them as paste-mode would freeze the total even after ingredients
+        // change (e.g. adding a banana wouldn't update the day count).
+        const isCustomSlot = /\(d\d+-(?:breakfast|lunch|dinner|snack\d+)\)$/.test(recipe.name)
         const storedCalories = firstNumber(recipe.calories)
-        if (storedCalories > 0) {
+        if (storedCalories > 0 && !isCustomSlot) {
           const totalRecipeGrams = recipe.ingredients.reduce((sum, line) => sum + (extractLeadingGrams(line)?.grams ?? 0), 0)
           const scaled = scalePasteRecipe({
             recipeCalories: storedCalories,

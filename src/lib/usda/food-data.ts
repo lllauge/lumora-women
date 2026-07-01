@@ -482,10 +482,12 @@ export async function searchFoodsForPicker(query: string, apiKey: string): Promi
       const macros = macrosPer100g(food)
       return { food, score, macros }
     })
-    .filter(({ score, macros }) => score > 0
-      && (macros.calories > 0 || macros.protein > 0 || macros.carbs > 0 || macros.fats > 0))
+    // Keep zero-macro foods in the pool for now — Foundation foods can arrive
+    // from search with an empty foodNutrients array (Energy lives under
+    // Atwater IDs 2047/2048 in the detail endpoint), and we refetch below.
+    .filter(({ score }) => score > 0)
     .sort((a, b) => b.score - a.score)
-    .slice(0, 10)
+    .slice(0, 12)
 
   // Pin the curated common-food at the very top with its clean display name,
   // and remove any duplicate further down the list.
@@ -496,26 +498,40 @@ export async function searchFoodsForPicker(query: string, apiKey: string): Promi
     ? [pinnedCommonFood, ...scored.filter((s) => s.food.fdcId !== pinnedCommonFood.food.fdcId)]
     : scored
 
-  // Branded search rows can carry mis-normalized nutrients; pull the label-corrected
-  // per-100g values from the detail endpoint so the preview matches the saved math.
-  return Promise.all(ranked.map(async ({ food, macros }) => {
-    let corrected = macros
-    if (food.dataType === 'Branded') {
+  // Refetch details for two cases:
+  //   1. Branded — search rows carry mis-normalized nutrients; the label-
+  //      corrected per-100g values live in the detail endpoint.
+  //   2. Any food whose search response had zero macros (Foundation foods
+  //      often ship with an empty foodNutrients array in search results —
+  //      the actual Energy is under Atwater IDs 2047/2048 in the detail
+  //      response).
+  const enriched = await Promise.all(ranked.map(async ({ food, macros }) => {
+    const allZero = macros.calories === 0 && macros.protein === 0
+      && macros.carbs === 0 && macros.fats === 0
+    if (food.dataType === 'Branded' || allZero) {
       const detail = await fetchFoodById(food.fdcId, apiKey).catch(() => null)
-      if (detail) corrected = macrosPer100g(detail)
+      if (detail) return { food, macros: macrosPer100g(detail) }
     }
-    return {
+    return { food, macros }
+  }))
+
+  // Drop rows that STILL show zero everything after the refetch — those
+  // truly have no usable macros and shouldn't be selectable in the picker.
+  return enriched
+    .filter(({ macros }) => macros.calories > 0 || macros.protein > 0
+      || macros.carbs > 0 || macros.fats > 0)
+    .slice(0, 10)
+    .map(({ food, macros }) => ({
       fdcId: food.fdcId,
       description: food.description,
       dataType: food.dataType ?? '',
       brand: food.brandName || food.brandOwner || '',
-      calories: Math.round(corrected.calories),
-      protein: Math.round(corrected.protein * 10) / 10,
-      carbs: Math.round(corrected.carbs * 10) / 10,
-      fats: Math.round(corrected.fats * 10) / 10,
+      calories: Math.round(macros.calories),
+      protein: Math.round(macros.protein * 10) / 10,
+      carbs: Math.round(macros.carbs * 10) / 10,
+      fats: Math.round(macros.fats * 10) / 10,
       measures: foodMeasureOptions(food),
-    }
-  }))
+    }))
 }
 
 // Household measures live in the per-food detail response (foodPortions), not in

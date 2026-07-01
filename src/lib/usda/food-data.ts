@@ -612,7 +612,11 @@ export async function getFoodMeasuresById(fdcId: number, apiKey: string): Promis
 
 async function fetchFoodById(fdcId: number, apiKey: string): Promise<FoodSearchResult | null> {
   const url = `https://api.nal.usda.gov/fdc/v1/food/${fdcId}?api_key=${apiKey}`
-  const response = await fetch(url)
+  let response = await fetch(url)
+  if (!response.ok && (response.status === 429 || response.status >= 500)) {
+    await new Promise((resolve) => setTimeout(resolve, 150))
+    response = await fetch(url)
+  }
   if (!response.ok) return null
   const data = await response.json() as Record<string, unknown>
 
@@ -786,6 +790,12 @@ export async function calculateRecipeNutritionFromUsda({
     let food = parsed.fdcId
       ? await fetchFoodById(parsed.fdcId, apiKey)
       : await searchFood(searchQuery, apiKey)
+    if (!food && parsed.fdcId) {
+      // Saved USDA records can be retired. Recover through the reviewed text
+      // matcher rather than silently dropping the ingredient from the totals.
+      food = await searchFood(searchQuery, apiKey)
+      if (food) warnings.push(`${raw}: Saved USDA record ${parsed.fdcId} was retired; recalculated from "${food.description}".`)
+    }
     if (!food) {
       warnings.push(`${raw}: No USDA match found.`)
       unmatchedIngredients.push(raw)

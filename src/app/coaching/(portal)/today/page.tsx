@@ -7,7 +7,7 @@ import {
   displayRecipeName, cleanMealDescription, portionSummaryLine,
 } from '@/lib/coaching-engagement'
 import DailyWins from '@/components/coaching/DailyWins'
-import type { CoachingPlanDraft } from '@/lib/coaching-plan-schema'
+import { mealRecipeNames, type CoachingPlanDraft } from '@/lib/coaching-plan-schema'
 
 export const metadata: Metadata = {
   title: 'Today | Lumora Women Coaching',
@@ -28,14 +28,10 @@ export default async function CoachingTodayPage() {
   const dayIndex = todayMealDayIndex(plan)
   const mealDay = dayIndex >= 0 ? plan.mealPlan[dayIndex] : null
   const recipeAnchor = (recipeName: string) => {
+    if (/^Custom\s+/i.test(displayRecipeName(recipeName))) return '/coaching/plan'
     const idx = plan.recipes.findIndex((r) => r.name === recipeName)
     return idx >= 0 ? `/coaching/plan#recipe-${idx}` : '/coaching/plan'
   }
-  const weighOutFor = (recipeName: string) => {
-    const recipe = recipeName.trim() ? plan.recipes.find((r) => r.name === recipeName) : undefined
-    return recipe ? portionSummaryLine(recipe) : undefined
-  }
-
   return (
     <div>
       <div style={{ marginBottom: '1.75rem' }}>
@@ -88,11 +84,11 @@ export default async function CoachingTodayPage() {
           </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
-            <MealCard slot="Breakfast" meal={mealDay.breakfast} anchor={recipeAnchor} weighOut={weighOutFor(mealDay.breakfast.recipeName)} />
-            <MealCard slot="Lunch" meal={mealDay.lunch} anchor={recipeAnchor} weighOut={weighOutFor(mealDay.lunch.recipeName)} />
-            <MealCard slot="Dinner" meal={mealDay.dinner} anchor={recipeAnchor} weighOut={weighOutFor(mealDay.dinner.recipeName)} />
+            <MealCard slot="Breakfast" meal={mealDay.breakfast} recipes={plan.recipes} anchor={recipeAnchor} />
+            <MealCard slot="Lunch" meal={mealDay.lunch} recipes={plan.recipes} anchor={recipeAnchor} />
+            <MealCard slot="Dinner" meal={mealDay.dinner} recipes={plan.recipes} anchor={recipeAnchor} />
             {mealDay.snacks.map((snack, i) => (
-              <MealCard key={i} slot={mealDay.snacks.length > 1 ? `Snack ${i + 1}` : 'Snack'} meal={snack} anchor={recipeAnchor} weighOut={weighOutFor(snack.recipeName)} />
+              <MealCard key={i} slot={mealDay.snacks.length > 1 ? `Snack ${i + 1}` : 'Snack'} meal={snack} recipes={plan.recipes} anchor={recipeAnchor} />
             ))}
             {mealDay.notes.trim() && (
               <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-muted)', padding: '0 0.25rem' }}>
@@ -107,15 +103,25 @@ export default async function CoachingTodayPage() {
 }
 
 function MealCard({
-  slot, meal, anchor, weighOut,
+  slot, meal, recipes, anchor,
 }: {
   slot: string
   meal: MealEntry
+  recipes: CoachingPlanDraft['recipes']
   anchor: (recipeName: string) => string
-  weighOut?: string
 }) {
   if (!meal.name.trim() && !meal.description.trim()) return null
   const description = cleanMealDescription(meal.description)
+  const names = mealRecipeNames(meal)
+  const displayName = names.map(displayRecipeName).filter(Boolean).join(' + ')
+    || displayRecipeName(meal.name)
+    || description
+  const weighOut = names.map((name) => {
+    const recipe = recipes.find((item) => item.name === name)
+    const portion = recipe ? portionSummaryLine(recipe) : ''
+    return portion ? `${displayRecipeName(name)}: ${portion}` : ''
+  }).filter(Boolean).join(' · ')
+  const firstRecipeName = names[0] ?? ''
   const content = (
     <div style={{
       background: '#FFFFFF', borderRadius: '1rem', border: '1px solid rgba(200,220,192,0.35)',
@@ -126,7 +132,7 @@ function MealCard({
           {slot}{meal.macros.trim() ? ` · ${meal.macros.trim()}` : ''}
         </p>
         <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-          {displayRecipeName(meal.name) || description || displayRecipeName(meal.recipeName)}
+          {displayName}
         </p>
         {meal.name.trim() && description && (
           <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-secondary)', marginTop: '0.125rem' }}>
@@ -140,16 +146,16 @@ function MealCard({
           </p>
         )}
       </div>
-      {meal.recipeName.trim() && (
+      {firstRecipeName && (
         <ChevronRight style={{ width: '1rem', height: '1rem', color: 'var(--text-muted)', flexShrink: 0 }} aria-hidden="true" />
       )}
     </div>
   )
 
-  return meal.recipeName.trim() ? (
+  return firstRecipeName ? (
     <Link
-      href={anchor(meal.recipeName)}
-      aria-label={`${slot}: ${displayRecipeName(meal.name) || displayRecipeName(meal.recipeName)}, view recipe`}
+      href={anchor(firstRecipeName)}
+      aria-label={`${slot}: ${displayName}, view recipes`}
       style={{ textDecoration: 'none' }}
     >
       {content}

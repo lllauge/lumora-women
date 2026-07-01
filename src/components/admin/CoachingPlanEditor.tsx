@@ -3,8 +3,15 @@
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, ChevronDown, Sparkles, Trash2 } from 'lucide-react'
-import type { CoachingPlanDraft } from '@/lib/coaching-plan-schema'
-import { emptyCoachingPlan } from '@/lib/coaching-plan-schema'
+import type { CoachingPlanDraft, PlanMeal } from '@/lib/coaching-plan-schema'
+import {
+  emptyCoachingPlan,
+  isSlotRecipeName,
+  mealRecipeNames,
+  normalizedSlotRecipeName,
+  stripSlotRecipeSuffixes,
+  withMealRecipeNames,
+} from '@/lib/coaching-plan-schema'
 import { validatePlan } from '@/lib/recipe-validator'
 import IngredientPicker from './IngredientPicker'
 import {
@@ -162,25 +169,25 @@ function firstNumber(value: string) {
   return match ? Number(match[0]) : 0
 }
 
-function macroPart(value: string, label: string) {
-  if (!value.trim()) return ''
-  return value.toLowerCase().includes(label) ? value : `${value} ${label}`
+function summedRecipeMacros(meal: PlanMeal, recipes: CoachingPlanDraft['recipes']) {
+  return mealRecipeNames(meal).reduce((total, name) => {
+    const recipe = recipes.find((candidate) => candidate.name === name)
+    if (!recipe) return total
+    return {
+      calories: total.calories + firstNumber(recipe.calories),
+      protein: total.protein + firstNumber(recipe.protein),
+      carbs: total.carbs + firstNumber(recipe.carbs),
+      fats: total.fats + firstNumber(recipe.fats),
+      fiber: total.fiber + firstNumber(recipe.fiber),
+    }
+  }, { calories: 0, protein: 0, carbs: 0, fats: 0, fiber: 0 })
 }
 
-function caloriePart(value: string) {
-  if (!value.trim()) return ''
-  const lower = value.toLowerCase()
-  return lower.includes('cal') || lower.includes('kcal') ? value : `${value} cal`
-}
-
-function recipeMacroLabel(recipe: CoachingPlanDraft['recipes'][number]) {
-  return [
-    caloriePart(recipe.calories),
-    macroPart(recipe.protein, 'protein'),
-    macroPart(recipe.carbs, 'carbs'),
-    macroPart(recipe.fats, 'fats'),
-    macroPart(recipe.fiber, 'fiber'),
-  ].filter(Boolean).join(', ')
+function summedMealMacroLabel(meal: PlanMeal, recipes: CoachingPlanDraft['recipes']) {
+  const total = summedRecipeMacros(meal, recipes)
+  if (!total.calories && !total.protein && !total.carbs && !total.fats && !total.fiber) return ''
+  const round1 = (value: number) => Math.round(value * 10) / 10
+  return `${Math.round(total.calories)} cal, ${round1(total.protein)}g protein, ${round1(total.carbs)}g carbs, ${round1(total.fats)}g fats, ${round1(total.fiber)}g fiber`
 }
 
 function parseMealMacroLine(value: string) {
@@ -306,7 +313,9 @@ function buildGroceryList(plan: CoachingPlanDraft): string[] {
   const cookCounts = new Map<string, number>()
   for (const day of plan.mealPlan) {
     for (const meal of [day.breakfast, day.lunch, day.dinner, ...day.snacks]) {
-      if (meal.recipeName) cookCounts.set(meal.recipeName, (cookCounts.get(meal.recipeName) ?? 0) + 1)
+      for (const name of mealRecipeNames(meal)) {
+        cookCounts.set(name, (cookCounts.get(name) ?? 0) + 1)
+      }
     }
   }
 
@@ -344,7 +353,7 @@ function removeOrphanSlotRecipes(plan: CoachingPlanDraft): CoachingPlanDraft {
   const referenced = new Set<string>()
   for (const day of plan.mealPlan) {
     for (const meal of [day.breakfast, day.lunch, day.dinner, ...day.snacks]) {
-      if (meal.recipeName) referenced.add(meal.recipeName)
+      mealRecipeNames(meal).forEach((name) => referenced.add(name))
     }
   }
   return {
@@ -359,8 +368,10 @@ function dayMacroTotal(
 ) {
   const meals = [day.breakfast, day.lunch, day.dinner, ...day.snacks]
   const raw = meals.reduce((total, meal) => {
-    const recipe = recipes.find((candidate) => candidate.name === meal.recipeName)
-    const parsed = parseMealMacroLine(recipe ? recipeMacroLabel(recipe) : meal.macros)
+    const names = mealRecipeNames(meal)
+    const parsed = names.length > 0
+      ? summedRecipeMacros(meal, recipes)
+      : parseMealMacroLine(meal.macros)
     return {
       calories: total.calories + parsed.calories,
       protein: total.protein + parsed.protein,
@@ -487,12 +498,17 @@ export default function CoachingPlanEditor({
     const assignedNames = new Set<string>()
     const slots = plan.mealPlan.map((day) => {
       const slot = {
-        breakfast: day.breakfast.recipeName,
-        lunch: day.lunch.recipeName,
-        dinner: day.dinner.recipeName,
-        snacks: day.snacks.map((snack) => snack.recipeName),
+        breakfast: mealRecipeNames(day.breakfast),
+        lunch: mealRecipeNames(day.lunch),
+        dinner: mealRecipeNames(day.dinner),
+        snacks: day.snacks.map(mealRecipeNames),
       }
-      Object.values(slot).flat().forEach((name) => {
+      ;[
+        ...slot.breakfast,
+        ...slot.lunch,
+        ...slot.dinner,
+        ...slot.snacks.flat(),
+      ].forEach((name) => {
         if (name) assignedNames.add(name)
       })
       return slot
@@ -536,11 +552,10 @@ export default function CoachingPlanEditor({
       const assignedRecipeNames = new Set<string>()
       for (const day of plan.mealPlan) {
         for (const mealKey of ['breakfast', 'lunch', 'dinner'] as const) {
-          const name = day[mealKey].recipeName
-          if (name) assignedRecipeNames.add(name)
+          mealRecipeNames(day[mealKey]).forEach((name) => assignedRecipeNames.add(name))
         }
         for (const snack of day.snacks) {
-          if (snack.recipeName) assignedRecipeNames.add(snack.recipeName)
+          mealRecipeNames(snack).forEach((name) => assignedRecipeNames.add(name))
         }
       }
 
@@ -635,8 +650,7 @@ export default function CoachingPlanEditor({
           return patch ? { ...recipe, ...patch } : recipe
         })
         const updateMeal = (meal: CoachingPlanDraft['mealPlan'][number]['breakfast']) => {
-          const recipe = recipes.find((candidate) => candidate.name === meal.recipeName)
-          return recipe ? { ...meal, macros: recipeMacroLabel(recipe) } : meal
+          return { ...meal, macros: summedMealMacroLabel(meal, recipes) }
         }
         return {
           ...current,
@@ -650,7 +664,9 @@ export default function CoachingPlanEditor({
           })),
         }
       })
-      const failedNames = results.filter((result) => result.failed).map((result) => result.name)
+      const failedNames = results
+        .filter((result) => result.failed)
+        .map((result) => stripSlotRecipeSuffixes(result.name))
       setLiveNutritionError(failedNames.length > 0
         ? `Could not preview calories for: ${failedNames.join(', ')}.`
         : '')
@@ -679,69 +695,106 @@ export default function CoachingPlanEditor({
   }
 
   function applyLibraryRecipeToMeal(dayIndex: number, mealKey: 'breakfast' | 'lunch' | 'dinner', libRecipeName: string) {
+    if (!libRecipeName) return
     const libRecipe = libraryRecipes.find(r => r.name === libRecipeName)
     setPlan(current => {
       let newRecipes = current.recipes
       if (libRecipe && !current.recipes.some(r => r.name === libRecipeName)) {
         newRecipes = [...current.recipes, libraryRecipeToPlanRecipe(libRecipe)]
       }
-      const recipe = newRecipes.find(r => r.name === libRecipeName)
       const mealPlan = [...current.mealPlan]
       const day = mealPlan[dayIndex]
+      const currentMeal = day[mealKey]
+      const updatedMeal = withMealRecipeNames(currentMeal, [
+        ...mealRecipeNames(currentMeal),
+        libRecipeName,
+      ])
       mealPlan[dayIndex] = {
         ...day,
-        [mealKey]: {
-          name: libRecipeName || '',
-          recipeName: libRecipeName || '',
-          description: '',
-          macros: recipe ? recipeMacroLabel(recipe) : '',
-        },
+        [mealKey]: { ...updatedMeal, description: '', macros: summedMealMacroLabel(updatedMeal, newRecipes) },
       }
       return { ...current, recipes: newRecipes, mealPlan }
     })
   }
 
   function applyLibraryRecipeToSnack(dayIndex: number, snackIndex: number, libRecipeName: string) {
+    if (!libRecipeName) return
     const libRecipe = libraryRecipes.find(r => r.name === libRecipeName)
     setPlan(current => {
       let newRecipes = current.recipes
       if (libRecipe && !current.recipes.some(r => r.name === libRecipeName)) {
         newRecipes = [...current.recipes, libraryRecipeToPlanRecipe(libRecipe)]
       }
-      const recipe = newRecipes.find(r => r.name === libRecipeName)
       const mealPlan = [...current.mealPlan]
       const day = mealPlan[dayIndex]
       const snacks = [...(day.snacks ?? [])]
-      snacks[snackIndex] = libRecipeName
-        ? { name: libRecipeName, recipeName: libRecipeName, description: '', macros: recipe ? recipeMacroLabel(recipe) : '' }
-        : { name: '', recipeName: '', description: '', macros: '' }
+      const snack = snacks[snackIndex] ?? { name: '', recipeName: '', recipeNames: [], description: '', macros: '' }
+      const updatedSnack = withMealRecipeNames(snack, [...mealRecipeNames(snack), libRecipeName])
+      snacks[snackIndex] = {
+        ...updatedSnack,
+        description: '',
+        macros: summedMealMacroLabel(updatedSnack, newRecipes),
+      }
       mealPlan[dayIndex] = { ...day, snacks }
       return { ...current, recipes: newRecipes, mealPlan }
+    })
+  }
+
+  function removeRecipeFromMeal(dayIndex: number, mealKey: 'breakfast' | 'lunch' | 'dinner', recipeName: string) {
+    setPlan((current) => {
+      const mealPlan = [...current.mealPlan]
+      const day = mealPlan[dayIndex]
+      const updatedMeal = withMealRecipeNames(
+        day[mealKey],
+        mealRecipeNames(day[mealKey]).filter((name) => name !== recipeName),
+      )
+      mealPlan[dayIndex] = {
+        ...day,
+        [mealKey]: { ...updatedMeal, macros: summedMealMacroLabel(updatedMeal, current.recipes) },
+      }
+      return removeOrphanSlotRecipes({ ...current, mealPlan })
+    })
+  }
+
+  function removeRecipeFromSnack(dayIndex: number, snackIndex: number, recipeName: string) {
+    setPlan((current) => {
+      const mealPlan = [...current.mealPlan]
+      const day = mealPlan[dayIndex]
+      const snacks = [...day.snacks]
+      const updatedSnack = withMealRecipeNames(
+        snacks[snackIndex],
+        mealRecipeNames(snacks[snackIndex]).filter((name) => name !== recipeName),
+      )
+      snacks[snackIndex] = {
+        ...updatedSnack,
+        macros: summedMealMacroLabel(updatedSnack, current.recipes),
+      }
+      mealPlan[dayIndex] = { ...day, snacks }
+      return removeOrphanSlotRecipes({ ...current, mealPlan })
     })
   }
 
   function addIngredientToSlot(dayIndex: number, mealKey: 'breakfast' | 'lunch' | 'dinner', ingredient: string) {
     setPlan(current => {
       const meal = current.mealPlan[dayIndex][mealKey]
-      // Use a slot-specific key so ingredients never bleed across slots
       const slotKey = `d${dayIndex + 1}-${mealKey}`
-      const sharedName = meal.recipeName || ''
-      const slotRecipeName = sharedName ? `${sharedName} (${slotKey})` : `Custom ${mealKey} (${slotKey})`
+      const names = mealRecipeNames(meal)
+      const existingSlotName = names.find((name) => isSlotRecipeName(name, slotKey))
+      const slotRecipeName = normalizedSlotRecipeName(existingSlotName ?? '', `Custom ${mealKey}`, slotKey)
 
-      const newRecipes = [...current.recipes]
-      // If this slot doesn't yet have its own copy, clone the shared recipe (or start fresh)
-      if (!newRecipes.some(r => r.name === slotRecipeName)) {
-        const source = newRecipes.find(r => r.name === sharedName)
-        newRecipes.push(source
-          ? { ...source, name: slotRecipeName }
-          : {
-              name: slotRecipeName, mealType: mealKey, servings: '1', familyServings: '1',
-              clientServing: '', clientServingMultiplier: '', clientServingGrams: '',
-              clientServingMeasure: '', clientServingBreakdown: '',
-              prepTime: '', cookTime: '', calories: '', protein: '', carbs: '', fats: '', fiber: '',
-              ingredients: [], instructions: [], swaps: [], notes: '',
-            }
-        )
+      const newRecipes = current.recipes.map((recipe) => (
+        existingSlotName && recipe.name === existingSlotName && existingSlotName !== slotRecipeName
+          ? { ...recipe, name: slotRecipeName }
+          : recipe
+      ))
+      if (!newRecipes.some((recipe) => recipe.name === slotRecipeName)) {
+        newRecipes.push({
+          name: slotRecipeName, mealType: mealKey, servings: '1', familyServings: '1',
+          clientServing: '', clientServingMultiplier: '', clientServingGrams: '',
+          clientServingMeasure: '', clientServingBreakdown: '',
+          prepTime: '', cookTime: '', calories: '', protein: '', carbs: '', fats: '', fiber: '',
+          ingredients: [], instructions: [], swaps: [], notes: '',
+        })
       }
       const idx = newRecipes.findIndex(r => r.name === slotRecipeName)
       newRecipes[idx] = {
@@ -750,9 +803,12 @@ export default function CoachingPlanEditor({
       }
 
       const mealPlan = [...current.mealPlan]
+      const updatedNames = names.map((name) => name === existingSlotName ? slotRecipeName : name)
+      if (!updatedNames.includes(slotRecipeName)) updatedNames.push(slotRecipeName)
+      const updatedMeal = withMealRecipeNames({ ...meal, macros: '' }, updatedNames)
       mealPlan[dayIndex] = {
         ...mealPlan[dayIndex],
-        [mealKey]: { ...meal, recipeName: slotRecipeName, name: slotRecipeName, macros: '' },
+        [mealKey]: updatedMeal,
       }
       return { ...current, recipes: newRecipes, mealPlan }
     })
@@ -760,7 +816,9 @@ export default function CoachingPlanEditor({
 
   function removeIngredientFromSlot(dayIndex: number, mealKey: 'breakfast' | 'lunch' | 'dinner', ingredientIndex: number) {
     setPlan(current => {
-      const recipeName = current.mealPlan[dayIndex][mealKey].recipeName
+      const slotKey = `d${dayIndex + 1}-${mealKey}`
+      const meal = current.mealPlan[dayIndex][mealKey]
+      const recipeName = mealRecipeNames(meal).find((name) => isSlotRecipeName(name, slotKey))
       if (!recipeName) return current
       const newRecipes = current.recipes.map(r =>
         r.name === recipeName
@@ -779,24 +837,25 @@ export default function CoachingPlanEditor({
   function addIngredientToSnackSlot(dayIndex: number, snackIndex: number, ingredient: string) {
     setPlan(current => {
       const snacks = [...(current.mealPlan[dayIndex].snacks ?? [])]
-      const snack = snacks[snackIndex] ?? { name: '', recipeName: '', description: '', macros: '' }
+      const snack = snacks[snackIndex] ?? { name: '', recipeName: '', recipeNames: [], description: '', macros: '' }
       const slotKey = `d${dayIndex + 1}-snack${snackIndex}`
-      const sharedName = snack.recipeName || ''
-      const slotRecipeName = sharedName ? `${sharedName} (${slotKey})` : `Custom Snack (${slotKey})`
+      const names = mealRecipeNames(snack)
+      const existingSlotName = names.find((name) => isSlotRecipeName(name, slotKey))
+      const slotRecipeName = normalizedSlotRecipeName(existingSlotName ?? '', 'Custom Snack', slotKey)
 
-      const newRecipes = [...current.recipes]
+      const newRecipes = current.recipes.map((recipe) => (
+        existingSlotName && recipe.name === existingSlotName && existingSlotName !== slotRecipeName
+          ? { ...recipe, name: slotRecipeName }
+          : recipe
+      ))
       if (!newRecipes.some(r => r.name === slotRecipeName)) {
-        const source = newRecipes.find(r => r.name === sharedName)
-        newRecipes.push(source
-          ? { ...source, name: slotRecipeName }
-          : {
-              name: slotRecipeName, mealType: 'snack', servings: '1', familyServings: '1',
-              clientServing: '', clientServingMultiplier: '', clientServingGrams: '',
-              clientServingMeasure: '', clientServingBreakdown: '',
-              prepTime: '', cookTime: '', calories: '', protein: '', carbs: '', fats: '', fiber: '',
-              ingredients: [], instructions: [], swaps: [], notes: '',
-            }
-        )
+        newRecipes.push({
+          name: slotRecipeName, mealType: 'snack', servings: '1', familyServings: '1',
+          clientServing: '', clientServingMultiplier: '', clientServingGrams: '',
+          clientServingMeasure: '', clientServingBreakdown: '',
+          prepTime: '', cookTime: '', calories: '', protein: '', carbs: '', fats: '', fiber: '',
+          ingredients: [], instructions: [], swaps: [], notes: '',
+        })
       }
       const idx = newRecipes.findIndex(r => r.name === slotRecipeName)
       newRecipes[idx] = {
@@ -804,7 +863,9 @@ export default function CoachingPlanEditor({
         ingredients: [...newRecipes[idx].ingredients, ingredient],
       }
 
-      snacks[snackIndex] = { ...snack, recipeName: slotRecipeName, name: slotRecipeName, macros: '' }
+      const updatedNames = names.map((name) => name === existingSlotName ? slotRecipeName : name)
+      if (!updatedNames.includes(slotRecipeName)) updatedNames.push(slotRecipeName)
+      snacks[snackIndex] = withMealRecipeNames({ ...snack, macros: '' }, updatedNames)
       const mealPlan = [...current.mealPlan]
       mealPlan[dayIndex] = { ...mealPlan[dayIndex], snacks }
       return { ...current, recipes: newRecipes, mealPlan }
@@ -813,7 +874,9 @@ export default function CoachingPlanEditor({
 
   function removeIngredientFromSnackSlot(dayIndex: number, snackIndex: number, ingredientIndex: number) {
     setPlan(current => {
-      const recipeName = current.mealPlan[dayIndex].snacks[snackIndex]?.recipeName
+      const slotKey = `d${dayIndex + 1}-snack${snackIndex}`
+      const snack = current.mealPlan[dayIndex].snacks[snackIndex]
+      const recipeName = snack && mealRecipeNames(snack).find((name) => isSlotRecipeName(name, slotKey))
       if (!recipeName) return current
       const newRecipes = current.recipes.map(r =>
         r.name === recipeName
@@ -937,10 +1000,10 @@ export default function CoachingPlanEditor({
     const individualPlanStyle = planningInputs.mealPlanStyle === 'individual_only'
     const referencedRecipeNames = new Set(
       nextPlan.mealPlan.flatMap((day) => [
-        day.breakfast.recipeName,
-        day.lunch.recipeName,
-        day.dinner.recipeName,
-        ...day.snacks.map((snack) => snack.recipeName),
+        ...mealRecipeNames(day.breakfast),
+        ...mealRecipeNames(day.lunch),
+        ...mealRecipeNames(day.dinner),
+        ...day.snacks.flatMap(mealRecipeNames),
       ]).filter(Boolean),
     )
     const recipesToCalc = nextPlan.recipes
@@ -1026,15 +1089,18 @@ export default function CoachingPlanEditor({
 
       // Also update meal plan descriptions with fresh macros
       const updateMealMacros = (meal: CoachingPlanDraft['mealPlan'][number]['breakfast']) => {
-        const recipe = updatedRecipes.find((r) => r.name && r.name === meal.recipeName)
-        if (!recipe) return meal
+        const selectedRecipes = mealRecipeNames(meal)
+          .map((name) => updatedRecipes.find((recipe) => recipe.name === name))
+          .filter((recipe): recipe is CoachingPlanDraft['recipes'][number] => Boolean(recipe))
+        if (selectedRecipes.length === 0) return meal
         return {
           ...meal,
-          description: [
+          description: selectedRecipes.map((recipe) => [
+            `${stripSlotRecipeSuffixes(recipe.name)}:`,
             recipe.clientServingMeasure ? `${recipe.clientServingMeasure}.` : '',
             recipe.familyServings ? `Serves ${recipe.familyServings}.` : '',
-          ].filter(Boolean).join(' '),
-          macros: recipeMacroLabel(recipe),
+          ].filter(Boolean).join(' ')).join(' '),
+          macros: summedMealMacroLabel(meal, updatedRecipes),
         }
       }
 
@@ -1474,9 +1540,9 @@ export default function CoachingPlanEditor({
               ...current,
               mealPlan: [...current.mealPlan, {
                 day: `Day ${current.mealPlan.length + 1}`,
-                breakfast: { name: '', description: '', macros: '', recipeName: '' },
-                lunch: { name: '', description: '', macros: '', recipeName: '' },
-                dinner: { name: '', description: '', macros: '', recipeName: '' },
+                breakfast: { name: '', description: '', macros: '', recipeName: '', recipeNames: [] },
+                lunch: { name: '', description: '', macros: '', recipeName: '', recipeNames: [] },
+                dinner: { name: '', description: '', macros: '', recipeName: '', recipeNames: [] },
                 snacks: [],
                 notes: '',
               }],
@@ -1555,25 +1621,44 @@ export default function CoachingPlanEditor({
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
                   {(['breakfast', 'lunch', 'dinner'] as const).map((mealKey) => {
                     const meal = day[mealKey]
-                    const mealRecipe = plan.recipes.find(r => r.name === meal.recipeName)
-                    const ingredients = mealRecipe?.ingredients ?? []
+                    const selectedNames = mealRecipeNames(meal)
+                    const slotKey = `d${dayIndex + 1}-${mealKey}`
+                    const customRecipeName = selectedNames.find((name) => isSlotRecipeName(name, slotKey))
+                    const customRecipe = plan.recipes.find((recipe) => recipe.name === customRecipeName)
+                    const ingredients = customRecipe?.ingredients ?? []
                     return (
                       <div key={mealKey} style={{ background: 'var(--admin-surface-low)', border: '1px solid var(--admin-outline-variant)', borderRadius: 9, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
                         <div style={{ fontFamily: 'var(--font-hanken)', fontWeight: 800, fontSize: '0.8rem', textTransform: 'capitalize', color: 'var(--admin-on-surface)' }}>{mealKey}</div>
                         <select
                           className="admin-input"
                           style={{ fontSize: '0.83rem' }}
-                          value={meal.recipeName}
+                          value=""
                           onChange={(e) => applyLibraryRecipeToMeal(dayIndex, mealKey, e.target.value)}
                         >
-                          <option value="">— no recipe —</option>
-                          {meal.recipeName && !libraryRecipes.some((r) => r.name === meal.recipeName) && (
-                            <option value={meal.recipeName}>Custom: {meal.recipeName.replace(/\s*\(d\d+-[a-z]+\d*\)$/, '')}</option>
-                          )}
-                          {libraryRecipes.map((r) => (
+                          <option value="">+ Add a recipe…</option>
+                          {libraryRecipes.filter((recipe) => !selectedNames.includes(recipe.name)).map((r) => (
                             <option key={r.id} value={r.name}>{r.name}</option>
                           ))}
                         </select>
+                        {selectedNames.length > 0 && (
+                          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            {selectedNames.map((name) => {
+                              const selectedRecipe = plan.recipes.find((recipe) => recipe.name === name)
+                              return (
+                                <li key={name} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fff', border: '1px solid var(--admin-outline-variant)', borderRadius: 6, padding: '5px 7px' }}>
+                                  <span style={{ flex: 1, minWidth: 0, fontFamily: 'var(--font-hanken)', fontSize: '0.75rem', color: 'var(--admin-on-surface)' }}>
+                                    {stripSlotRecipeSuffixes(name)}
+                                    {selectedRecipe?.calories && (
+                                      <span style={{ color: 'var(--admin-on-surface-variant)' }}> · {selectedRecipe.calories.replace(/\s*k?cal$/i, '')} cal</span>
+                                    )}
+                                  </span>
+                                  <button type="button" aria-label={`Remove ${stripSlotRecipeSuffixes(name)}`} onClick={() => removeRecipeFromMeal(dayIndex, mealKey, name)}
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--admin-error)', padding: 0, fontSize: '0.9rem' }}>×</button>
+                                </li>
+                              )
+                            })}
+                          </ul>
+                        )}
                         {ingredients.length > 0 && (
                           <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3 }}>
                             {ingredients.map((ing, i) => (
@@ -1598,28 +1683,28 @@ export default function CoachingPlanEditor({
                         style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-hanken)', fontSize: '0.72rem', fontWeight: 700, color: '#C9A84C', padding: 0 }}
                         onClick={() => {
                           const mealPlan = [...plan.mealPlan]
-                          mealPlan[dayIndex] = { ...day, snacks: [...(day.snacks ?? []), { name: '', recipeName: '', description: '', macros: '' }] }
+                          mealPlan[dayIndex] = { ...day, snacks: [...(day.snacks ?? []), { name: '', recipeName: '', recipeNames: [], description: '', macros: '' }] }
                           setPlan(c => ({ ...c, mealPlan }))
                         }}
                       >+ Add Snack</button>
                     </div>
-                    {(day.snacks.length === 0 ? [{ name: '', recipeName: '', description: '', macros: '' }] : day.snacks).map((snack, snackIndex) => {
-                      const snackRecipe = plan.recipes.find(r => r.name === snack.recipeName)
-                      const snackIngredients = snackRecipe?.ingredients ?? []
+                    {(day.snacks.length === 0 ? [{ name: '', recipeName: '', recipeNames: [], description: '', macros: '' }] : day.snacks).map((snack, snackIndex) => {
+                      const selectedNames = mealRecipeNames(snack)
+                      const slotKey = `d${dayIndex + 1}-snack${snackIndex}`
+                      const customRecipeName = selectedNames.find((name) => isSlotRecipeName(name, slotKey))
+                      const customRecipe = plan.recipes.find((recipe) => recipe.name === customRecipeName)
+                      const snackIngredients = customRecipe?.ingredients ?? []
                       return (
                         <div key={snackIndex} style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: snackIndex < day.snacks.length - 1 ? 8 : 0, borderBottom: snackIndex < day.snacks.length - 1 ? '1px solid var(--admin-outline-variant)' : 'none' }}>
                           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                             <select
                               className="admin-input"
                               style={{ fontSize: '0.83rem', flex: 1 }}
-                              value={snack.recipeName}
+                              value=""
                               onChange={(e) => applyLibraryRecipeToSnack(dayIndex, snackIndex, e.target.value)}
                             >
-                              <option value="">— no snack —</option>
-                              {snack.recipeName && !libraryRecipes.some((r) => r.name === snack.recipeName) && (
-                                <option value={snack.recipeName}>Custom: {snack.recipeName.replace(/\s*\(d\d+-[a-z]+\d*\)$/, '')}</option>
-                              )}
-                              {libraryRecipes.map((r) => (
+                              <option value="">+ Add a recipe…</option>
+                              {libraryRecipes.filter((recipe) => !selectedNames.includes(recipe.name)).map((r) => (
                                 <option key={r.id} value={r.name}>{r.name}</option>
                               ))}
                             </select>
@@ -1632,6 +1717,25 @@ export default function CoachingPlanEditor({
                                 }}>×</button>
                             )}
                           </div>
+                          {selectedNames.length > 0 && (
+                            <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                              {selectedNames.map((name) => {
+                                const selectedRecipe = plan.recipes.find((recipe) => recipe.name === name)
+                                return (
+                                  <li key={name} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fff', border: '1px solid var(--admin-outline-variant)', borderRadius: 6, padding: '5px 7px' }}>
+                                    <span style={{ flex: 1, minWidth: 0, fontFamily: 'var(--font-hanken)', fontSize: '0.75rem', color: 'var(--admin-on-surface)' }}>
+                                      {stripSlotRecipeSuffixes(name)}
+                                      {selectedRecipe?.calories && (
+                                        <span style={{ color: 'var(--admin-on-surface-variant)' }}> · {selectedRecipe.calories.replace(/\s*k?cal$/i, '')} cal</span>
+                                      )}
+                                    </span>
+                                    <button type="button" aria-label={`Remove ${stripSlotRecipeSuffixes(name)}`} onClick={() => removeRecipeFromSnack(dayIndex, snackIndex, name)}
+                                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--admin-error)', padding: 0, fontSize: '0.9rem' }}>×</button>
+                                  </li>
+                                )
+                              })}
+                            </ul>
+                          )}
                           {snackIngredients.length > 0 && (
                             <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3 }}>
                               {snackIngredients.map((ing, i) => (

@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:nutrition": "node --test --experimental-strip-types src/lib/nutrition-math.test.mjs"
+    "test:nutrition": "node --test --experimental-strip-types src/lib/nutrition-math.test.mjs src/lib/coaching-plan-schema.test.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1053.0",

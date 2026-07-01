@@ -1,4 +1,4 @@
-import type { CoachingPlanDraft } from './coaching-plan-schema'
+import { mealRecipeNames, type CoachingPlanDraft } from './coaching-plan-schema'
 import { isExcludedNutritionIngredient } from './nutrition-ingredient'
 
 // Inlined from coaching-engagement.ts so this module has no server deps and
@@ -104,7 +104,7 @@ export function validatePlan(plan: CoachingPlanDraft): PlanValidationResult {
   const referenced = new Set<string>()
   for (const day of plan.mealPlan) {
     for (const meal of [day.breakfast, day.lunch, day.dinner, ...day.snacks]) {
-      if (meal.recipeName?.trim()) referenced.add(meal.recipeName.trim())
+      mealRecipeNames(meal).forEach((name) => referenced.add(name))
     }
   }
   const recipes = plan.recipes

@@ -4,6 +4,7 @@ import { getVerifiedAdminUser } from '@/lib/admin-guard'
 import {
   CoachingPlanAiJsonSchema,
   CoachingPlanSchema,
+  mealRecipeNames,
   type CoachingPlanDraft,
 } from '@/lib/coaching-plan-schema'
 import { calculateMacroTargets } from '@/lib/coaching-macro-calculator'
@@ -52,14 +53,21 @@ function firstNumber(value: string | undefined) {
   return match ? Number(match[0]) : 0
 }
 
-function recipeMacroLabel(recipe: CoachingPlanDraft['recipes'][number]) {
-  return [
-    recipe.calories ? `${recipe.calories} cal` : '',
-    recipe.protein ? `${recipe.protein} protein` : '',
-    recipe.carbs ? `${recipe.carbs} carbs` : '',
-    recipe.fats ? `${recipe.fats} fats` : '',
-    recipe.fiber ? `${recipe.fiber} fiber` : '',
-  ].filter(Boolean).join(', ')
+function mealMacroLabel(meal: CoachingPlanDraft['mealPlan'][number]['breakfast'], recipes: CoachingPlanDraft['recipes']) {
+  const totals = mealRecipeNames(meal).reduce((total, name) => {
+    const recipe = recipes.find((item) => item.name === name)
+    if (!recipe) return total
+    return {
+      calories: total.calories + firstNumber(recipe.calories),
+      protein: total.protein + firstNumber(recipe.protein),
+      carbs: total.carbs + firstNumber(recipe.carbs),
+      fats: total.fats + firstNumber(recipe.fats),
+      fiber: total.fiber + firstNumber(recipe.fiber),
+    }
+  }, { calories: 0, protein: 0, carbs: 0, fats: 0, fiber: 0 })
+  if (!totals.calories && !totals.protein && !totals.carbs && !totals.fats && !totals.fiber) return ''
+  const round1 = (value: number) => Math.round(value * 10) / 10
+  return `${Math.round(totals.calories)} cal, ${round1(totals.protein)}g protein, ${round1(totals.carbs)}g carbs, ${round1(totals.fats)}g fats, ${round1(totals.fiber)}g fiber`
 }
 
 async function addUsdaServingMathToDraft(plan: CoachingPlanDraft, planningInputs: Record<string, string>) {
@@ -122,8 +130,7 @@ async function addUsdaServingMathToDraft(plan: CoachingPlanDraft, planningInputs
 
   const mealPlan = plan.mealPlan.map((day) => {
     const updateMeal = (meal: CoachingPlanDraft['mealPlan'][number]['breakfast']) => {
-      const recipe = recipes.find((item) => item.name && item.name === meal.recipeName)
-      return recipe ? { ...meal, macros: recipeMacroLabel(recipe) } : meal
+      return { ...meal, macros: mealMacroLabel(meal, recipes) }
     }
 
     return {

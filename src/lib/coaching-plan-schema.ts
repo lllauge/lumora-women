@@ -27,6 +27,7 @@ export const MealSchema = z.object({
   description: z.string().default(''),
   macros: z.string().default(''),
   recipeName: z.string().default(''),
+  recipeNames: z.array(z.string()).default([]),
 })
 
 const emptyMeal = {
@@ -34,6 +35,7 @@ const emptyMeal = {
   description: '',
   macros: '',
   recipeName: '',
+  recipeNames: [],
 }
 
 export const MealDaySchema = z.object({
@@ -100,6 +102,38 @@ export const CoachingPlanSchema = z.object({
 })
 
 export type CoachingPlanDraft = z.infer<typeof CoachingPlanSchema>
+export type PlanMeal = z.infer<typeof MealSchema>
+
+/** Multi-recipe names with transparent fallback for plans saved before this field existed. */
+export function mealRecipeNames(meal: Pick<PlanMeal, 'recipeName' | 'recipeNames'>): string[] {
+  const names = (meal.recipeNames ?? []).map((name) => name.trim()).filter(Boolean)
+  if (names.length > 0) return [...new Set(names)]
+  return meal.recipeName.trim() ? [meal.recipeName.trim()] : []
+}
+
+export function withMealRecipeNames(meal: PlanMeal, names: string[]): PlanMeal {
+  const unique = [...new Set(names.map((name) => name.trim()).filter(Boolean))]
+  return {
+    ...meal,
+    recipeNames: unique,
+    recipeName: unique[0] ?? '',
+    name: unique.join(' + '),
+  }
+}
+
+const SLOT_SUFFIXES = /(?:\s*\(d\d+-(?:breakfast|lunch|dinner|snack\d+)\))+$/
+
+export function stripSlotRecipeSuffixes(name: string) {
+  return name.replace(SLOT_SUFFIXES, '').trim()
+}
+
+export function isSlotRecipeName(name: string, slotKey: string) {
+  return new RegExp(`(?:\\s*\\(${slotKey}\\))+$`).test(name)
+}
+
+export function normalizedSlotRecipeName(name: string, fallbackLabel: string, slotKey: string) {
+  return `${stripSlotRecipeSuffixes(name) || fallbackLabel} (${slotKey})`
+}
 
 export const emptyCoachingPlan: CoachingPlanDraft = {
   macroTargets: emptyMacroTargets,

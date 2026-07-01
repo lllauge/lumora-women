@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createAdminClient, createClient } from '@/lib/supabase/server'
-import { parseCoachingPlan, type CoachingPlanDraft } from '@/lib/coaching-plan-schema'
+import { mealRecipeNames, parseCoachingPlan, type CoachingPlanDraft } from '@/lib/coaching-plan-schema'
 import { cookedGramsToRaw } from '@/lib/cooked-to-raw'
 
 const COACHING_TIME_ZONE = 'America/New_York'
@@ -338,7 +338,7 @@ export function clientVisibleRecipes(plan: CoachingPlanDraft): { recipe: Coachin
   const referenced = new Set<string>()
   for (const day of plan.mealPlan) {
     for (const meal of [day.breakfast, day.lunch, day.dinner, ...day.snacks]) {
-      if (meal.recipeName.trim()) referenced.add(meal.recipeName.trim())
+      mealRecipeNames(meal).forEach((name) => referenced.add(name))
     }
   }
   if (referenced.size === 0) return []

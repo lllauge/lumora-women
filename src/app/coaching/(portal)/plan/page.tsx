@@ -436,6 +436,24 @@ function DayMeals({ day, recipes }: { day: CoachingPlanDraft['mealPlan'][number]
               <span aria-hidden="true" style={{ color: 'var(--text-muted)', fontSize: '0.875rem', flexShrink: 0 }}>▸</span>
             </summary>
             <div style={{ paddingTop: '0.5rem' }}>
+            {fraction && fraction.label !== 'the whole recipe' && (
+              <div style={{
+                background: 'var(--section-tint)',
+                borderRadius: '0.625rem',
+                padding: '0.625rem 0.875rem',
+                marginBottom: '0.625rem',
+              }}>
+                <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.7rem', fontWeight: 700, color: '#3F6936', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '0.125rem' }}>
+                  Your portion
+                </p>
+                <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                  {fraction.qualifier ? `A ${fraction.qualifier} ${fraction.label}` : `About ${fraction.label}`} of the recipe
+                </p>
+                <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                  Cook the full recipe, then serve yourself this much. Or weigh out the ingredient list below for exact grams.
+                </p>
+              </div>
+            )}
             {row.meal.name.trim() && description && (
               <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-secondary)', marginTop: '0.125rem' }}>
                 {description}
@@ -467,12 +485,6 @@ function DayMeals({ day, recipes }: { day: CoachingPlanDraft['mealPlan'][number]
               <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
                 <span style={{ fontWeight: 700, color: '#3F6936' }}>Your portion: </span>
                 {fallbackWeighOut}
-              </p>
-            )}
-            {fraction && fraction.label !== 'the whole recipe' && (
-              <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem', fontStyle: 'italic' }}>
-                <span style={{ fontWeight: 700, color: '#3F6936', fontStyle: 'normal' }}>No scale? </span>
-                Cook the full recipe, then serve yourself {fraction.qualifier ? `a ${fraction.qualifier} ${fraction.label}` : `about ${fraction.label}`} of it.
               </p>
             )}
             </div>

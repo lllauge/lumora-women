@@ -180,17 +180,6 @@ export async function POST(request: NextRequest) {
     .eq('user_id', user.id)
     .eq('session_id', sessionId)
 
-  // Clients no longer use authenticator apps. Retire those factors only after
-  // the email challenge has succeeded.
-  const factors = await service.auth.admin.mfa.listFactors({ userId: user.id })
-  if (!factors.error) {
-    for (const factor of factors.data.factors) {
-      if (factor.factor_type === 'totp' || factor.factor_type === 'phone') {
-        await service.auth.admin.mfa.deleteFactor({ userId: user.id, id: factor.id })
-      }
-    }
-  }
-
   const response = NextResponse.json({ ok: true })
   response.cookies.set(
     clientEmailMfaCookie,

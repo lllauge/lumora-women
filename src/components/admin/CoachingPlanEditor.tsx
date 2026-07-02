@@ -394,25 +394,6 @@ function dayMacroTotal(
   }
 }
 
-function clearRecipeNutrition(
-  recipe: CoachingPlanDraft['recipes'][number],
-): CoachingPlanDraft['recipes'][number] {
-  return {
-    ...recipe,
-    clientServing: '',
-    clientServingMultiplier: '',
-    clientServingGrams: '',
-    clientServingMeasure: '',
-    clientServingBreakdown: '',
-    calories: '',
-    protein: '',
-    carbs: '',
-    fats: '',
-    fiber: '',
-  }
-}
-
-
 function TextInput({
   label,
   value,
@@ -819,7 +800,10 @@ export default function CoachingPlanEditor({
       }
       const idx = newRecipes.findIndex(r => r.name === slotRecipeName)
       newRecipes[idx] = {
-        ...clearRecipeNutrition(newRecipes[idx]),
+        // Keep the last verified total visible while the live USDA request
+        // recalculates this custom meal. Clearing it here made the whole meal
+        // temporarily disappear from the day total.
+        ...newRecipes[idx],
         ingredients: [...newRecipes[idx].ingredients, ingredient],
       }
 
@@ -841,15 +825,30 @@ export default function CoachingPlanEditor({
       const meal = current.mealPlan[dayIndex][mealKey]
       const recipeName = mealRecipeNames(meal).find((name) => isSlotRecipeName(name, slotKey))
       if (!recipeName) return current
-      const newRecipes = current.recipes.map(r =>
-        r.name === recipeName
-          ? { ...clearRecipeNutrition(r), ingredients: r.ingredients.filter((_, i) => i !== ingredientIndex) }
-          : r
-      )
+      const existingRecipe = current.recipes.find((recipe) => recipe.name === recipeName)
+      const remainingIngredients = existingRecipe?.ingredients.filter((_, i) => i !== ingredientIndex) ?? []
+      const newRecipes = remainingIngredients.length > 0
+        ? current.recipes.map((recipe) => (
+            recipe.name === recipeName
+              ? { ...recipe, ingredients: remainingIngredients }
+              : recipe
+          ))
+        : current.recipes.filter((recipe) => recipe.name !== recipeName)
       const mealPlan = [...current.mealPlan]
+      const updatedMeal = remainingIngredients.length > 0
+        ? mealPlan[dayIndex][mealKey]
+        : withMealRecipeNames(
+            mealPlan[dayIndex][mealKey],
+            mealRecipeNames(mealPlan[dayIndex][mealKey]).filter((name) => name !== recipeName),
+          )
       mealPlan[dayIndex] = {
         ...mealPlan[dayIndex],
-        [mealKey]: { ...mealPlan[dayIndex][mealKey], macros: '' },
+        [mealKey]: {
+          ...updatedMeal,
+          macros: remainingIngredients.length > 0
+            ? updatedMeal.macros
+            : summedMealMacroLabel(updatedMeal, newRecipes),
+        },
       }
       return { ...current, recipes: newRecipes, mealPlan }
     })
@@ -880,7 +879,8 @@ export default function CoachingPlanEditor({
       }
       const idx = newRecipes.findIndex(r => r.name === slotRecipeName)
       newRecipes[idx] = {
-        ...clearRecipeNutrition(newRecipes[idx]),
+        // Preserve the verified snack total until its new total arrives.
+        ...newRecipes[idx],
         ingredients: [...newRecipes[idx].ingredients, ingredient],
       }
 
@@ -899,14 +899,29 @@ export default function CoachingPlanEditor({
       const snack = current.mealPlan[dayIndex].snacks[snackIndex]
       const recipeName = snack && mealRecipeNames(snack).find((name) => isSlotRecipeName(name, slotKey))
       if (!recipeName) return current
-      const newRecipes = current.recipes.map(r =>
-        r.name === recipeName
-          ? { ...clearRecipeNutrition(r), ingredients: r.ingredients.filter((_, i) => i !== ingredientIndex) }
-          : r
-      )
+      const existingRecipe = current.recipes.find((recipe) => recipe.name === recipeName)
+      const remainingIngredients = existingRecipe?.ingredients.filter((_, i) => i !== ingredientIndex) ?? []
+      const newRecipes = remainingIngredients.length > 0
+        ? current.recipes.map((recipe) => (
+            recipe.name === recipeName
+              ? { ...recipe, ingredients: remainingIngredients }
+              : recipe
+          ))
+        : current.recipes.filter((recipe) => recipe.name !== recipeName)
       const mealPlan = [...current.mealPlan]
       const snacks = [...mealPlan[dayIndex].snacks]
-      snacks[snackIndex] = { ...snacks[snackIndex], macros: '' }
+      const updatedSnack = remainingIngredients.length > 0
+        ? snacks[snackIndex]
+        : withMealRecipeNames(
+            snacks[snackIndex],
+            mealRecipeNames(snacks[snackIndex]).filter((name) => name !== recipeName),
+          )
+      snacks[snackIndex] = {
+        ...updatedSnack,
+        macros: remainingIngredients.length > 0
+          ? updatedSnack.macros
+          : summedMealMacroLabel(updatedSnack, newRecipes),
+      }
       mealPlan[dayIndex] = { ...mealPlan[dayIndex], snacks }
       return { ...current, recipes: newRecipes, mealPlan }
     })

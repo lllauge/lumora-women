@@ -1,6 +1,4 @@
-import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
-import { adminSessionCookies, verifySignedAdminCookie } from '@/lib/admin-session'
 
 export async function getVerifiedAdminUser() {
   const supabase = await createClient()
@@ -15,10 +13,11 @@ export async function getVerifiedAdminUser() {
 
   if (profile?.role !== 'admin') throw new Error('Unauthorized.')
 
-  const cookieStore = await cookies()
-  const mfaCookie = cookieStore.get(adminSessionCookies.mfa)?.value
-  const mfaVerified = await verifySignedAdminCookie(mfaCookie, 'mfa', user.id)
-  if (!mfaVerified) throw new Error('Admin verification required.')
+  const { data: assurance, error: assuranceError } =
+    await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+  if (assuranceError || assurance.currentLevel !== 'aal2') {
+    throw new Error('Admin verification required.')
+  }
 
   return { user, supabase }
 }

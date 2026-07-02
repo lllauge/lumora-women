@@ -13,6 +13,8 @@ export default async function AdminLoginPage({ searchParams }: { searchParams: S
   const initialError =
     error === 'unauthorized'
       ? 'This account does not have admin access.'
+      : error === 'inactive'
+        ? 'You were signed out after 30 minutes without activity. Please log in again.'
       : undefined
 
   return (

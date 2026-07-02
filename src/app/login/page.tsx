@@ -15,7 +15,13 @@ const LOCKOUT_MINUTES = 15
 function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const redirectTo = searchParams.get('redirectTo') ?? '/dashboard'
+  const requestedRedirect = searchParams.get('redirectTo')
+  const redirectTo = requestedRedirect?.startsWith('/') && !requestedRedirect.startsWith('//')
+    ? requestedRedirect
+    : '/dashboard'
+  const inactivityMessage = searchParams.get('error') === 'inactive'
+    ? 'You were signed out after 60 minutes without activity. Please log in again.'
+    : ''
   const captchaRef = useRef<HCaptcha>(null)
 
   const [form, setForm] = useState({ email: '', password: '' })
@@ -83,7 +89,13 @@ function LoginForm() {
     if (userData?.role === 'admin') {
       router.push('/admin')
     } else {
-      router.push(redirectTo)
+      const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+      if (assurance?.currentLevel !== 'aal2') {
+        const mode = assurance?.nextLevel === 'aal2' ? 'challenge' : 'enroll'
+        router.push(`/mfa?mode=${mode}&redirectTo=${encodeURIComponent(redirectTo)}`)
+      } else {
+        router.push(redirectTo)
+      }
     }
     router.refresh()
   }
@@ -93,6 +105,14 @@ function LoginForm() {
       title="Welcome Back"
       subtitle="Log in to access your courses and continue your journey."
     >
+      {inactivityMessage && (
+        <div
+          className="px-4 py-3 rounded-lg text-sm mb-4"
+          style={{ background: '#FFF7ED', color: '#92400E', fontFamily: 'var(--font-sans)', border: '1px solid #FED7AA' }}
+        >
+          {inactivityMessage}
+        </div>
+      )}
       {isLocked && (
         <div
           className="px-4 py-3 rounded-lg text-sm mb-4"

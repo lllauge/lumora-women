@@ -1,9 +1,17 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { adminSessionCookies, verifySignedAdminCookie } from '@/lib/admin-session'
+import { adminSessionCookies } from '@/lib/admin-session'
+import {
+  activityCookieMaxAge,
+  createSignedActivityCookie,
+  isSessionIdle,
+  readSignedActivityCookie,
+  sessionActivityCookies,
+  sessionIdleSeconds,
+  type SessionArea,
+} from '@/lib/session-activity'
 
 const ADMIN_LOGIN_PATH = '/admin/login'
-const ADMIN_VERIFY_TOTP_PATH = '/admin/verify-totp'
 const ADMIN_SESSION_MAX_SECONDS = 8 * 60 * 60 // 8 hours
 
 /** Parse the ADMIN_ALLOWED_IPS env var into a Set of trimmed IP strings. */
@@ -62,6 +70,34 @@ export async function proxy(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
+  async function enforceActivity(area: SessionArea) {
+    if (!user) return null
+    const cookieName = sessionActivityCookies[area]
+    const activity = await readSignedActivityCookie(
+      request.cookies.get(cookieName)?.value,
+      area,
+      user.id,
+    )
+    const now = Math.floor(Date.now() / 1000)
+    if (activity && isSessionIdle(activity.lastActivity, now, sessionIdleSeconds[area])) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/api/auth/idle-signout'
+      url.search = ''
+      url.searchParams.set('area', area)
+      return NextResponse.redirect(url)
+    }
+    if (!activity) {
+      response.cookies.set(cookieName, await createSignedActivityCookie(area, user.id), {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: activityCookieMaxAge,
+        path: '/',
+      })
+    }
+    return null
+  }
+
   // ── Student-side gates ────────────────────────────────────────────────────
   const isCoachingPortal =
     path.startsWith('/coaching/onboarding') ||
@@ -85,12 +121,58 @@ export async function proxy(request: NextRequest) {
       url.pathname = '/verify-email'
       return NextResponse.redirect(url)
     }
+
+    const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+    if (assurance?.currentLevel !== 'aal2') {
+      const url = request.nextUrl.clone()
+      url.pathname = '/mfa'
+      url.search = ''
+      url.searchParams.set(
+        'mode',
+        assurance?.nextLevel === 'aal2' ? 'challenge' : 'enroll',
+      )
+      url.searchParams.set('redirectTo', path)
+      return NextResponse.redirect(url)
+    }
+
+    const idleRedirect = await enforceActivity('client')
+    if (idleRedirect) return idleRedirect
+  }
+
+  if (path === '/mfa') {
+    if (!user) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      url.searchParams.set('redirectTo', '/mfa')
+      return NextResponse.redirect(url)
+    }
+    const requestedArea = request.nextUrl.searchParams.get('area')
+    if (requestedArea === 'admin') {
+      const { data: profile } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle()
+      if (profile?.role !== 'admin') {
+        const url = request.nextUrl.clone()
+        url.pathname = '/login'
+        url.search = ''
+        return NextResponse.redirect(url)
+      }
+    }
+    const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+    if (assurance?.currentLevel === 'aal2') {
+      const redirectTo = request.nextUrl.searchParams.get('redirectTo')
+      const safeDestination = redirectTo?.startsWith('/') && !redirectTo.startsWith('//')
+        ? redirectTo
+        : '/dashboard'
+      return NextResponse.redirect(new URL(safeDestination, request.url))
+    }
   }
 
   // ── Admin-side gates ──────────────────────────────────────────────────────
   if (path.startsWith('/admin')) {
     const isLoginPage = path === ADMIN_LOGIN_PATH
-    const isTotpPage = path === ADMIN_VERIFY_TOTP_PATH
 
     // No session → bounce to admin login
     if (!user) {
@@ -123,7 +205,7 @@ export async function proxy(request: NextRequest) {
 
     // ── Admin session timeout (8 hours) ──────────────────────────────────
     const loginAt = request.cookies.get('admin_login_at')?.value
-    if (loginAt && !isLoginPage && !isTotpPage) {
+    if (loginAt && !isLoginPage) {
       const loginTime = parseInt(loginAt, 10)
       const elapsed = Math.floor(Date.now() / 1000) - loginTime
       if (elapsed > ADMIN_SESSION_MAX_SECONDS) {
@@ -141,41 +223,38 @@ export async function proxy(request: NextRequest) {
       }
     }
 
-    // ── TOTP gate ─────────────────────────────────────────────────────────
-    // After password login, admin must complete TOTP before accessing dashboard.
-    const totpVerified = await verifySignedAdminCookie(
-      request.cookies.get(adminSessionCookies.mfa)?.value,
-      'mfa',
-      user.id
-    )
-    const totpPending = await verifySignedAdminCookie(
-      request.cookies.get(adminSessionCookies.pending)?.value,
-      'totp-pending',
-      user.id
-    )
-
-    if (!isTotpPage && !isLoginPage) {
-      if (!totpVerified) {
-        // Password verified but TOTP not yet done
-        const url = request.nextUrl.clone()
-        url.pathname = ADMIN_VERIFY_TOTP_PATH
-        return NextResponse.redirect(url)
-      }
+    const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+    const mfaVerified = assurance?.currentLevel === 'aal2'
+    if (!isLoginPage && !mfaVerified) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/mfa'
+      url.search = ''
+      url.searchParams.set('area', 'admin')
+      url.searchParams.set('mode', assurance?.nextLevel === 'aal2' ? 'challenge' : 'enroll')
+      url.searchParams.set('redirectTo', '/admin')
+      return NextResponse.redirect(url)
     }
 
-    // Already fully signed in as admin → skip login/totp pages
-    if ((isLoginPage || isTotpPage) && totpVerified) {
+    if (isLoginPage && !mfaVerified) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/mfa'
+      url.search = ''
+      url.searchParams.set('area', 'admin')
+      url.searchParams.set('mode', assurance?.nextLevel === 'aal2' ? 'challenge' : 'enroll')
+      url.searchParams.set('redirectTo', '/admin')
+      return NextResponse.redirect(url)
+    }
+
+    if (isLoginPage && mfaVerified) {
       const url = request.nextUrl.clone()
       url.pathname = '/admin'
       url.search = ''
       return NextResponse.redirect(url)
     }
 
-    if (isTotpPage && !totpPending && !totpVerified) {
-      const url = request.nextUrl.clone()
-      url.pathname = ADMIN_LOGIN_PATH
-      url.searchParams.set('error', 'totp_expired')
-      return NextResponse.redirect(url)
+    if (mfaVerified) {
+      const idleRedirect = await enforceActivity('admin')
+      if (idleRedirect) return idleRedirect
     }
   }
 

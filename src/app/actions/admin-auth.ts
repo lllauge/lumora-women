@@ -4,14 +4,12 @@ import { redirect } from 'next/navigation'
 import { cookies, headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
-import { verifyTotp } from '@/lib/totp'
 import { logAdminAction } from '@/lib/audit-log'
 import { checkRateLimit } from '@/lib/rate-limit'
 import {
   adminSessionCookies,
-  createSignedAdminCookie,
-  verifySignedAdminCookie,
 } from '@/lib/admin-session'
+import { sessionActivityCookies } from '@/lib/session-activity'
 
 export type AdminAuthResult = { error?: string }
 
@@ -34,8 +32,8 @@ async function getClientIpFromHeaders(): Promise<string> {
 
 /**
  * Step 1: Verify email + password.
- * If the admin has TOTP configured, sets a pending cookie and redirects
- * to /admin/verify-totp. Otherwise grants full access directly.
+ * Native Supabase MFA is mandatory. Password verification creates an AAL1
+ * session, then /mfa enrolls or verifies an authenticator to reach AAL2.
  */
 export async function signInAdmin(formData: FormData): Promise<AdminAuthResult> {
   const email    = (formData.get('email') ?? '').toString().trim()
@@ -77,14 +75,6 @@ export async function signInAdmin(formData: FormData): Promise<AdminAuthResult> 
     return { error: 'This account does not have admin access.' }
   }
 
-  // Fetch totp_secret separately so a missing column doesn't block login
-  const { data: totpRow, error: totpError } = await serviceClient
-    .from('users')
-    .select('totp_secret')
-    .eq('id', signInData.user.id)
-    .maybeSingle()
-  const profile = { ...roleRow, totp_secret: totpError ? null : (totpRow?.totp_secret ?? null) }
-
   // Set admin_login_at cookie for session timeout tracking
   const cookieStore = await cookies()
   const loginTimestamp = Math.floor(Date.now() / 1000).toString()
@@ -96,30 +86,6 @@ export async function signInAdmin(formData: FormData): Promise<AdminAuthResult> 
     path: '/',
   })
 
-  if (profile?.totp_secret) {
-    const pendingCookie = await createSignedAdminCookie('totp-pending', signInData.user.id, 5 * 60)
-    // TOTP configured — require second factor
-    cookieStore.set(adminSessionCookies.pending, pendingCookie, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 5 * 60, // 5 minute window to enter TOTP
-      path: '/',
-    })
-    cookieStore.delete(adminSessionCookies.legacyPending)
-    cookieStore.delete(adminSessionCookies.legacyMfa)
-    redirect('/admin/verify-totp')
-  }
-
-  // No TOTP configured — grant direct access (setup mode)
-  const mfaCookie = await createSignedAdminCookie('mfa', signInData.user.id, 8 * 60 * 60)
-  cookieStore.set(adminSessionCookies.mfa, mfaCookie, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 8 * 60 * 60,
-    path: '/',
-  })
   cookieStore.delete(adminSessionCookies.legacyPending)
   cookieStore.delete(adminSessionCookies.legacyMfa)
 
@@ -128,91 +94,18 @@ export async function signInAdmin(formData: FormData): Promise<AdminAuthResult> 
     action: 'login',
   })
 
+  const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+  if (assurance?.currentLevel !== 'aal2') {
+    const mode = assurance?.nextLevel === 'aal2' ? 'challenge' : 'enroll'
+    redirect(`/mfa?area=admin&mode=${mode}&redirectTo=/admin`)
+  }
   redirect('/admin')
 }
 
-/**
- * Step 2: Verify the TOTP code after password authentication.
- */
-export async function verifyAdminTotp(formData: FormData): Promise<AdminAuthResult> {
-  const token = (formData.get('token') ?? '').toString().trim()
-
-  if (!token || !/^\d{6}$/.test(token)) {
-    return { error: 'Please enter the 6-digit code from your authenticator app.' }
-  }
-
-  const cookieStore = await cookies()
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    return { error: 'Session expired. Please log in again.' }
-  }
-
-  const pending = cookieStore.get(adminSessionCookies.pending)?.value
-  const pendingIsValid = await verifySignedAdminCookie(pending, 'totp-pending', user.id)
-  if (!pendingIsValid) {
-    cookieStore.delete(adminSessionCookies.pending)
-    cookieStore.delete(adminSessionCookies.legacyPending)
-    return { error: 'No pending TOTP session. Please log in first.' }
-  }
-
-  // Get TOTP secret via service role (not exposed to client via RLS)
-  const adminClient = getAdminServiceClient()
-  const { data: roleRow, error: totpRoleError } = await adminClient
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  if (totpRoleError || roleRow?.role !== 'admin') {
-    return { error: 'TOTP is not configured for this account.' }
-  }
-
-  const { data: totpRow, error: totpSecretError } = await adminClient
-    .from('users')
-    .select('totp_secret')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  const profile = {
-    role: roleRow.role,
-    totp_secret: totpSecretError ? null : (totpRow?.totp_secret ?? null),
-  }
-
-  if (!profile.totp_secret) {
-    return { error: 'TOTP is not configured for this account.' }
-  }
-
-  // Rate limit TOTP attempts: 5 per 15 minutes
-  const ip = await getClientIpFromHeaders()
-  const rateLimit = await checkRateLimit(`admin_totp:${ip}`, 5, 900)
-  if (!rateLimit.allowed) {
-    return { error: 'Too many TOTP attempts. Please wait 15 minutes.' }
-  }
-
-  const isValid = verifyTotp(token, profile.totp_secret)
-
-  if (!isValid) {
-    await logAdminAction({ adminUserId: user.id, action: 'totp_failed' })
-    return { error: 'Invalid authentication code. Please try again.' }
-  }
-
-  // TOTP verified — grant full admin access
-  const mfaCookie = await createSignedAdminCookie('mfa', user.id, 8 * 60 * 60)
-  cookieStore.delete(adminSessionCookies.pending)
-  cookieStore.delete(adminSessionCookies.legacyPending)
-  cookieStore.set(adminSessionCookies.mfa, mfaCookie, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 8 * 60 * 60,
-    path: '/',
-  })
-
-  await logAdminAction({ adminUserId: user.id, action: 'totp_verified' })
-
-  redirect('/admin')
+/** Legacy endpoint retained so old bookmarked verification pages migrate safely. */
+export async function verifyAdminTotp(formData?: FormData): Promise<AdminAuthResult> {
+  void formData
+  redirect('/mfa?area=admin&mode=challenge&redirectTo=/admin')
 }
 
 export async function signOutAdmin(): Promise<void> {
@@ -228,6 +121,8 @@ export async function signOutAdmin(): Promise<void> {
   cookieStore.delete(adminSessionCookies.mfa)
   cookieStore.delete(adminSessionCookies.legacyPending)
   cookieStore.delete(adminSessionCookies.legacyMfa)
+  cookieStore.delete(sessionActivityCookies.admin)
+  cookieStore.delete(sessionActivityCookies.client)
   redirect('/admin/login')
 }
 

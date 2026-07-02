@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import AxeProvider from '@/components/dev/AxeProvider'
+import IdleSessionGuard from '@/components/auth/IdleSessionGuard'
 
 export const metadata: Metadata = {
   title: {
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body suppressHydrationWarning>
         <a href="#main-content" className="skip-nav">Skip to main content</a>
+        <IdleSessionGuard />
         {children}
         <AxeProvider />
       </body>

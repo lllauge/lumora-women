@@ -267,10 +267,10 @@ function Hero() {
 
 function StatsBar() {
   const stats = [
-    { value: '500+', label: 'Women Enrolled' },
-    { value: '6',    label: 'Expert Modules' },
-    { value: '4.9★', label: 'Average Rating' },
-    { value: 'Free', label: 'To Get Started' },
+    { value: '1-on-1',   label: 'Personalized Coaching' },
+    { value: 'Science',  label: 'Evidence-Based Method' },
+    { value: 'Women',    label: 'Hormone-Aware Design' },
+    { value: 'Free',     label: 'Course to Get Started' },
   ]
 
   return (

@@ -10,7 +10,7 @@ const baseExploreLinks = [
 const supportLinks = [
   { label: 'Contact Us', href: '/contact' },
   { label: 'FAQ', href: '/faq' },
-  { label: 'Results & Stories', href: '/results' },
+  { label: 'What to Expect', href: '/results' },
   { label: 'Work With Me', href: '/work-with-me' },
 ]
 

@@ -4,56 +4,17 @@ import NavbarWrapper from '@/components/layout/NavbarWrapper'
 import FooterWrapper from '@/components/layout/FooterWrapper'
 
 export const metadata: Metadata = {
-  title: 'Results & Stories | Lumora Women',
-  description: 'Real women. Real results. See how Lumora Women has helped hundreds of women reclaim their health, energy, and inner peace.',
+  title: 'What to Expect',
+  description: 'The transformation Lumora Women coaching is designed to guide you toward — grounded in science, tailored to your body, and built on real support.',
 }
 
 // ─── Data ──────────────────────────────────────────────────────────────────────
 
 const stats = [
-  { value: '500+', label: 'Women Enrolled' },
-  { value: '96%',  label: 'Report Feeling More Grounded' },
-  { value: '4.9★', label: 'Average Course Rating' },
-  { value: '12+',  label: 'Countries Represented' },
-]
-
-const testimonials = [
-  {
-    quote: 'I came to Lumora completely depleted after my second baby. Three months later, I feel like myself again, more than I have in years. The postpartum course gave me language for what I was experiencing and tools I actually use every day.',
-    name: 'Camille R.',
-    detail: 'Postpartum Recovery, Los Angeles',
-    initials: 'CR',
-  },
-  {
-    quote: 'I\'d tried so many wellness programs that felt performative and exhausting. Lumora was the first that actually felt like a rest. The community especially, I didn\'t know I needed that kind of witnessed support until I had it.',
-    name: 'Sarah M.',
-    detail: 'Inner Circle Member, Chicago',
-    initials: 'SM',
-  },
-  {
-    quote: 'The hormone health course completely changed how I relate to my cycle. I stopped fighting my body and started listening to it. My energy is more consistent, my mood more stable. It feels like a miracle but it\'s really just education.',
-    name: 'Amara T.',
-    detail: 'Hormone Health Course, Atlanta',
-    initials: 'AT',
-  },
-  {
-    quote: 'I\'m a busy professional and I was skeptical about online wellness programs. But the self-paced format and the depth of content won me over immediately. I do 20 minutes a morning now and it\'s the most important part of my day.',
-    name: 'Rachel K.',
-    detail: 'Mindfulness & Movement, New York',
-    initials: 'RK',
-  },
-  {
-    quote: 'What sets Lumora apart is the authenticity. You can tell this was built by a woman who actually went through it, not a wellness brand trying to sell you something. I trust this content with my healing.',
-    name: 'Jessica P.',
-    detail: 'Foundations Member, Toronto',
-    initials: 'JP',
-  },
-  {
-    quote: 'Six months into my Lumora journey and I\'ve lost the postpartum anxiety I thought would be with me forever. I finally have the tools and the community to support real, lasting change.',
-    name: 'Maria L.',
-    detail: 'Postpartum Wellness, Miami',
-    initials: 'ML',
-  },
+  { value: '1-on-1', label: 'Private Coaching' },
+  { value: '100%',   label: 'Tailored to Your Body' },
+  { value: '0',      label: 'Gimmicks or Quick Fixes' },
+  { value: 'Free',   label: 'Course to Get Started' },
 ]
 
 const beforeAfter = [
@@ -103,7 +64,7 @@ export default function ResultsPage() {
               borderRadius: '999px',
               marginBottom: '1.5rem',
             }}>
-              Real Women. Real Results.
+              Your Story Starts Here
             </span>
             <h1 style={{
               fontFamily: 'var(--font-display)',
@@ -113,7 +74,7 @@ export default function ResultsPage() {
               lineHeight: 1.2,
               marginBottom: '1.25rem',
             }}>
-              Stories That Remind You What&apos;s Possible
+              What Becomes Possible With Real Support
             </h1>
             <p style={{
               fontFamily: 'var(--font-sans)',
@@ -121,7 +82,8 @@ export default function ResultsPage() {
               color: 'var(--text-secondary)',
               lineHeight: 1.75,
             }}>
-              Every woman who walks through Lumora carries her own story. These are some of theirs.
+              Every woman who walks through Lumora is writing her own story. Here is the
+              transformation we help you move toward, and how we get there together.
             </p>
           </div>
         </section>
@@ -178,7 +140,7 @@ export default function ResultsPage() {
                 color: 'var(--text-primary)',
                 marginBottom: '0.75rem',
               }}>
-                The Shift Women Experience
+                The Shift We Coach You Toward
               </h2>
               <div style={{ width: '4rem', height: '3px', background: 'linear-gradient(to right, #F0D060 0%, #C8980A 25%, #E8C040 50%, #A87808 75%, #D4AC30 100%)', margin: '0 auto' }} />
             </div>
@@ -204,7 +166,7 @@ export default function ResultsPage() {
                       color: 'var(--botanical-green)',
                       marginBottom: '0.5rem',
                     }}>
-                      Before
+                      Where You Are
                     </span>
                     <p style={{
                       fontFamily: 'var(--font-sans)',
@@ -243,7 +205,7 @@ export default function ResultsPage() {
                       color: 'var(--botanical-green)',
                       marginBottom: '0.5rem',
                     }}>
-                      After
+                      Where You&apos;re Going
                     </span>
                     <p style={{
                       fontFamily: 'var(--font-sans)',
@@ -260,100 +222,44 @@ export default function ResultsPage() {
           </div>
         </section>
 
-        {/* ── Testimonials Grid ── */}
+        {/* ── Founding Stories ── */}
         <section style={{
           background: 'var(--section-tint)',
           padding: 'clamp(3.5rem, 7vw, 6rem) clamp(1.5rem, 5vw, 3rem)',
         }}>
-          <div style={{ maxWidth: '72rem', margin: '0 auto' }}>
-            <div style={{ textAlign: 'center', marginBottom: '3.5rem' }}>
-              <h2 style={{
-                fontFamily: 'var(--font-display)',
-                fontSize: 'clamp(1.75rem, 3.5vw, 2.5rem)',
-                fontWeight: 700,
-                color: 'var(--text-primary)',
-                marginBottom: '0.75rem',
-              }}>
-                Hear From Our Community
-              </h2>
-              <div style={{ width: '4rem', height: '3px', background: 'linear-gradient(to right, #F0D060 0%, #C8980A 25%, #E8C040 50%, #A87808 75%, #D4AC30 100%)', margin: '0 auto' }} />
-            </div>
-
-            <div className="testimonials-masonry">
-              {testimonials.map((t) => (
-                <div key={t.name} style={{
-                  background: '#fff',
-                  padding: '2rem',
-                  borderRadius: '1.25rem',
-                  border: '1px solid rgba(200,220,192,0.35)',
-                  boxShadow: '0 4px 16px rgba(26,40,24,0.05)',
-                  breakInside: 'avoid',
-                  marginBottom: '1.5rem',
-                }}>
-                  <span style={{
-                    display: 'block',
-                    fontFamily: 'var(--font-display)',
-                    fontSize: '3.5rem',
-                    lineHeight: 1,
-                    marginBottom: '-0.5rem',
-                    opacity: 0.5,
-                    background: 'linear-gradient(to right, #F0D060 0%, #C8980A 25%, #E8C040 50%, #A87808 75%, #D4AC30 100%)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    backgroundClip: 'text',
-                  }}>&ldquo;</span>
-                  <p style={{
-                    fontFamily: 'var(--font-display)',
-                    fontSize: '1.0625rem',
-                    fontStyle: 'italic',
-                    fontWeight: 400,
-                    color: 'var(--text-primary)',
-                    lineHeight: 1.7,
-                    marginBottom: '1.5rem',
-                  }}>
-                    {t.quote}
-                  </p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
-                    <div style={{
-                      width: '40px',
-                      height: '40px',
-                      borderRadius: '50%',
-                      background: 'var(--pale-botanical)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                    }}>
-                      <span style={{
-                        fontFamily: 'var(--font-sans)',
-                        fontSize: '0.75rem',
-                        fontWeight: 700,
-                        color: 'var(--botanical-green)',
-                      }}>
-                        {t.initials}
-                      </span>
-                    </div>
-                    <div>
-                      <p style={{
-                        fontFamily: 'var(--font-sans)',
-                        fontSize: '0.875rem',
-                        fontWeight: 700,
-                        color: 'var(--text-primary)',
-                      }}>
-                        {t.name}
-                      </p>
-                      <p style={{
-                        fontFamily: 'var(--font-sans)',
-                        fontSize: '0.75rem',
-                        color: 'var(--text-muted)',
-                      }}>
-                        {t.detail}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+          <div style={{ maxWidth: '44rem', margin: '0 auto', textAlign: 'center' }}>
+            <h2 style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: 'clamp(1.75rem, 3.5vw, 2.5rem)',
+              fontWeight: 700,
+              color: 'var(--text-primary)',
+              marginBottom: '0.75rem',
+            }}>
+              Your Story Could Be Here First
+            </h2>
+            <div style={{ width: '4rem', height: '3px', background: 'linear-gradient(to right, #F0D060 0%, #C8980A 25%, #E8C040 50%, #A87808 75%, #D4AC30 100%)', margin: '0 auto 2rem' }} />
+            <p style={{
+              fontFamily: 'var(--font-sans)',
+              fontSize: '1.0625rem',
+              color: 'var(--text-secondary)',
+              lineHeight: 1.75,
+              marginBottom: '1.25rem',
+            }}>
+              Lumora&apos;s coaching practice is intentionally small. Every client works
+              directly with her coach, and no two programs look the same. As the first
+              women complete their journeys, their stories will live here, shared with
+              their permission and in their own words.
+            </p>
+            <p style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: '1.125rem',
+              fontStyle: 'italic',
+              color: 'var(--text-primary)',
+              lineHeight: 1.7,
+            }}>
+              Until then, we&apos;d rather show you this space empty than fill it with
+              borrowed words.
+            </p>
           </div>
         </section>
 
@@ -445,20 +351,6 @@ export default function ResultsPage() {
         .before-after-card {
           display: flex;
           flex-direction: column;
-        }
-        .testimonials-masonry {
-          columns: 1;
-          gap: 1.5rem;
-        }
-        @media (min-width: 768px) {
-          .testimonials-masonry {
-            columns: 2;
-          }
-        }
-        @media (min-width: 1024px) {
-          .testimonials-masonry {
-            columns: 3;
-          }
         }
       `}</style>
     </div>

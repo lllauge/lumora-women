@@ -25,7 +25,7 @@ import {
 } from '@/lib/workout-generator'
 import { cookedGramsToRaw } from '@/lib/cooked-to-raw'
 import { isExcludedNutritionIngredient } from '@/lib/nutrition-ingredient'
-import { declaredServingMultiplier } from '@/lib/nutrition-math'
+import { resolvedServingMultiplier } from '@/lib/nutrition-math'
 
 type UsdaNutritionResponse = {
   error?: string
@@ -256,7 +256,7 @@ function extractLeadingGrams(line: string): { grams: number; label: string } | n
   return { grams: Number(match[1]), label: match[2].trim() }
 }
 
-// Scales a paste-mode recipe to the client's calorie target using the stored
+// Scales a paste-mode recipe to the fitted client portion using the stored
 // recipe totals — no USDA call. Mirrors the shape that calculateRecipeNutrition
 // produces so downstream display code stays oblivious to the source.
 function scalePasteRecipe({
@@ -269,6 +269,7 @@ function scalePasteRecipe({
   ingredients,
   isFamily,
   familyServings,
+  servingMultiplier,
 }: {
   recipeCalories: number
   recipeProtein: number
@@ -279,9 +280,10 @@ function scalePasteRecipe({
   ingredients: string[]
   isFamily: boolean
   familyServings: number
+  servingMultiplier?: number
 }) {
-  let multiplier = 1
-  multiplier = declaredServingMultiplier(familyServings, isFamily)
+  const multiplier = servingMultiplier
+    ?? resolvedServingMultiplier(undefined, familyServings, isFamily)
 
   const clientServingGrams = Math.round(totalRecipeGrams * multiplier)
   const sharePct = multiplier >= 1 ? 'the full recipe' : `${Math.round(multiplier * 100)}% of the full recipe`
@@ -606,6 +608,11 @@ export default function CoachingPlanEditor({
               ingredients: recipe.ingredients,
               isFamily,
               familyServings: familyCount,
+              servingMultiplier: resolvedServingMultiplier(
+                recipe.clientServingMultiplier,
+                familyCount,
+                isFamily,
+              ),
             }),
             failed: false,
           }
@@ -621,7 +628,11 @@ export default function CoachingPlanEditor({
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               ingredients: recipe.ingredients,
-              clientServingMultiplier: `${declaredServingMultiplier(familyCount, isFamily)}`,
+              clientServingMultiplier: `${resolvedServingMultiplier(
+                recipe.clientServingMultiplier,
+                familyCount,
+                isFamily,
+              )}`,
               familyServings: recipe.familyServings || recipe.servings,
             }),
             signal: controller.signal,
@@ -1023,8 +1034,8 @@ export default function CoachingPlanEditor({
 
     if (recipesToCalc.length > 0) {
       const results = await Promise.all(recipesToCalc.map(async ({ recipe, index }) => {
-        // Family recipes use one declared recipe serving. Meal calorie targets
-        // are comparison goals, not permission to silently resize a recipe.
+        // Preserve any macro-fitted portion from draft generation. Newly added
+        // recipes without one still begin at one declared recipe serving.
         const familyCount = firstNumber(recipe.familyServings || recipe.servings)
         const isFamily = !individualPlanStyle && familyCount > 1
 
@@ -1056,6 +1067,11 @@ export default function CoachingPlanEditor({
             ingredients: recipe.ingredients,
             isFamily,
             familyServings: familyCount,
+            servingMultiplier: resolvedServingMultiplier(
+              recipe.clientServingMultiplier,
+              familyCount,
+              isFamily,
+            ),
           })
           return { index, pasteScaled: scaled, nutrition: null as UsdaNutritionResponse['nutrition'] | null }
         }
@@ -1065,7 +1081,11 @@ export default function CoachingPlanEditor({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             ingredients: recipe.ingredients,
-            clientServingMultiplier: `${declaredServingMultiplier(familyCount, isFamily)}`,
+            clientServingMultiplier: `${resolvedServingMultiplier(
+              recipe.clientServingMultiplier,
+              familyCount,
+              isFamily,
+            )}`,
             familyServings: recipe.familyServings || recipe.servings,
           }),
         })

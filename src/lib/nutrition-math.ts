@@ -40,6 +40,21 @@ export function declaredServingMultiplier(familyServings: number, isFamily: bool
   return isFamily && familyServings > 1 ? 1 / familyServings : 1
 }
 
+/**
+ * Keep a deliberately fitted client portion through preview and persistence.
+ * Invalid or legacy blank values fall back to one declared recipe serving.
+ */
+export function resolvedServingMultiplier(
+  storedMultiplier: string | undefined,
+  familyServings: number,
+  isFamily: boolean,
+) {
+  const stored = Number.parseFloat(String(storedMultiplier ?? '').trim())
+  return Number.isFinite(stored) && stored > 0 && stored <= 4
+    ? stored
+    : declaredServingMultiplier(familyServings, isFamily)
+}
+
 export function scaleFullRecipeNutrition({
   calories,
   protein,

@@ -5,9 +5,11 @@ import {
   atwaterGeneralCalories,
   declaredServingMultiplier,
   resolvedFoodCalories,
+  resolvedServingMultiplier,
   scaleFullRecipeNutrition,
   shouldReviewEnergyDifference,
 } from './nutrition-math.ts'
+import { fitRecipeServingMultipliers } from './meal-portion-fitting.ts'
 import {
   inferredDiscardedBrineIndexes,
   isCanonicalZeroNutritionIngredient,
@@ -24,6 +26,155 @@ test('uses one declared serving for a family recipe', () => {
   assert.equal(declaredServingMultiplier(4, true), 0.25)
   assert.equal(declaredServingMultiplier(6, true), 1 / 6)
   assert.equal(declaredServingMultiplier(4, false), 1)
+})
+
+test('preserves a fitted serving multiplier through later nutrition passes', () => {
+  assert.equal(resolvedServingMultiplier('0.218', 4, true), 0.218)
+  assert.equal(resolvedServingMultiplier('', 4, true), 0.25)
+  assert.equal(resolvedServingMultiplier('not a number', 4, true), 0.25)
+})
+
+test('reduces oversized dinner and snack portions to fit the daily targets', () => {
+  const meal = (recipeName) => ({
+    name: recipeName,
+    description: '',
+    macros: '',
+    recipeName,
+    recipeNames: [recipeName],
+  })
+  const recipe = (name, calories, protein, carbs, fats, multiplier = 1) => ({
+    name,
+    mealType: '',
+    servings: '',
+    familyServings: '',
+    clientServing: '',
+    clientServingMultiplier: `${multiplier}`,
+    clientServingGrams: '',
+    clientServingMeasure: '',
+    clientServingBreakdown: '',
+    prepTime: '',
+    cookTime: '',
+    calories: `${calories}`,
+    protein: `${protein}g`,
+    carbs: `${carbs}g`,
+    fats: `${fats}g`,
+    fiber: '0g',
+    ingredients: [],
+    instructions: [],
+    swaps: [],
+    notes: '',
+  })
+  const plan = {
+    macroTargets: {
+      calories: '1700',
+      protein: '140g',
+      carbs: '155g',
+      fats: '70g',
+      fiber: '24g',
+      water: '',
+      steps: '',
+      workoutTarget: '',
+    },
+    mealPlan: [{
+      day: 'Monday',
+      breakfast: meal('Breakfast'),
+      lunch: meal('Lunch'),
+      dinner: meal('Dinner'),
+      snacks: [meal('Snack')],
+      notes: '',
+    }],
+    recipes: [
+      recipe('Breakfast', 592, 37.8, 57.9, 22.4),
+      recipe('Lunch', 525, 55.2, 34.9, 17.7),
+      recipe('Dinner', 487, 27.1, 32.6, 29.4, 0.25),
+      recipe('Snack', 245, 20.9, 31.8, 3.3),
+    ],
+    workoutPlan: [],
+    groceryList: [],
+    adminNotes: '',
+    clientNotes: '',
+    status: 'draft',
+    generatedByAi: true,
+  }
+
+  const fitted = fitRecipeServingMultipliers(plan, {
+    breakfastPct: '35',
+    lunchPct: '30',
+    dinnerPct: '25',
+    snackPct: '10',
+  })
+  assert.ok(fitted.get('Dinner') < 0.25)
+  assert.ok(fitted.get('Snack') < 1)
+
+  const totalCalories = plan.recipes.reduce((sum, item) => (
+    sum + Number(item.calories) * (fitted.get(item.name) / Number(item.clientServingMultiplier))
+  ), 0)
+  assert.ok(Math.abs(totalCalories - 1700) <= 5)
+})
+
+test('never resizes exact custom-slot food quantities while fitting recipes', () => {
+  const exactCustomName = 'Custom breakfast (d1-breakfast)'
+  const meal = {
+    name: 'Breakfast',
+    description: '',
+    macros: '',
+    recipeName: 'Oats',
+    recipeNames: ['Oats', exactCustomName],
+  }
+  const baseRecipe = {
+    mealType: '',
+    servings: '',
+    familyServings: '',
+    clientServing: '',
+    clientServingMultiplier: '1',
+    clientServingGrams: '',
+    clientServingMeasure: '',
+    clientServingBreakdown: '',
+    prepTime: '',
+    cookTime: '',
+    protein: '20g',
+    carbs: '20g',
+    fats: '10g',
+    fiber: '5g',
+    ingredients: [],
+    instructions: [],
+    swaps: [],
+    notes: '',
+  }
+  const plan = {
+    macroTargets: {
+      calories: '500',
+      protein: '40g',
+      carbs: '40g',
+      fats: '20g',
+      fiber: '20g',
+      water: '',
+      steps: '',
+      workoutTarget: '',
+    },
+    mealPlan: [{
+      day: 'Monday',
+      breakfast: meal,
+      lunch: { ...meal, recipeName: '', recipeNames: [], name: '' },
+      dinner: { ...meal, recipeName: '', recipeNames: [], name: '' },
+      snacks: [],
+      notes: '',
+    }],
+    recipes: [
+      { ...baseRecipe, name: 'Oats', calories: '300' },
+      { ...baseRecipe, name: exactCustomName, calories: '250' },
+    ],
+    workoutPlan: [],
+    groceryList: [],
+    adminNotes: '',
+    clientNotes: '',
+    status: 'draft',
+    generatedByAi: true,
+  }
+
+  const fitted = fitRecipeServingMultipliers(plan, { breakfastPct: '100' })
+  assert.equal(fitted.has(exactCustomName), false)
+  assert.ok(fitted.has('Oats'))
 })
 
 test('scales full-recipe totals once and never re-divides saved serving calories', () => {

@@ -13,6 +13,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { getUsdaApiKey } from '@/lib/usda/api-key'
 import { calculateRecipeNutritionFromUsda } from '@/lib/usda/food-data'
 import { declaredServingMultiplier } from '@/lib/nutrition-math'
+import { fitRecipeServingMultipliers } from '@/lib/meal-portion-fitting'
 
 const LibraryRecipeSchema = z.object({
   name: z.string(),
@@ -21,6 +22,11 @@ const LibraryRecipeSchema = z.object({
   ingredients: z.array(z.string()),
   instructions: z.array(z.string()),
   notes: z.string(),
+  calories: z.number().nullable().optional(),
+  protein: z.number().nullable().optional(),
+  carbs: z.number().nullable().optional(),
+  fats: z.number().nullable().optional(),
+  fiber: z.number().nullable().optional(),
 })
 
 const DraftRequestSchema = z.object({
@@ -78,11 +84,11 @@ async function addUsdaServingMathToDraft(plan: CoachingPlanDraft, planningInputs
 
   const individualPlanStyle = planningInputs.mealPlanStyle === 'individual_only'
 
-  const recipes = await Promise.all(plan.recipes.map(async (recipe) => {
+  let recipes = await Promise.all(plan.recipes.map(async (recipe) => {
     if (recipe.ingredients.length === 0) return recipe
 
-    // A family recipe contributes one declared serving. The calorie target is
-    // a comparison goal; it must never silently resize the food portion.
+    // Start from one declared serving so the fitter below has an accurate,
+    // recipe-specific baseline to adjust against the client's targets.
     const familyCount = firstNumber(recipe.familyServings || recipe.servings)
     const isFamily = !individualPlanStyle && familyCount > 1
 
@@ -97,10 +103,10 @@ async function addUsdaServingMathToDraft(plan: CoachingPlanDraft, planningInputs
       if (!nutrition.totalRecipe.calories || nutrition.unmatchedIngredients.length > 0) return recipe
 
       const sourceNote = [
-        `USDA calculated one declared serving for ${recipe.mealType || 'this meal'}.`,
-        `Ingredient input weight for one serving: ${nutrition.clientServingGrams}g. ${nutrition.clientServingMeasure}`,
+        `USDA calculated full-recipe nutrition for ${recipe.mealType || 'this meal'}.`,
+        `Declared-serving input weight: ${nutrition.clientServingGrams}g.`,
         nutrition.clientServingBreakdown ? `Ingredient breakdown: ${nutrition.clientServingBreakdown}.` : '',
-        `Client serving share: ${nutrition.clientServingMultiplier} of the full recipe.`,
+        `Declared serving baseline: ${nutrition.clientServingMultiplier} of the full recipe.`,
         `Full recipe USDA total: ${nutrition.totalRecipe.calories} cal, ${nutrition.totalRecipe.protein}g protein, ${nutrition.totalRecipe.carbs}g carbs, ${nutrition.totalRecipe.fats}g fats.`,
         nutrition.warnings.length ? `Review USDA warnings: ${nutrition.warnings.join(' ')}` : '',
       ].filter(Boolean).join(' ')
@@ -128,7 +134,7 @@ async function addUsdaServingMathToDraft(plan: CoachingPlanDraft, planningInputs
     }
   }))
 
-  const mealPlan = plan.mealPlan.map((day) => {
+  let mealPlan = plan.mealPlan.map((day) => {
     const updateMeal = (meal: CoachingPlanDraft['mealPlan'][number]['breakfast']) => {
       return { ...meal, macros: mealMacroLabel(meal, recipes) }
     }
@@ -141,6 +147,58 @@ async function addUsdaServingMathToDraft(plan: CoachingPlanDraft, planningInputs
       snacks: day.snacks.map(updateMeal),
     }
   })
+
+  const fittedMultipliers = fitRecipeServingMultipliers(
+    { ...plan, recipes, mealPlan },
+    planningInputs,
+  )
+  if (fittedMultipliers.size > 0) {
+    recipes = await Promise.all(recipes.map(async (recipe) => {
+      const fitted = fittedMultipliers.get(recipe.name)
+      if (!fitted || recipe.ingredients.length === 0) return recipe
+      try {
+        const nutrition = await calculateRecipeNutritionFromUsda({
+          ingredients: recipe.ingredients,
+          clientServingMultiplier: `${fitted}`,
+          familyServings: recipe.familyServings || recipe.servings,
+          apiKey: apiKey.key,
+        })
+        if (!nutrition.totalRecipe.calories || nutrition.unmatchedIngredients.length > 0) return recipe
+        return {
+          ...recipe,
+          clientServingMultiplier: `${nutrition.clientServingMultiplier}`,
+          clientServingGrams: `${nutrition.clientServingGrams}g`,
+          clientServingMeasure: nutrition.clientServingMeasure,
+          clientServingBreakdown: nutrition.clientServingBreakdown,
+          clientServing: nutrition.clientServingBreakdown || `${nutrition.clientServingGrams}g`,
+          calories: `${nutrition.clientServing.calories}`,
+          protein: `${nutrition.clientServing.protein}g`,
+          carbs: `${nutrition.clientServing.carbs}g`,
+          fats: `${nutrition.clientServing.fats}g`,
+          fiber: `${nutrition.clientServing.fiber}g`,
+          notes: [
+            recipe.notes,
+            `Final macro-fitted client portion: ${nutrition.clientServingMultiplier} of the full recipe (${nutrition.clientServing.calories} cal).`,
+          ].filter(Boolean).join('\n\n'),
+        }
+      } catch {
+        return recipe
+      }
+    }))
+    mealPlan = mealPlan.map((day) => {
+      const updateMeal = (meal: CoachingPlanDraft['mealPlan'][number]['breakfast']) => ({
+        ...meal,
+        macros: mealMacroLabel(meal, recipes),
+      })
+      return {
+        ...day,
+        breakfast: updateMeal(day.breakfast),
+        lunch: updateMeal(day.lunch),
+        dinner: updateMeal(day.dinner),
+        snacks: day.snacks.map(updateMeal),
+      }
+    })
+  }
 
   return { ...plan, recipes, mealPlan }
 }
@@ -232,6 +290,7 @@ export async function POST(req: NextRequest) {
   const libraryInstructions = hasLibrary ? [
     `Laura has a recipe library with ${libraryRecipes.length} recipes. You MUST use only recipes from this library — do not invent new ones.`,
     'Select the best recipes from the library for each meal slot based on the client\'s allergies, food preferences, disliked foods, and macro targets.',
+    'Use each library recipe\'s calories, protein, carbs, fats, and fiber to choose combinations whose daily macro ratios are as close as practical to the client targets. Portion post-processing will make the final serving-size adjustment.',
     'For each recipe you select, copy its name, ingredients, instructions, and notes exactly as provided — do not modify them.',
     'Set familyServings from the library recipe\'s family_servings field.',
     'If a recipe in the library has no ingredients, still use it — USDA post-processing will be skipped for that recipe.',
@@ -289,6 +348,11 @@ export async function POST(req: NextRequest) {
                   ingredients: r.ingredients,
                   instructions: r.instructions,
                   notes: r.notes,
+                  calories: r.calories,
+                  protein: r.protein,
+                  carbs: r.carbs,
+                  fats: r.fats,
+                  fiber: r.fiber,
                 })) : undefined,
                 request: hasLibrary
                   ? 'Draft macro targets and a full 7-day meal plan (Day 1 through Day 7) using only the recipes from recipeLibrary. Each day must have breakfast, lunch, dinner, and optionally a snack. Rotate recipes across days so the client is not eating the same meal every day — aim for variety while staying within the library. Build a consolidated grocery list from all selected recipes. Add admin review notes and client-facing notes.'

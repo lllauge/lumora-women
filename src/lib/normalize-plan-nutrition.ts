@@ -4,7 +4,7 @@ import {
   type PlanMeal,
 } from './coaching-plan-schema'
 import { isExcludedNutritionIngredient } from './nutrition-ingredient'
-import { declaredServingMultiplier, scaleFullRecipeNutrition } from './nutrition-math'
+import { resolvedServingMultiplier, scaleFullRecipeNutrition } from './nutrition-math'
 import { calculateRecipeNutritionFromUsda } from './usda/food-data'
 
 export type RecipeLibraryNutrition = {
@@ -92,7 +92,8 @@ export async function normalizeReferencedPlanNutrition({
     if (!referenced.has(recipe.name) || recipe.ingredients.length === 0) return recipe
 
     const familyServings = firstNumber(recipe.familyServings || recipe.servings)
-    const multiplier = declaredServingMultiplier(
+    const multiplier = resolvedServingMultiplier(
+      recipe.clientServingMultiplier,
       familyServings,
       !individualOnly && familyServings > 1,
     )

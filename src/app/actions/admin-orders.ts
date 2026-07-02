@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { rangeBounds } from '@/lib/orders-range'
 import { getVerifiedAdminUser } from '@/lib/admin-guard'
+import { verifyAdminStepUp } from '@/app/actions/admin-auth'
 
 // ─── Order detail (drawer) ────────────────────────────────────────────────────
 
@@ -98,9 +99,11 @@ export type OrdersExportResult =
   | { ok: false; error: string }
 
 export async function exportOrdersCSV(
-  args: { q?: string; range?: string } = {}
+  args: { q?: string; range?: string; authCode?: string } = {}
 ): Promise<OrdersExportResult> {
   try { await getVerifiedAdminUser() } catch { return { ok: false, error: 'Unauthorized.' } }
+  const stepUp = await verifyAdminStepUp(args.authCode ?? '')
+  if (!stepUp.ok) return { ok: false, error: stepUp.error ?? 'Verification failed.' }
 
   const supabase = await createClient()
   const { from } = rangeBounds(args.range ?? '30d')

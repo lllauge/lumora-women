@@ -14,7 +14,7 @@ export default async function AdminLoginPage({ searchParams }: { searchParams: S
     error === 'unauthorized'
       ? 'This account does not have admin access.'
       : error === 'inactive'
-        ? 'You were signed out after 30 minutes without activity. Please log in again.'
+        ? 'Your secure session expired. Please log in again.'
       : undefined
 
   return (

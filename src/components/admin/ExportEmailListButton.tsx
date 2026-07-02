@@ -9,32 +9,32 @@ export default function ExportEmailListButton() {
   const [pending, startTransition] = useTransition()
   const searchParams = useSearchParams()
   const [showModal, setShowModal] = useState(false)
-  const [password, setPassword] = useState('')
+  const [authCode, setAuthCode] = useState('')
   const [modalError, setModalError] = useState('')
 
   function openModal() {
-    setPassword('')
+    setAuthCode('')
     setModalError('')
     setShowModal(true)
   }
 
   function closeModal() {
     setShowModal(false)
-    setPassword('')
+    setAuthCode('')
     setModalError('')
   }
 
   function handleExport() {
-    if (!password) {
-      setModalError('Please enter your password.')
+    if (!/^\d{6}$/.test(authCode)) {
+      setModalError('Please enter your current 6-digit authenticator code.')
       return
     }
     const q = searchParams?.get('q') ?? ''
     startTransition(async () => {
-      const result = await exportEmailListCSV({ q, password })
+      const result = await exportEmailListCSV({ q, authCode })
       if (!result.ok) {
         setModalError(result.error)
-        setPassword('')
+        setAuthCode('')
         return
       }
       closeModal()
@@ -98,18 +98,21 @@ export default function ExportEmailListButton() {
             </div>
 
             <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.875rem', color: 'var(--admin-on-surface-variant)', marginBottom: '1.5rem', lineHeight: 1.6 }}>
-              To protect subscriber data, please confirm your identity by entering your admin password before downloading the list.
+              To protect subscriber data, enter the current code from your administrator authenticator before downloading the list.
             </p>
 
             <label style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--admin-on-surface)', display: 'block', marginBottom: '0.5rem' }}>
-              Admin Password
+              Authentication Code
             </label>
             <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              type="text"
+              inputMode="numeric"
+              maxLength={6}
+              autoComplete="one-time-code"
+              value={authCode}
+              onChange={(e) => setAuthCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
               onKeyDown={(e) => { if (e.key === 'Enter') handleExport() }}
-              placeholder="Your current password"
+              placeholder="000000"
               autoFocus
               style={{
                 width: '100%',
@@ -136,8 +139,8 @@ export default function ExportEmailListButton() {
                       style={{ flex: 1, padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid var(--admin-outline-variant)', background: 'transparent', fontFamily: 'var(--font-hanken)', fontWeight: 600, cursor: 'pointer', color: 'var(--admin-on-surface-variant)' }}>
                 Cancel
               </button>
-              <button type="button" onClick={handleExport} disabled={pending || !password}
-                      style={{ flex: 1, padding: '0.75rem', borderRadius: '0.5rem', border: 'none', background: 'var(--admin-primary-container)', fontFamily: 'var(--font-hanken)', fontWeight: 700, cursor: 'pointer', color: 'var(--admin-celadon)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', opacity: pending || !password ? 0.6 : 1 }}>
+              <button type="button" onClick={handleExport} disabled={pending || authCode.length !== 6}
+                      style={{ flex: 1, padding: '0.75rem', borderRadius: '0.5rem', border: 'none', background: 'var(--admin-primary-container)', fontFamily: 'var(--font-hanken)', fontWeight: 700, cursor: 'pointer', color: 'var(--admin-celadon)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', opacity: pending || authCode.length !== 6 ? 0.6 : 1 }}>
                 {pending ? <><Loader2 size={16} className="animate-spin" /> Exporting…</> : <><Download size={16} /> Download CSV</>}
               </button>
             </div>

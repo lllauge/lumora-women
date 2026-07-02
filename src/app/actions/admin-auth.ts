@@ -10,6 +10,8 @@ import {
   adminSessionCookies,
 } from '@/lib/admin-session'
 import { sessionActivityCookies } from '@/lib/session-activity'
+import { sendAdminSms } from '@/lib/admin-sms'
+import { getVerifiedAdminUser } from '@/lib/admin-guard'
 
 export type AdminAuthResult = { error?: string }
 
@@ -47,6 +49,13 @@ export async function signInAdmin(formData: FormData): Promise<AdminAuthResult> 
   const ip = await getClientIpFromHeaders()
   const rateLimit = await checkRateLimit(`admin_login:${ip}`, 5, 900)
   if (!rateLimit.allowed) {
+    const alertLimit = await checkRateLimit(`security_alert_admin_login:${ip}`, 1, 60 * 60)
+    if (alertLimit.allowed) {
+      await sendAdminSms(
+        `Security alert: repeated administrator login attempts were blocked from ${ip}.`,
+        { title: 'Lumora · Admin security' },
+      )
+    }
     return {
       error: 'Too many login attempts. Please wait 15 minutes before trying again.',
     }
@@ -106,6 +115,39 @@ export async function signInAdmin(formData: FormData): Promise<AdminAuthResult> 
 export async function verifyAdminTotp(formData?: FormData): Promise<AdminAuthResult> {
   void formData
   redirect('/mfa?area=admin&mode=challenge&redirectTo=/admin')
+}
+
+export async function verifyAdminStepUp(code: string): Promise<{ ok: boolean; error?: string }> {
+  if (!/^\d{6}$/.test(code)) {
+    return { ok: false, error: 'Enter your current 6-digit authenticator code.' }
+  }
+
+  let user: { id: string }
+  let supabase: Awaited<ReturnType<typeof createClient>>
+  try {
+    ;({ user, supabase } = await getVerifiedAdminUser())
+  } catch {
+    return { ok: false, error: 'Unauthorized.' }
+  }
+
+  const limit = await checkRateLimit(`admin_step_up:${user.id}`, 5, 15 * 60)
+  if (!limit.allowed) return { ok: false, error: 'Too many verification attempts. Wait 15 minutes.' }
+
+  const factors = await supabase.auth.mfa.listFactors()
+  const factor = factors.data?.totp.find((item) => item.status === 'verified')
+  if (!factor) return { ok: false, error: 'No administrator authenticator is available.' }
+
+  const challenge = await supabase.auth.mfa.challenge({ factorId: factor.id })
+  if (challenge.error) return { ok: false, error: 'Could not start administrator verification.' }
+  const verified = await supabase.auth.mfa.verify({
+    factorId: factor.id,
+    challengeId: challenge.data.id,
+    code,
+  })
+  if (verified.error) return { ok: false, error: 'Authentication code was not accepted.' }
+
+  await logAdminAction({ adminUserId: user.id, action: 'totp_verified' })
+  return { ok: true }
 }
 
 export async function signOutAdmin(): Promise<void> {

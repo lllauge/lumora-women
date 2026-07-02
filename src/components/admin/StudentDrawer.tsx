@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react'
 import { Loader2, X, CalendarDays, Receipt } from 'lucide-react'
 import {
   getStudentDetail,
+  resetStudentMfa,
   type StudentDetail,
   type CourseProgress,
   type OrderHistoryItem,
@@ -143,6 +144,9 @@ export default function StudentDrawer({
 }
 
 function DrawerBody({ detail }: { detail: StudentDetail }) {
+  const [resetCode, setResetCode] = useState('')
+  const [resetMessage, setResetMessage] = useState('')
+  const [resetPending, startReset] = useTransition()
   const fullName =
     [detail.user.first_name, detail.user.last_name].filter(Boolean).join(' ').trim() ||
     detail.user.email
@@ -276,6 +280,43 @@ function DrawerBody({ detail }: { detail: StudentDetail }) {
             {totalLessons > 0 ? `${engagementPct}%` : '—'}
           </p>
         </div>
+      </div>
+
+      <div className="admin-card p-4">
+        <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.75rem', fontWeight: 800, color: 'var(--admin-on-surface)', marginBottom: '0.375rem' }}>
+          Lost authenticator recovery
+        </p>
+        <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.75rem', color: 'var(--admin-on-surface-variant)', lineHeight: 1.45, marginBottom: '0.625rem' }}>
+          Only use this after verifying the student’s identity. The student will be logged out and must enroll MFA again.
+        </p>
+        <input
+          aria-label="Your administrator authentication code"
+          inputMode="numeric"
+          maxLength={6}
+          value={resetCode}
+          onChange={(event) => setResetCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+          placeholder="Your 6-digit admin code"
+          style={{ width: '100%', boxSizing: 'border-box', padding: '0.625rem', borderRadius: '0.5rem', border: '1px solid var(--admin-outline-variant)' }}
+        />
+        <button
+          type="button"
+          disabled={resetPending || resetCode.length !== 6}
+          onClick={() => {
+            if (!window.confirm(`Reset two-step authentication for ${detail.user.email}?`)) return
+            setResetMessage('')
+            startReset(async () => {
+              const result = await resetStudentMfa(detail.user.id, resetCode)
+              setResetMessage(result.ok
+                ? 'MFA reset completed. Ask the student to sign in and enroll again.'
+                : result.error ?? 'MFA reset failed.')
+              if (result.ok) setResetCode('')
+            })
+          }}
+          style={{ marginTop: '0.5rem', padding: '0.625rem 0.75rem', border: 0, borderRadius: '0.5rem', background: 'var(--admin-rose-container)', color: 'var(--admin-on-rose-container)', fontWeight: 800, cursor: 'pointer' }}
+        >
+          {resetPending ? 'Resetting…' : 'Reset student MFA'}
+        </button>
+        {resetMessage && <p role="status" style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--admin-on-surface-variant)' }}>{resetMessage}</p>}
       </div>
 
       {/* Current Progress */}

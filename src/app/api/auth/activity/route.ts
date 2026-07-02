@@ -5,7 +5,12 @@ import { requireSameOrigin } from '@/lib/request-security'
 import {
   activityCookieMaxAge,
   createSignedActivityCookie,
+  isSessionAbsoluteExpired,
+  isSessionIdle,
+  readSignedActivityCookie,
+  sessionAbsoluteSeconds,
   sessionActivityCookies,
+  sessionIdleSeconds,
 } from '@/lib/session-activity'
 
 const ActivitySchema = z.object({
@@ -35,10 +40,27 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  const area = parsed.data.area
+  const existing = await readSignedActivityCookie(
+    request.cookies.get(sessionActivityCookies[area])?.value,
+    area,
+    user.id,
+  )
+  const now = Math.floor(Date.now() / 1000)
+  if (
+    existing
+    && (
+      isSessionIdle(existing.lastActivity, now, sessionIdleSeconds[area])
+      || isSessionAbsoluteExpired(existing.startedAt, now, sessionAbsoluteSeconds[area])
+    )
+  ) {
+    return NextResponse.json({ error: 'Session expired.' }, { status: 440 })
+  }
+
   const response = NextResponse.json({ ok: true })
   response.cookies.set(
-    sessionActivityCookies[parsed.data.area],
-    await createSignedActivityCookie(parsed.data.area, user.id),
+    sessionActivityCookies[area],
+    await createSignedActivityCookie(area, user.id, existing?.startedAt),
     {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',

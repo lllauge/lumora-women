@@ -5,8 +5,8 @@ import { usePathname } from 'next/navigation'
 import type { SessionArea } from '@/lib/session-activity'
 
 const IDLE_MS: Record<SessionArea, number> = {
-  admin: 30 * 60 * 1000,
-  client: 60 * 60 * 1000,
+  admin: 15 * 60 * 1000,
+  client: 30 * 60 * 1000,
 }
 const WARNING_MS = 2 * 60 * 1000
 const HEARTBEAT_THROTTLE_MS = 30 * 1000
@@ -57,7 +57,7 @@ export default function IdleSessionGuard() {
       body: JSON.stringify({ area: activeArea }),
       credentials: 'same-origin',
     }).catch(() => null)
-    if (response?.status === 401 || response?.status === 403) {
+    if (response?.status === 401 || response?.status === 403 || response?.status === 440) {
       signOutForInactivity(activeArea)
     }
   }, [signOutForInactivity])

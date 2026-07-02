@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { logAdminAction } from '@/lib/audit-log'
 import { getVerifiedAdminUser } from '@/lib/admin-guard'
+import { verifyAdminStepUp } from '@/app/actions/admin-auth'
 
 function getAdminClient() {
   return createServiceClient(
@@ -51,10 +52,10 @@ export type CsvExportResult =
  */
 export async function exportEmailListCSV({
   q = '',
-  password,
+  authCode,
 }: {
   q?: string
-  password: string
+  authCode: string
 }): Promise<CsvExportResult> {
   // ── Step 1: Assert admin session ──────────────────────────────────────────
   let user: { id: string; email?: string | undefined }
@@ -64,23 +65,9 @@ export async function exportEmailListCSV({
     return { ok: false, error: 'Unauthorized.' }
   }
 
-  // ── Step 2: Re-authenticate with current password ─────────────────────────
-  if (!password || password.length < 1) {
-    return { ok: false, error: 'Password is required to export data.' }
-  }
-
-  const supabase = await createClient()
-  const { data: { user: currentUser } } = await supabase.auth.getUser()
-  if (!currentUser?.email) return { ok: false, error: 'Session error.' }
-
-  const { error: authError } = await supabase.auth.signInWithPassword({
-    email: currentUser.email,
-    password,
-  })
-
-  if (authError) {
-    return { ok: false, error: 'Incorrect password. Export cancelled.' }
-  }
+  // ── Step 2: Require a fresh MFA code for this sensitive export ────────────
+  const stepUp = await verifyAdminStepUp(authCode)
+  if (!stepUp.ok) return { ok: false, error: stepUp.error ?? 'Verification failed.' }
 
   // ── Step 3: Fetch data via service role ───────────────────────────────────
   const adminClient = getAdminClient()

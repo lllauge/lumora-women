@@ -4,9 +4,11 @@ import { adminSessionCookies } from '@/lib/admin-session'
 import {
   activityCookieMaxAge,
   createSignedActivityCookie,
+  isSessionAbsoluteExpired,
   isSessionIdle,
   readSignedActivityCookie,
   sessionActivityCookies,
+  sessionAbsoluteSeconds,
   sessionIdleSeconds,
   type SessionArea,
 } from '@/lib/session-activity'
@@ -79,7 +81,13 @@ export async function proxy(request: NextRequest) {
       user.id,
     )
     const now = Math.floor(Date.now() / 1000)
-    if (activity && isSessionIdle(activity.lastActivity, now, sessionIdleSeconds[area])) {
+    if (
+      activity
+      && (
+        isSessionIdle(activity.lastActivity, now, sessionIdleSeconds[area])
+        || isSessionAbsoluteExpired(activity.startedAt, now, sessionAbsoluteSeconds[area])
+      )
+    ) {
       const url = request.nextUrl.clone()
       url.pathname = '/api/auth/idle-signout'
       url.search = ''

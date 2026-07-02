@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { LayoutDashboard, BookOpen, Settings, LogOut } from 'lucide-react'
+import BackupAuthenticator from '@/components/auth/BackupAuthenticator'
 
 export const metadata: Metadata = {
   title: 'Account Settings | Lumora Women',
@@ -120,6 +121,16 @@ export default async function SettingsPage() {
           >
             Reset Password
           </Link>
+        </div>
+
+        <div
+          style={{
+            background: '#FFFFFF', borderRadius: '1rem',
+            border: '1px solid var(--outline-variant)',
+            padding: '1.75rem', marginTop: '1.5rem',
+          }}
+        >
+          <BackupAuthenticator />
         </div>
       </main>
       <style>{`

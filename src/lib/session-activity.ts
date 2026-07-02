@@ -6,8 +6,13 @@ export const sessionActivityCookies = {
 } as const
 
 export const sessionIdleSeconds = {
-  admin: 30 * 60,
-  client: 60 * 60,
+  admin: 15 * 60,
+  client: 30 * 60,
+} as const
+
+export const sessionAbsoluteSeconds = {
+  admin: 8 * 60 * 60,
+  client: 24 * 60 * 60,
 } as const
 
 const ACTIVITY_COOKIE_LIFETIME_SECONDS = 365 * 24 * 60 * 60
@@ -50,10 +55,18 @@ export function isSessionIdle(lastActivity: number, now: number, timeoutSeconds:
   return now - lastActivity > timeoutSeconds
 }
 
-export async function createSignedActivityCookie(area: SessionArea, userId: string) {
+export function isSessionAbsoluteExpired(startedAt: number, now: number, timeoutSeconds: number) {
+  return now - startedAt > timeoutSeconds
+}
+
+export async function createSignedActivityCookie(
+  area: SessionArea,
+  userId: string,
+  startedAt = Math.floor(Date.now() / 1000),
+) {
   const lastActivity = Math.floor(Date.now() / 1000)
   const expiresAt = lastActivity + ACTIVITY_COOKIE_LIFETIME_SECONDS
-  const payload = `${area}.${userId}.${lastActivity}.${expiresAt}`
+  const payload = `${area}.${userId}.${startedAt}.${lastActivity}.${expiresAt}`
   return `${payload}.${await signPayload(payload)}`
 }
 
@@ -64,20 +77,22 @@ export async function readSignedActivityCookie(
 ) {
   if (!value) return null
   const parts = value.split('.')
-  if (parts.length !== 5) return null
+  if (parts.length !== 6) return null
 
-  const [cookieArea, cookieUserId, lastActivityRaw, expiresAtRaw, signature] = parts
+  const [cookieArea, cookieUserId, startedAtRaw, lastActivityRaw, expiresAtRaw, signature] = parts
   if (cookieArea !== area || cookieUserId !== userId) return null
 
+  const startedAt = Number(startedAtRaw)
   const lastActivity = Number(lastActivityRaw)
   const expiresAt = Number(expiresAtRaw)
   const now = Math.floor(Date.now() / 1000)
-  if (!Number.isFinite(lastActivity) || !Number.isFinite(expiresAt)) return null
+  if (!Number.isFinite(startedAt) || !Number.isFinite(lastActivity) || !Number.isFinite(expiresAt)) return null
+  if (startedAt > lastActivity || startedAt > now + 60) return null
   if (lastActivity > now + 60 || expiresAt <= now) return null
 
-  const payload = `${cookieArea}.${cookieUserId}.${lastActivityRaw}.${expiresAtRaw}`
+  const payload = `${cookieArea}.${cookieUserId}.${startedAtRaw}.${lastActivityRaw}.${expiresAtRaw}`
   const expected = await signPayload(payload)
-  return timingSafeEqual(signature, expected) ? { lastActivity } : null
+  return timingSafeEqual(signature, expected) ? { startedAt, lastActivity } : null
 }
 
 export const activityCookieMaxAge = ACTIVITY_COOKIE_LIFETIME_SECONDS

@@ -49,6 +49,33 @@ export async function sendAuthActionEmail(input: {
   return { ok: true, error: null }
 }
 
+export async function sendSecurityNotice(input: {
+  to: string
+  subject: string
+  message: string
+}) {
+  const resendKey = process.env.RESEND_API_KEY
+  if (!resendKey) return { ok: false, error: 'RESEND_API_KEY is not configured.' }
+
+  const resend = new Resend(resendKey)
+  const { error } = await resend.emails.send({
+    from: 'Lumora Women Security <hello@lumorawomen.com>',
+    to: input.to,
+    subject: input.subject,
+    html: `
+      <div style="font-family:Arial,sans-serif;background:#F8F6F0;padding:32px">
+        <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:16px;padding:36px;border:1px solid #E5E0D6">
+          <h1 style="font-family:Georgia,serif;color:#1A2818;margin:0 0 16px;font-size:28px">Account security notice</h1>
+          <p style="color:#3A4A38;font-size:16px;line-height:1.7">${input.message}</p>
+          <p style="color:#6B6B64;font-size:13px;line-height:1.6;margin-top:24px">If you did not request this change, contact Lumora Women immediately.</p>
+        </div>
+      </div>
+    `,
+    text: `${input.message}\n\nIf you did not request this change, contact Lumora Women immediately.`,
+  })
+  return error ? { ok: false, error: error.message } : { ok: true, error: null }
+}
+
 export function safeRedirectPath(value: string | null | undefined) {
   if (!value || !value.startsWith('/') || value.startsWith('//')) return '/dashboard'
   return value

@@ -1,11 +1,13 @@
 import type { NextConfig } from "next";
 
+const isProduction = process.env.NODE_ENV === 'production'
+
 const securityHeaders = [
   {
     key: 'Content-Security-Policy',
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.hcaptcha.com https://newassets.hcaptcha.com https://js.stripe.com",
+      `script-src 'self' 'unsafe-inline'${isProduction ? '' : " 'unsafe-eval'"} https://js.hcaptcha.com https://newassets.hcaptcha.com https://js.stripe.com`,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https://*.r2.dev https://*.cloudflare.com https://customer-*.cloudflarestream.com",
       "font-src 'self' data:",
@@ -16,6 +18,7 @@ const securityHeaders = [
       "base-uri 'self'",
       "form-action 'self'",
       "frame-ancestors 'none'",
+      ...(isProduction ? ['upgrade-insecure-requests'] : []),
     ].join('; '),
   },
   {
@@ -41,6 +44,18 @@ const securityHeaders = [
   {
     key: 'X-XSS-Protection',
     value: '1; mode=block',
+  },
+  {
+    key: 'Cross-Origin-Opener-Policy',
+    value: 'same-origin',
+  },
+  {
+    key: 'Cross-Origin-Resource-Policy',
+    value: 'same-site',
+  },
+  {
+    key: 'Origin-Agent-Cluster',
+    value: '?1',
   },
 ]
 

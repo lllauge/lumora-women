@@ -1,11 +1,28 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { isSessionIdle, sessionIdleSeconds } from './session-activity.ts'
+import {
+  isSessionAbsoluteExpired,
+  isSessionIdle,
+  sessionAbsoluteSeconds,
+  sessionIdleSeconds,
+} from './session-activity.ts'
 
 test('uses a shorter inactivity window for administrators', () => {
-  assert.equal(sessionIdleSeconds.admin, 30 * 60)
-  assert.equal(sessionIdleSeconds.client, 60 * 60)
+  assert.equal(sessionIdleSeconds.admin, 15 * 60)
+  assert.equal(sessionIdleSeconds.client, 30 * 60)
+})
+
+test('enforces absolute session lifetimes even while the user stays active', () => {
+  const startedAt = 1_000
+  assert.equal(
+    isSessionAbsoluteExpired(startedAt, startedAt + sessionAbsoluteSeconds.admin + 1, sessionAbsoluteSeconds.admin),
+    true,
+  )
+  assert.equal(
+    isSessionAbsoluteExpired(startedAt, startedAt + sessionAbsoluteSeconds.client, sessionAbsoluteSeconds.client),
+    false,
+  )
 })
 
 test('does not expire a session at the exact inactivity boundary', () => {

@@ -1,7 +1,11 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/server'
 import { getVerifiedAdminUser } from '@/lib/admin-guard'
+import { checkRateLimit } from '@/lib/rate-limit'
+import { logAdminAction } from '@/lib/audit-log'
+import { sendSecurityNotice } from '@/lib/auth-email'
 
 export type CourseProgress = {
   course_id: string
@@ -37,6 +41,76 @@ export type StudentDetail = {
 type StudentDetailResult =
   | { ok: true;  detail: StudentDetail }
   | { ok: false; error: string }
+
+export async function resetStudentMfa(
+  userId: string,
+  adminCode: string,
+): Promise<{ ok: boolean; error?: string }> {
+  if (!/^[0-9a-f-]{36}$/i.test(userId) || !/^\d{6}$/.test(adminCode)) {
+    return { ok: false, error: 'Enter your current 6-digit authenticator code.' }
+  }
+
+  let adminUser: { id: string }
+  let supabase: Awaited<ReturnType<typeof createClient>>
+  try {
+    ;({ user: adminUser, supabase } = await getVerifiedAdminUser())
+  } catch {
+    return { ok: false, error: 'Unauthorized.' }
+  }
+
+  const limit = await checkRateLimit(`admin_mfa_reset:${adminUser.id}`, 3, 15 * 60)
+  if (!limit.allowed) {
+    return { ok: false, error: 'Too many recovery attempts. Wait 15 minutes and try again.' }
+  }
+
+  const ownFactors = await supabase.auth.mfa.listFactors()
+  const ownFactor = ownFactors.data?.totp.find((factor) => factor.status === 'verified')
+  if (!ownFactor) return { ok: false, error: 'Your administrator authenticator is unavailable.' }
+
+  const challenge = await supabase.auth.mfa.challenge({ factorId: ownFactor.id })
+  if (challenge.error) return { ok: false, error: 'Could not verify your administrator identity.' }
+  const verification = await supabase.auth.mfa.verify({
+    factorId: ownFactor.id,
+    challengeId: challenge.data.id,
+    code: adminCode,
+  })
+  if (verification.error) {
+    return { ok: false, error: 'Your authentication code was not accepted.' }
+  }
+
+  const service = await createAdminClient()
+  const { data: targetProfile } = await service
+    .from('users')
+    .select('role, email')
+    .eq('id', userId)
+    .maybeSingle()
+  if (!targetProfile || targetProfile.role === 'admin') {
+    return { ok: false, error: 'Administrator MFA cannot be reset through student recovery.' }
+  }
+
+  const factors = await service.auth.admin.mfa.listFactors({ userId })
+  if (factors.error) return { ok: false, error: 'Could not load the student’s authenticators.' }
+  for (const factor of factors.data.factors) {
+    const removed = await service.auth.admin.mfa.deleteFactor({ userId, id: factor.id })
+    if (removed.error) return { ok: false, error: 'Could not complete the authenticator reset.' }
+  }
+
+  await logAdminAction({
+    adminUserId: adminUser.id,
+    action: 'update',
+    tableName: 'auth.mfa_factors',
+    recordId: userId,
+    newValues: { mfa_reset: true, factors_removed: factors.data.factors.length },
+  })
+  if (targetProfile.email) {
+    await sendSecurityNotice({
+      to: targetProfile.email,
+      subject: 'Your Lumora Women authenticator was reset',
+      message: 'Your two-step authentication factors were reset after an identity-verification request. Your active sessions were closed. Sign in again to enroll a new authenticator.',
+    })
+  }
+  return { ok: true }
+}
 
 /**
  * Returns everything the drawer needs for a single student: profile fields,

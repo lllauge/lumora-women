@@ -50,10 +50,13 @@ export default function OrdersToolbar() {
   const range = searchParams?.get('range') ?? '30d'
 
   function handleExport() {
+    const authCode = window.prompt('Enter your current 6-digit administrator authenticator code:')
+    if (!authCode) return
     startExport(async () => {
       const result = await exportOrdersCSV({
         q: searchParams?.get('q') ?? '',
         range,
+        authCode: authCode.replace(/\D/g, '').slice(0, 6),
       })
       if (!result.ok) {
         window.alert(`Could not export: ${result.error}`)

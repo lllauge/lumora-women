@@ -8,6 +8,7 @@ import IntegrationStatus, { type IntegrationCheck } from '@/components/admin/set
 import EmailSettingsForm from '@/components/admin/settings/EmailSettingsForm'
 import SiteSettingsForm from '@/components/admin/settings/SiteSettingsForm'
 import DangerZone from '@/components/admin/settings/DangerZone'
+import BackupAuthenticator from '@/components/auth/BackupAuthenticator'
 
 export const metadata: Metadata = {
   title: 'Settings',
@@ -137,6 +138,10 @@ export default async function AdminSettingsPage() {
       </div>
 
       <ProfileForm initial={profile} />
+
+      <div className="admin-card" style={{ padding: '1.5rem' }}>
+        <BackupAuthenticator dark />
+      </div>
 
       <IntegrationStatus checks={checks} />
 

@@ -4,7 +4,6 @@ import { useState, useRef, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import HCaptcha from '@hcaptcha/react-hcaptcha'
-import { createClient } from '@/lib/supabase/client'
 import AuthCard from '@/components/layout/AuthCard'
 import AuthInput from '@/components/ui/AuthInput'
 
@@ -20,7 +19,10 @@ function LoginForm() {
     ? requestedRedirect
     : '/dashboard'
   const inactivityMessage = searchParams.get('error') === 'inactive'
-    ? 'You were signed out after 60 minutes without activity. Please log in again.'
+    ? 'Your secure session expired. Please log in again.'
+    : ''
+  const passwordResetMessage = searchParams.get('passwordReset') === 'success'
+    ? 'Your password was updated. Please log in with your new password.'
     : ''
   const captchaRef = useRef<HCaptcha>(null)
 
@@ -49,19 +51,29 @@ function LoginForm() {
     setLoading(true)
     setError('')
 
-    const supabase = createClient()
-    const { data, error: authError } = await supabase.auth.signInWithPassword({
-      email: form.email,
-      password: form.password,
+    const response = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        email: form.email,
+        password: form.password,
+        captchaToken,
+      }),
     })
+    const result = await response.json().catch(() => ({})) as {
+      error?: string
+      role?: 'admin' | 'user'
+      mfaMode?: 'enroll' | 'challenge' | null
+    }
 
-    if (authError) {
+    if (!response.ok) {
       const newAttempts = failedAttempts + 1
       setFailedAttempts(newAttempts)
       captchaRef.current?.resetCaptcha()
       setCaptchaToken(null)
 
-      if (newAttempts >= MAX_ATTEMPTS) {
+      if (response.status === 429 || newAttempts >= MAX_ATTEMPTS) {
         const unlockTime = new Date(Date.now() + LOCKOUT_MINUTES * 60 * 1000)
         setLockedUntil(unlockTime)
         setError(
@@ -69,33 +81,22 @@ function LoginForm() {
         )
       } else {
         const remaining = MAX_ATTEMPTS - newAttempts
-        setError(
+        setError(result.error || (
           remaining === 1
             ? 'Invalid email or password. 1 attempt remaining before temporary lockout.'
             : `Invalid email or password. ${remaining} attempts remaining.`
-        )
+        ))
       }
       setLoading(false)
       return
     }
 
-    // Route admin to admin dashboard, students to student dashboard
-    const { data: userData } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', data.user.id)
-      .single()
-
-    if (userData?.role === 'admin') {
+    if (result.role === 'admin') {
       router.push('/admin')
+    } else if (result.mfaMode) {
+      router.push(`/mfa?mode=${result.mfaMode}&redirectTo=${encodeURIComponent(redirectTo)}`)
     } else {
-      const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
-      if (assurance?.currentLevel !== 'aal2') {
-        const mode = assurance?.nextLevel === 'aal2' ? 'challenge' : 'enroll'
-        router.push(`/mfa?mode=${mode}&redirectTo=${encodeURIComponent(redirectTo)}`)
-      } else {
-        router.push(redirectTo)
-      }
+      router.push(redirectTo)
     }
     router.refresh()
   }
@@ -111,6 +112,14 @@ function LoginForm() {
           style={{ background: '#FFF7ED', color: '#92400E', fontFamily: 'var(--font-sans)', border: '1px solid #FED7AA' }}
         >
           {inactivityMessage}
+        </div>
+      )}
+      {passwordResetMessage && (
+        <div
+          className="px-4 py-3 rounded-lg text-sm mb-4"
+          style={{ background: '#ECFDF3', color: '#166534', fontFamily: 'var(--font-sans)', border: '1px solid #BBF7D0' }}
+        >
+          {passwordResetMessage}
         </div>
       )}
       {isLocked && (

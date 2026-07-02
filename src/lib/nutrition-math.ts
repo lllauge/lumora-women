@@ -2,6 +2,19 @@ export function atwaterGeneralCalories(protein: number, carbs: number, fats: num
   return protein * 4 + carbs * 4 + fats * 9
 }
 
+export function shouldReviewEnergyDifference(
+  databaseCalories: number,
+  macroCalories: number,
+  relativeThreshold = 0.15,
+  minimumCalorieDifference = 25,
+) {
+  if (!Number.isFinite(databaseCalories) || databaseCalories <= 0) return false
+  if (!Number.isFinite(macroCalories)) return false
+  const calorieDifference = Math.abs(databaseCalories - macroCalories)
+  return calorieDifference / databaseCalories > relativeThreshold
+    && calorieDifference >= minimumCalorieDifference
+}
+
 /**
  * FoodData Central's reported energy is authoritative when present. The
  * general Atwater equation is only a fallback for records whose energy field

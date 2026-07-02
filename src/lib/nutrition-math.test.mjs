@@ -6,6 +6,7 @@ import {
   declaredServingMultiplier,
   resolvedFoodCalories,
   scaleFullRecipeNutrition,
+  shouldReviewEnergyDifference,
 } from './nutrition-math.ts'
 import {
   inferredDiscardedBrineIndexes,
@@ -60,6 +61,11 @@ test('recovers missing oil energy from macros instead of counting zero calories'
     fats: 9.1,
   }), 81.89999999999999)
   assert.equal(atwaterGeneralCalories(0, 0, 9.1), 81.89999999999999)
+})
+
+test('ignores tiny rounding differences but reviews materially large energy drift', () => {
+  assert.equal(shouldReviewEnergyDifference(15, 18), false)
+  assert.equal(shouldReviewEnergyDifference(595, 713), true)
 })
 
 test('recognizes plain water and salts as canonical zero-nutrient ingredients', () => {

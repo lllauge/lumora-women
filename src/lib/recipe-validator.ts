@@ -1,5 +1,6 @@
 import { mealRecipeNames, type CoachingPlanDraft } from './coaching-plan-schema'
 import { isExcludedNutritionIngredient } from './nutrition-ingredient'
+import { shouldReviewEnergyDifference } from './nutrition-math'
 
 // Inlined from coaching-engagement.ts so this module has no server deps and
 // can be imported into the client-side CoachingPlanEditor without dragging in
@@ -70,7 +71,7 @@ export function validateRecipe(recipe: CoachingPlanDraft['recipes'][number]): Re
   } else if (cal > 0) {
     const atwater = protein * 4 + carbs * 4 + fats * 9
     const drift = Math.abs(cal - atwater) / cal
-    if (drift > ATWATER_REVIEW_THRESHOLD) {
+    if (shouldReviewEnergyDifference(cal, atwater, ATWATER_REVIEW_THRESHOLD)) {
       issues.push({
         severity: 'warning',
         code: 'atwater_mismatch',

@@ -129,12 +129,6 @@ export async function signInAdmin(formData: FormData): Promise<AdminAuthResult> 
   redirect('/admin')
 }
 
-/** Legacy endpoint retained so old bookmarked verification pages migrate safely. */
-export async function verifyAdminTotp(formData?: FormData): Promise<AdminAuthResult> {
-  void formData
-  redirect('/mfa?area=admin&mode=challenge&redirectTo=/admin')
-}
-
 export async function verifyAdminStepUp(code: string): Promise<{ ok: boolean; error?: string }> {
   if (!/^\d{6}$/.test(code)) {
     return { ok: false, error: 'Enter your current 6-digit authenticator code.' }
@@ -184,28 +178,4 @@ export async function signOutAdmin(): Promise<void> {
   cookieStore.delete(sessionActivityCookies.admin)
   cookieStore.delete(sessionActivityCookies.client)
   redirect('/admin/login')
-}
-
-/**
- * Re-authenticate the admin with their current password.
- * Used before sensitive actions (e.g. CSV export).
- */
-export async function reAuthAdmin(password: string): Promise<{ ok: boolean; error?: string }> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user?.email) {
-    return { ok: false, error: 'Not authenticated.' }
-  }
-
-  const { error } = await supabase.auth.signInWithPassword({
-    email: user.email,
-    password,
-  })
-
-  if (error) {
-    return { ok: false, error: 'Incorrect password.' }
-  }
-
-  return { ok: true }
 }

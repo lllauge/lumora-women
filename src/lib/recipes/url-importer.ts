@@ -41,25 +41,56 @@ export type ImportedRecipe = {
 }
 
 const FETCH_TIMEOUT_MS = 12_000
-const FETCH_USER_AGENT = 'Mozilla/5.0 (compatible; LumoraRecipeImporter/1.0)'
+const READER_FETCH_TIMEOUT_MS = 25_000
+const FETCH_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36'
+const READER_BASE_URL = 'https://r.jina.ai/'
 
-async function fetchHtml(url: string): Promise<string> {
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit,
+  timeoutMs: number,
+): Promise<Response> {
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': FETCH_USER_AGENT,
-        Accept: 'text/html,application/xhtml+xml',
-      },
-      signal: controller.signal,
-      redirect: 'follow',
-    })
-    if (!response.ok) throw new Error(`Site returned ${response.status}`)
-    return await response.text()
+    return await fetch(url, { ...init, signal: controller.signal })
   } finally {
     clearTimeout(timer)
   }
+}
+
+async function fetchHtml(url: string): Promise<string> {
+  const response = await fetchWithTimeout(url, {
+    headers: {
+      'User-Agent': FETCH_USER_AGENT,
+      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.9',
+    },
+    redirect: 'follow',
+  }, FETCH_TIMEOUT_MS)
+
+  if (response.ok) return await response.text()
+
+  // Some recipe publishers block cloud-hosted requests (EatingWell currently
+  // responds with 402) even though the same public page loads in a browser.
+  // Jina Reader fetches the public page and returns Markdown, which the LLM
+  // extraction fallback below can parse just like cleaned HTML.
+  if ([402, 403, 429].includes(response.status)) {
+    try {
+      const readerResponse = await fetchWithTimeout(`${READER_BASE_URL}${url}`, {
+        headers: {
+          Accept: 'text/plain',
+          'X-Timeout': '20',
+        },
+        redirect: 'follow',
+      }, READER_FETCH_TIMEOUT_MS)
+      if (readerResponse.ok) return await readerResponse.text()
+    } catch {
+      // Preserve the publisher's useful status code when the fallback is down.
+    }
+  }
+
+  throw new Error(`Site returned ${response.status}`)
 }
 
 type JsonLdRecipe = {
@@ -165,7 +196,9 @@ async function extractRecipeWithOpenAI(html: string, openAiKey: string): Promise
     .replace(/<[^>]+>/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
-    .slice(0, 16_000)
+    // Reader fallbacks include navigation before the recipe. EatingWell's
+    // ingredient list, for example, begins around character 16,000.
+    .slice(0, 32_000)
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',

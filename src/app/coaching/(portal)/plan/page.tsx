@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { Leaf, ShoppingBasket, UtensilsCrossed, CalendarDays, ChevronDown, Check, Dumbbell, PlayCircle } from 'lucide-react'
+import { Leaf, ShoppingBasket, CalendarDays, ChevronDown, Check, Dumbbell, PlayCircle } from 'lucide-react'
 import {
-  getPortalContext, todayMealDayIndex, clientVisibleRecipes, withGrams, displayRecipeName,
+  getPortalContext, todayMealDayIndex, withGrams, displayRecipeName,
   getDailyLogs, coachingToday, cleanIngredientText, clientPortionFactor, clientPortionLines, isClientReadable, portionFraction,
   ingredientWeighState, groceryDisplay,
 } from '@/lib/coaching-engagement'
@@ -48,13 +48,15 @@ function exerciseDemoHref(exercise: CoachingPlanDraft['workoutPlan'][number]['ex
 export default async function CoachingPlanPage({
   searchParams,
 }: {
-  searchParams: Promise<{ recipe?: string }>
+  searchParams: Promise<{ day?: string; meal?: string; recipe?: string }>
 }) {
   const { client, plan } = await getPortalContext()
-  const selectedRecipeIndex = Number((await searchParams).recipe)
+  const selected = await searchParams
+  const selectedDayIndex = Number(selected.day)
+  const selectedMealIndex = Number(selected.meal)
+  const selectedRecipeIndex = Number(selected.recipe)
   const t = plan.macroTargets
   const todayIdx = todayMealDayIndex(plan)
-  const visibleRecipes = clientVisibleRecipes(plan)
   const today = coachingToday()
   const todayLogs = await getDailyLogs(client.id, 7)
   const todayWins = todayLogs.find((l) => l.log_date === today)?.wins ?? {}
@@ -173,7 +175,13 @@ export default async function CoachingPlanPage({
               </div>
             )}
             {plan.mealPlan.map((day, i) => (
-              <details key={i} className="portal-details" open={i === todayIdx} style={{ borderTop: i === 0 ? 'none' : '1px solid rgba(200,220,192,0.3)' }}>
+              <details
+                key={i}
+                id={`day-${i}`}
+                className="portal-details"
+                open={i === todayIdx || i === selectedDayIndex}
+                style={{ borderTop: i === 0 ? 'none' : '1px solid rgba(200,220,192,0.3)' }}
+              >
                 <summary style={{
                   padding: '0.9375rem 1.25rem', minHeight: '52px',
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem',
@@ -191,7 +199,13 @@ export default async function CoachingPlanPage({
                   </span>
                 </summary>
                 <div style={{ padding: '0.25rem 1.25rem 1rem' }}>
-                  <DayMeals day={day} recipes={plan.recipes} />
+                  <DayMeals
+                    day={day}
+                    dayIndex={i}
+                    recipes={plan.recipes}
+                    selectedMealIndex={i === selectedDayIndex ? selectedMealIndex : -1}
+                    selectedRecipeIndex={i === selectedDayIndex ? selectedRecipeIndex : -1}
+                  />
                 </div>
               </details>
             ))}
@@ -319,51 +333,6 @@ export default async function CoachingPlanPage({
         </section>
       )}
 
-      {/* Recipes */}
-      {visibleRecipes.length > 0 && (
-        <section aria-label="Recipes" style={{ marginBottom: '2.25rem' }}>
-          <SectionHeader
-            icon={<UtensilsCrossed style={headerIcon} aria-hidden="true" />}
-            title="Your Recipes"
-            subtitle="Tap a recipe for your portion, ingredients, and steps."
-          />
-          <div className="portal-card">
-            <div className="portal-gold-line" aria-hidden="true" />
-            {visibleRecipes.map(({ recipe, index }, position) => (
-              <details key={index} id={`recipe-${index}`} className="portal-details" open={selectedRecipeIndex === index} style={{ borderTop: position === 0 ? 'none' : '1px solid rgba(200,220,192,0.3)' }}>
-                <summary style={{
-                  padding: '0.9375rem 1.25rem', minHeight: '52px',
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem',
-                }}>
-                  <span style={{ minWidth: 0 }}>
-                    <span style={{ display: 'block', fontFamily: 'var(--font-sans)', fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                      {displayRecipeName(recipe.name) || `Recipe ${index + 1}`}
-                    </span>
-                    <span style={{ display: 'block', fontFamily: 'var(--font-sans)', fontSize: '0.78125rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>
-                      {[
-                        recipe.calories.trim() && `${recipe.calories.trim().replace(/\s*k?cal$/i, '')} cal`,
-                        recipe.protein.trim() && `${withGrams(recipe.protein)} protein`,
-                      ].filter(Boolean).join(' · ')}
-                    </span>
-                  </span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', flexShrink: 0 }}>
-                    {recipe.mealType.trim() && (
-                      <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.6875rem', fontWeight: 700, color: '#3F6936', background: 'var(--section-tint)', borderRadius: '999px', padding: '0.25rem 0.625rem', textTransform: 'capitalize' }}>
-                        {recipe.mealType.trim()}
-                      </span>
-                    )}
-                    <ChevronDown className="portal-chevron" style={{ width: '1.125rem', height: '1.125rem', color: 'var(--botanical-green)' }} aria-hidden="true" />
-                  </span>
-                </summary>
-                <div style={{ padding: '0 1.25rem 1.25rem' }}>
-                  <RecipeDetail recipe={recipe} />
-                </div>
-              </details>
-            ))}
-          </div>
-        </section>
-      )}
-
       {/* Grocery list */}
       {plan.groceryList.length > 0 && (
         <section aria-label="Grocery list">
@@ -387,7 +356,19 @@ export default async function CoachingPlanPage({
   )
 }
 
-function DayMeals({ day, recipes }: { day: CoachingPlanDraft['mealPlan'][number]; recipes: CoachingPlanDraft['recipes'] }) {
+function DayMeals({
+  day,
+  dayIndex,
+  recipes,
+  selectedMealIndex,
+  selectedRecipeIndex,
+}: {
+  day: CoachingPlanDraft['mealPlan'][number]
+  dayIndex: number
+  recipes: CoachingPlanDraft['recipes']
+  selectedMealIndex: number
+  selectedRecipeIndex: number
+}) {
   const rows = [
     { slot: 'Breakfast', meal: day.breakfast },
     { slot: 'Lunch', meal: day.lunch },
@@ -406,6 +387,8 @@ function DayMeals({ day, recipes }: { day: CoachingPlanDraft['mealPlan'][number]
         return (
           <details
             key={i}
+            id={`day-${dayIndex}-meal-${i}`}
+            open={selectedMealIndex === i}
             style={{
               padding: '0.5rem 0',
               borderTop: i === 0 ? 'none' : '1px solid rgba(200,220,192,0.25)',
@@ -452,9 +435,9 @@ function DayMeals({ day, recipes }: { day: CoachingPlanDraft['mealPlan'][number]
                   }).filter((ingredient) => ingredient.name)
                 : []
               return (
-                <div key={name} style={{ marginTop: '0.5rem', padding: '0.75rem 0.875rem', background: 'var(--section-tint)', borderRadius: '0.625rem' }}>
+                <div key={name} style={{ marginTop: '0.5rem', background: 'var(--section-tint)', borderRadius: '0.625rem', overflow: 'hidden' }}>
                   {isAutoCustom ? (
-                    <>
+                    <div style={{ padding: '0.75rem 0.875rem' }}>
                       <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 700, color: '#3F6936', margin: 0 }}>{recipeLabel}</p>
                       <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em', textTransform: 'uppercase', marginTop: '0.35rem' }}>
                         Weigh out this portion
@@ -473,17 +456,23 @@ function DayMeals({ day, recipes }: { day: CoachingPlanDraft['mealPlan'][number]
                           </li>
                         ))}
                       </ul>
-                    </>
-                  ) : (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
-                      <div>
-                        <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 700, color: '#3F6936', margin: 0 }}>{recipeLabel}</p>
-                        <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>{portion}</p>
-                      </div>
-                      <Link href={recipeIndex >= 0 ? `/coaching/plan?recipe=${recipeIndex}#recipe-${recipeIndex}` : '#'} style={{ fontFamily: 'var(--font-sans)', fontSize: '0.78rem', fontWeight: 700, color: '#3F6936', textDecoration: 'none', whiteSpace: 'nowrap' }}>
-                        View recipe →
-                      </Link>
                     </div>
+                  ) : (
+                    <details open={selectedRecipeIndex === recipeIndex}>
+                      <summary style={{ listStyle: 'none', cursor: 'pointer', padding: '0.75rem 0.875rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
+                        <div>
+                          <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 700, color: '#3F6936', margin: 0 }}>{recipeLabel}</p>
+                          <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>{portion}</p>
+                        </div>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontFamily: 'var(--font-sans)', fontSize: '0.78rem', fontWeight: 700, color: '#3F6936', whiteSpace: 'nowrap' }}>
+                          View recipe
+                          <ChevronDown className="portal-chevron" style={{ width: '0.875rem', height: '0.875rem' }} aria-hidden="true" />
+                        </span>
+                      </summary>
+                      <div style={{ borderTop: '1px solid rgba(200,220,192,0.6)', padding: '0 0.875rem 0.875rem' }}>
+                        <RecipeDetail recipe={recipe} />
+                      </div>
+                    </details>
                   )}
                 </div>
               )

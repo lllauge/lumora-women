@@ -27,10 +27,14 @@ export default async function CoachingTodayPage() {
 
   const dayIndex = todayMealDayIndex(plan)
   const mealDay = dayIndex >= 0 ? plan.mealPlan[dayIndex] : null
-  const recipeAnchor = (recipeName: string) => {
-    if (/^Custom\s+/i.test(displayRecipeName(recipeName))) return '/coaching/plan'
+  const recipeAnchor = (recipeName: string, mealIndex: number) => {
+    if (/^Custom\s+/i.test(displayRecipeName(recipeName))) {
+      return `/coaching/plan?day=${dayIndex}&meal=${mealIndex}#day-${dayIndex}-meal-${mealIndex}`
+    }
     const idx = plan.recipes.findIndex((r) => r.name === recipeName)
-    return idx >= 0 ? `/coaching/plan#recipe-${idx}` : '/coaching/plan'
+    return idx >= 0
+      ? `/coaching/plan?day=${dayIndex}&meal=${mealIndex}&recipe=${idx}#day-${dayIndex}-meal-${mealIndex}`
+      : '/coaching/plan'
   }
   return (
     <div>
@@ -84,11 +88,11 @@ export default async function CoachingTodayPage() {
           </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
-            <MealCard slot="Breakfast" meal={mealDay.breakfast} recipes={plan.recipes} anchor={recipeAnchor} />
-            <MealCard slot="Lunch" meal={mealDay.lunch} recipes={plan.recipes} anchor={recipeAnchor} />
-            <MealCard slot="Dinner" meal={mealDay.dinner} recipes={plan.recipes} anchor={recipeAnchor} />
+            <MealCard slot="Breakfast" mealIndex={0} meal={mealDay.breakfast} recipes={plan.recipes} anchor={recipeAnchor} />
+            <MealCard slot="Lunch" mealIndex={1} meal={mealDay.lunch} recipes={plan.recipes} anchor={recipeAnchor} />
+            <MealCard slot="Dinner" mealIndex={2} meal={mealDay.dinner} recipes={plan.recipes} anchor={recipeAnchor} />
             {mealDay.snacks.map((snack, i) => (
-              <MealCard key={i} slot={mealDay.snacks.length > 1 ? `Snack ${i + 1}` : 'Snack'} meal={snack} recipes={plan.recipes} anchor={recipeAnchor} />
+              <MealCard key={i} slot={mealDay.snacks.length > 1 ? `Snack ${i + 1}` : 'Snack'} mealIndex={3 + i} meal={snack} recipes={plan.recipes} anchor={recipeAnchor} />
             ))}
             {mealDay.notes.trim() && (
               <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-muted)', padding: '0 0.25rem' }}>
@@ -103,12 +107,13 @@ export default async function CoachingTodayPage() {
 }
 
 function MealCard({
-  slot, meal, recipes, anchor,
+  slot, mealIndex, meal, recipes, anchor,
 }: {
   slot: string
+  mealIndex: number
   meal: MealEntry
   recipes: CoachingPlanDraft['recipes']
-  anchor: (recipeName: string) => string
+  anchor: (recipeName: string, mealIndex: number) => string
 }) {
   if (!meal.name.trim() && !meal.description.trim()) return null
   const description = cleanMealDescription(meal.description)
@@ -154,7 +159,7 @@ function MealCard({
 
   return firstRecipeName ? (
     <Link
-      href={anchor(firstRecipeName)}
+      href={anchor(firstRecipeName, mealIndex)}
       aria-label={`${slot}: ${displayName}, view recipes`}
       style={{ textDecoration: 'none' }}
     >

@@ -2,6 +2,11 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { adminSessionCookies } from '@/lib/admin-session'
 import {
+  clientEmailMfaCookie,
+  getSessionId,
+  readClientEmailMfaCookie,
+} from '@/lib/client-email-mfa'
+import {
   activityCookieMaxAge,
   createSignedActivityCookie,
   isSessionAbsoluteExpired,
@@ -130,15 +135,19 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
-    const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
-    if (assurance?.currentLevel !== 'aal2') {
+    const sessionId = getSessionId(session.data.session?.access_token)
+    const emailMfaVerified = sessionId
+      ? await readClientEmailMfaCookie(
+          request.cookies.get(clientEmailMfaCookie)?.value,
+          user.id,
+          sessionId,
+        )
+      : false
+    if (!emailMfaVerified) {
       const url = request.nextUrl.clone()
       url.pathname = '/mfa'
       url.search = ''
-      url.searchParams.set(
-        'mode',
-        assurance?.nextLevel === 'aal2' ? 'challenge' : 'enroll',
-      )
+      url.searchParams.set('area', 'client')
       url.searchParams.set('redirectTo', path)
       return NextResponse.redirect(url)
     }
@@ -167,14 +176,31 @@ export async function proxy(request: NextRequest) {
         url.search = ''
         return NextResponse.redirect(url)
       }
-    }
-    const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
-    if (assurance?.currentLevel === 'aal2') {
-      const redirectTo = request.nextUrl.searchParams.get('redirectTo')
-      const safeDestination = redirectTo?.startsWith('/') && !redirectTo.startsWith('//')
-        ? redirectTo
-        : '/dashboard'
-      return NextResponse.redirect(new URL(safeDestination, request.url))
+      const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+      if (assurance?.currentLevel === 'aal2') {
+        const redirectTo = request.nextUrl.searchParams.get('redirectTo')
+        const safeDestination = redirectTo?.startsWith('/') && !redirectTo.startsWith('//')
+          ? redirectTo
+          : '/admin'
+        return NextResponse.redirect(new URL(safeDestination, request.url))
+      }
+    } else {
+      const session = await supabase.auth.getSession()
+      const sessionId = getSessionId(session.data.session?.access_token)
+      const emailMfaVerified = sessionId
+        ? await readClientEmailMfaCookie(
+            request.cookies.get(clientEmailMfaCookie)?.value,
+            user.id,
+            sessionId,
+          )
+        : false
+      if (emailMfaVerified) {
+        const redirectTo = request.nextUrl.searchParams.get('redirectTo')
+        const safeDestination = redirectTo?.startsWith('/') && !redirectTo.startsWith('//')
+          ? redirectTo
+          : '/dashboard'
+        return NextResponse.redirect(new URL(safeDestination, request.url))
+      }
     }
   }
 

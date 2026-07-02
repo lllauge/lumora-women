@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { adminSessionCookies } from '@/lib/admin-session'
 import { sessionActivityCookies } from '@/lib/session-activity'
+import { clientEmailMfaCookie } from '@/lib/client-email-mfa'
 
 export async function GET(request: NextRequest) {
   const area = request.nextUrl.searchParams.get('area') === 'admin' ? 'admin' : 'client'
@@ -16,6 +17,7 @@ export async function GET(request: NextRequest) {
   const response = NextResponse.redirect(url)
   response.cookies.delete(sessionActivityCookies.admin)
   response.cookies.delete(sessionActivityCookies.client)
+  response.cookies.delete(clientEmailMfaCookie)
   response.cookies.delete(adminSessionCookies.loginAt)
   response.cookies.delete(adminSessionCookies.pending)
   response.cookies.delete(adminSessionCookies.mfa)

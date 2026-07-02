@@ -93,10 +93,8 @@ function LoginForm() {
 
     if (result.role === 'admin') {
       router.push('/admin')
-    } else if (result.mfaMode) {
-      router.push(`/mfa?mode=${result.mfaMode}&redirectTo=${encodeURIComponent(redirectTo)}`)
     } else {
-      router.push(redirectTo)
+      router.push(`/mfa?area=client&mode=${result.mfaMode ?? 'challenge'}&redirectTo=${encodeURIComponent(redirectTo)}`)
     }
     router.refresh()
   }

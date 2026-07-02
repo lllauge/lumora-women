@@ -98,9 +98,17 @@ export async function POST(request: NextRequest) {
     .eq('id', data.user.id)
     .maybeSingle()
   const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+  const isAdmin = profile?.role === 'admin'
+
+  if (!isAdmin) {
+    return NextResponse.json({
+      role: 'user',
+      mfaMode: 'challenge',
+    })
+  }
 
   return NextResponse.json({
-    role: profile?.role === 'admin' ? 'admin' : 'user',
+    role: 'admin',
     mfaMode: assurance?.currentLevel === 'aal2'
       ? null
       : assurance?.nextLevel === 'aal2' ? 'challenge' : 'enroll',

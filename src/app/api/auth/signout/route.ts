@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { adminSessionCookies } from '@/lib/admin-session'
 import { sessionActivityCookies } from '@/lib/session-activity'
+import { clientEmailMfaCookie } from '@/lib/client-email-mfa'
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
@@ -12,6 +13,7 @@ export async function POST(req: NextRequest) {
   )
   response.cookies.delete(sessionActivityCookies.admin)
   response.cookies.delete(sessionActivityCookies.client)
+  response.cookies.delete(clientEmailMfaCookie)
   response.cookies.delete(adminSessionCookies.loginAt)
   response.cookies.delete(adminSessionCookies.pending)
   response.cookies.delete(adminSessionCookies.mfa)

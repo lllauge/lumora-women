@@ -284,7 +284,7 @@ function DrawerBody({ detail }: { detail: StudentDetail }) {
 
       <div className="admin-card p-4">
         <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.75rem', fontWeight: 800, color: 'var(--admin-on-surface)', marginBottom: '0.375rem' }}>
-          Lost authenticator recovery
+          Two-step verification recovery
         </p>
         <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.75rem', color: 'var(--admin-on-surface-variant)', lineHeight: 1.45, marginBottom: '0.625rem' }}>
           Only use this after verifying the student’s identity. The student will be logged out and must enroll MFA again.

@@ -89,11 +89,15 @@ export async function resetStudentMfa(
   }
 
   const factors = await service.auth.admin.mfa.listFactors({ userId })
-  if (factors.error) return { ok: false, error: 'Could not load the student’s authenticators.' }
+  if (factors.error) return { ok: false, error: 'Could not load the client’s verification methods.' }
   for (const factor of factors.data.factors) {
     const removed = await service.auth.admin.mfa.deleteFactor({ userId, id: factor.id })
-    if (removed.error) return { ok: false, error: 'Could not complete the authenticator reset.' }
+    if (removed.error) return { ok: false, error: 'Could not complete the two-step verification reset.' }
   }
+  await Promise.all([
+    service.from('client_email_mfa_challenges').delete().eq('user_id', userId),
+    service.from('client_email_mfa_sessions').delete().eq('user_id', userId),
+  ])
 
   await logAdminAction({
     adminUserId: adminUser.id,
@@ -105,8 +109,8 @@ export async function resetStudentMfa(
   if (targetProfile.email) {
     await sendSecurityNotice({
       to: targetProfile.email,
-      subject: 'Your Lumora Women authenticator was reset',
-      message: 'Your two-step authentication factors were reset after an identity-verification request. Your active sessions were closed. Sign in again to enroll a new authenticator.',
+      subject: 'Your Lumora Women verification method was reset',
+      message: 'Your two-step verification method was reset after an identity-verification request. Your active sessions were closed. Sign in again to receive a new email security code.',
     })
   }
   return { ok: true }

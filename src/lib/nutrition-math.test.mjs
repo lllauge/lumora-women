@@ -127,3 +127,9 @@ test('maps chili powder to the USDA spice instead of powdered sugar', () => {
   assert.equal(food?.displayName, 'Chili powder')
   assert.equal(food?.fdcId, 171319)
 })
+
+test('maps blueberries and lemon juice to complete, ingredient-specific USDA records', () => {
+  assert.equal(matchCommonFood('Blueberries, raw')?.fdcId, 171711)
+  assert.equal(matchCommonFood('lemon juice')?.fdcId, 167747)
+  assert.equal(matchCommonFood('lemon')?.displayName, 'Lemon, raw')
+})

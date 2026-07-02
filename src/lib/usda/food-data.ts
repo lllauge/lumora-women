@@ -228,6 +228,13 @@ function macrosPer100g(food: FoodSearchResult) {
   return macros
 }
 
+function hasDietaryFiberValue(food: FoodSearchResult) {
+  return (food.foodNutrients ?? []).some((nutrient) => (
+    (nutrient.nutrientId === 1079 || nutrient.nutrientName?.toLowerCase().includes('fiber'))
+    && typeof nutrient.value === 'number'
+  ))
+}
+
 async function searchFood(query: string, apiKey: string) {
   const commonFood = matchCommonFood(query)
   if (commonFood?.fdcId) {
@@ -846,6 +853,24 @@ export async function calculateRecipeNutritionFromUsda({
       const detail = await fetchFoodById(food.fdcId, apiKey).catch(() => null)
       if (detail) {
         food = detail
+      }
+    }
+    // Some current Foundation records omit a nutrient rather than reporting
+    // zero. Replace an already-saved incomplete record with the reviewed
+    // canonical record so "not measured" never becomes a false zero.
+    const canonical = matchCommonFood(searchQuery)
+    if (
+      parsed.fdcId
+      && !hasDietaryFiberValue(food)
+      && canonical?.fdcId
+      && canonical.fdcId !== parsed.fdcId
+    ) {
+      const completeFood = await fetchFoodById(canonical.fdcId, apiKey).catch(() => null)
+      if (completeFood && hasDietaryFiberValue(completeFood)) {
+        food = completeFood
+        warnings.push(
+          `${raw}: Saved USDA record ${parsed.fdcId} omitted dietary fiber; recalculated from reviewed ${canonical.displayName} record ${canonical.fdcId}.`,
+        )
       }
     }
     const per100g = macrosPer100g(food)

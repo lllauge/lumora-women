@@ -125,10 +125,22 @@ export const COMMON_FOODS: CommonFood[] = [
   { aliases: ['apple', 'apples'], displayName: 'Apple, raw, with skin', usdaQuery: 'apples raw with skin' },
   { aliases: ['banana', 'bananas'], displayName: 'Banana, raw', usdaQuery: 'bananas raw' },
   { aliases: ['strawberry', 'strawberries'], displayName: 'Strawberries, raw', usdaQuery: 'strawberries raw' },
-  { aliases: ['blueberry', 'blueberries'], displayName: 'Blueberries, raw', usdaQuery: 'blueberries raw' },
+  {
+    aliases: ['blueberry', 'blueberries'],
+    displayName: 'Blueberries, raw',
+    usdaQuery: 'blueberries raw',
+    // Complete SR Legacy record; the newer Foundation row omits dietary fiber.
+    fdcId: 171711,
+  },
   { aliases: ['raspberry', 'raspberries'], displayName: 'Raspberries, raw', usdaQuery: 'raspberries raw' },
   { aliases: ['blackberry', 'blackberries'], displayName: 'Blackberries, raw', usdaQuery: 'blackberries raw' },
   { aliases: ['orange', 'oranges'], displayName: 'Orange, raw', usdaQuery: 'oranges raw navels' },
+  {
+    aliases: ['lemon juice'],
+    displayName: 'Lemon juice, raw',
+    usdaQuery: 'lemon juice raw',
+    fdcId: 167747,
+  },
   { aliases: ['lemon'], displayName: 'Lemon, raw', usdaQuery: 'lemons raw without peel' },
   { aliases: ['lime'], displayName: 'Lime, raw', usdaQuery: 'limes raw' },
   { aliases: ['mango'], displayName: 'Mango, raw', usdaQuery: 'mangos raw' },
@@ -215,15 +227,16 @@ export const COMMON_FOODS: CommonFood[] = [
  * "chicken" when the admin typed "ground chicken".
  */
 export function matchCommonFood(query: string): CommonFood | null {
-  const lower = query.toLowerCase().trim()
+  const lower = query.toLowerCase().replace(/[^a-z0-9%]+/g, ' ').trim()
   if (!lower) return null
   let best: { food: CommonFood; aliasLength: number } | null = null
   for (const food of COMMON_FOODS) {
     for (const alias of food.aliases) {
-      const re = new RegExp(`(^|\\s)${alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\s|$)`)
-      if (re.test(lower) || lower === alias) {
-        if (!best || alias.length > best.aliasLength) {
-          best = { food, aliasLength: alias.length }
+      const normalizedAlias = alias.toLowerCase().replace(/[^a-z0-9%]+/g, ' ').trim()
+      const re = new RegExp(`(^|\\s)${normalizedAlias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\s|$)`)
+      if (re.test(lower) || lower === normalizedAlias) {
+        if (!best || normalizedAlias.length > best.aliasLength) {
+          best = { food, aliasLength: normalizedAlias.length }
         }
       }
     }

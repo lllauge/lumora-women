@@ -3,9 +3,11 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { requireSameOrigin } from '@/lib/request-security'
+import { verifyRecaptcha } from '@/lib/recaptcha'
 
 const RequestSchema = z.object({
   email: z.string().trim().email().max(320),
+  captchaToken: z.string().max(4096).nullable().optional(),
 })
 
 async function accountHash(email: string) {
@@ -24,6 +26,16 @@ export async function POST(request: NextRequest) {
   const parsed = RequestSchema.safeParse(await request.json().catch(() => null))
   if (!parsed.success) {
     return NextResponse.json({ ok: true })
+  }
+
+  const captcha = await verifyRecaptcha({
+    token: parsed.data.captchaToken,
+    action: 'password_reset',
+    request,
+    minimumScore: 0.5,
+  })
+  if (!captcha.ok) {
+    return NextResponse.json({ error: 'Security verification failed. Please try again.' }, { status: 400 })
   }
 
   const ip = getClientIp(request.headers)

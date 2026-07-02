@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { executeRecaptcha } from '@/lib/recaptcha-client'
 
 export default function ResendConfirmationForm() {
   const [email, setEmail] = useState('')
@@ -14,7 +15,11 @@ export default function ResendConfirmationForm() {
     const emailParam = params.get('email')
     const nextPath = params.get('redirectTo')
 
-    if (emailParam) setEmail(emailParam)
+    if (emailParam) {
+      // Query parameters are only available after the client mounts.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setEmail(emailParam)
+    }
     if (nextPath?.startsWith('/') && !nextPath.startsWith('//')) {
       setRedirectTo(nextPath)
     }
@@ -26,10 +31,19 @@ export default function ResendConfirmationForm() {
     setMessage('')
     setError('')
 
+    let captchaToken: string | null
+    try {
+      captchaToken = await executeRecaptcha('resend_confirmation')
+    } catch {
+      setError('Security verification could not load. Please refresh and try again.')
+      setPending(false)
+      return
+    }
+
     const response = await fetch('/api/auth/resend-confirmation', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, redirectTo }),
+      body: JSON.stringify({ email, redirectTo, captchaToken }),
     })
     const result = await response.json().catch(() => ({} as { error?: string }))
 

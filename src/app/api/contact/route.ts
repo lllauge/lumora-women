@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { Resend } from 'resend'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { sanitizeField } from '@/lib/sanitize'
-import { verifyHcaptcha } from '@/lib/hcaptcha'
+import { verifyRecaptcha } from '@/lib/recaptcha'
 import { requireSameOrigin } from '@/lib/request-security'
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'hello@lumorawomen.com'
@@ -20,7 +20,7 @@ const ContactSchema = z.object({
     'other',
   ], { message: 'Invalid subject' }),
   message: z.string().min(10, 'Message must be at least 10 characters').max(5000),
-  hcaptchaToken: z.string().optional(),
+  captchaToken: z.string().optional().nullable(),
 })
 
 export async function POST(req: NextRequest) {
@@ -53,10 +53,14 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // ── hCaptcha verification ─────────────────────────────────────────────────
-  const captchaOk = await verifyHcaptcha(parsed.data.hcaptchaToken)
-  if (!captchaOk) {
-    return NextResponse.json({ error: 'CAPTCHA verification failed. Please try again.' }, { status: 400 })
+  const captcha = await verifyRecaptcha({
+    token: parsed.data.captchaToken,
+    action: 'contact',
+    request: req,
+    minimumScore: 0.5,
+  })
+  if (!captcha.ok) {
+    return NextResponse.json({ error: 'Security verification failed. Please try again.' }, { status: 400 })
   }
 
   // ── Sanitize all text fields ──────────────────────────────────────────────

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { CheckCircle, Loader2, ShieldCheck } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import AuthCard from '@/components/layout/AuthCard'
+import { executeRecaptcha } from '@/lib/recaptcha-client'
 
 type TotpEnrollment = {
   qrCode: string
@@ -67,11 +68,20 @@ function ClientEmailMfa() {
   async function sendCode() {
     setPending(true)
     setError('')
+    let captchaToken: string | null
+    try {
+      captchaToken = await executeRecaptcha('email_mfa_send')
+    } catch {
+      setError('Security verification could not load. Please refresh and try again.')
+      setMode('code')
+      setPending(false)
+      return
+    }
     const response = await fetch('/api/auth/email-mfa', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',
-      body: JSON.stringify({ action: 'send' }),
+      body: JSON.stringify({ action: 'send', captchaToken }),
     })
     const result = await response.json().catch(() => ({})) as { error?: string }
     setPending(false)

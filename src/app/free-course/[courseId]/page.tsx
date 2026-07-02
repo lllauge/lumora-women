@@ -1,13 +1,11 @@
 'use client'
 
-import { useState, useEffect, useRef, use } from 'react'
+import { useState, useEffect, use } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import HCaptcha from '@hcaptcha/react-hcaptcha'
 import { createClient } from '@/lib/supabase/client'
 import { CheckCircle, Mail } from 'lucide-react'
-
-const HCAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY ?? ''
+import { executeRecaptcha } from '@/lib/recaptcha-client'
 
 type Course = {
   id: string
@@ -24,7 +22,6 @@ export default function FreeCourseCapturePage({
 }) {
   const { courseId } = use(params)
   const router = useRouter()
-  const captchaRef = useRef<HCaptcha>(null)
   const [course, setCourse] = useState<Course | null>(null)
   const [courseLoading, setCourseLoading] = useState(true)
   const [form, setForm] = useState({ firstName: '', email: '', password: '', confirm: '' })
@@ -32,7 +29,6 @@ export default function FreeCourseCapturePage({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [alreadyRegistered, setAlreadyRegistered] = useState(false)
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   const [loggedInUserId, setLoggedInUserId] = useState<string | null>(null)
   const [loggedInEmail, setLoggedInEmail] = useState<string | null>(null)
   const [enrolling, setEnrolling] = useState(false)
@@ -103,11 +99,6 @@ export default function FreeCourseCapturePage({
       return
     }
 
-    if (HCAPTCHA_SITE_KEY && !captchaToken) {
-      setError('Please complete the CAPTCHA.')
-      return
-    }
-
     setLoading(true)
     setError('')
     setAlreadyRegistered(false)
@@ -126,6 +117,14 @@ export default function FreeCourseCapturePage({
       router.push(enrollResult.startPath ?? `/courses/${courseId}`)
       return
     } else {
+      let captchaToken: string | null
+      try {
+        captchaToken = await executeRecaptcha('signup')
+      } catch {
+        setError('Security verification could not load. Please refresh and try again.')
+        setLoading(false)
+        return
+      }
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -145,8 +144,6 @@ export default function FreeCourseCapturePage({
         } else {
           setError(message)
         }
-        captchaRef.current?.resetCaptcha()
-        setCaptchaToken(null)
         setLoading(false)
         return
       }
@@ -359,16 +356,6 @@ export default function FreeCourseCapturePage({
                       </span>
                     </label>
                   </div>
-
-                  {/* hCaptcha */}
-                  {HCAPTCHA_SITE_KEY && (
-                    <HCaptcha
-                      ref={captchaRef}
-                      sitekey={HCAPTCHA_SITE_KEY}
-                      onVerify={(token) => setCaptchaToken(token)}
-                      onExpire={() => setCaptchaToken(null)}
-                    />
-                  )}
 
                   {alreadyRegistered && (
                     <div role="alert" style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', color: '#92400E', background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: '0.5rem', padding: '0.75rem 1rem', lineHeight: 1.5 }}>

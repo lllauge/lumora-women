@@ -5,6 +5,7 @@ import Link from 'next/link'
 import AuthCard from '@/components/layout/AuthCard'
 import AuthInput from '@/components/ui/AuthInput'
 import { CheckCircle } from 'lucide-react'
+import { executeRecaptcha } from '@/lib/recaptcha-client'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -17,11 +18,20 @@ export default function ForgotPasswordPage() {
     setLoading(true)
     setError('')
 
+    let captchaToken: string | null
+    try {
+      captchaToken = await executeRecaptcha('password_reset')
+    } catch {
+      setError('Security verification could not load. Please refresh and try again.')
+      setLoading(false)
+      return
+    }
+
     const response = await fetch('/api/auth/password-reset', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, captchaToken }),
     })
 
     if (!response.ok) {

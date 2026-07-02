@@ -1,13 +1,12 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import HCaptcha from '@hcaptcha/react-hcaptcha'
 import AuthCard from '@/components/layout/AuthCard'
 import AuthInput from '@/components/ui/AuthInput'
+import { executeRecaptcha } from '@/lib/recaptcha-client'
 
-const HCAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY ?? ''
 
 function passwordErrors(pw: string): string[] {
   const errs: string[] = []
@@ -19,13 +18,11 @@ function passwordErrors(pw: string): string[] {
 
 export default function SignUpPage() {
   const router = useRouter()
-  const captchaRef = useRef<HCaptcha>(null)
   const [form, setForm] = useState({ firstName: '', lastName: '', email: '', password: '', confirm: '' })
   const [ageConfirmed, setAgeConfirmed] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
   const [serverError, setServerError] = useState('')
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   const [redirectTo, setRedirectTo] = useState('/dashboard')
 
   useEffect(() => {
@@ -34,6 +31,8 @@ export default function SignUpPage() {
     const nextPath = params.get('redirectTo')
 
     if (email) {
+      // Query parameters are only available after the client mounts.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setForm((f) => ({ ...f, email }))
     }
     if (nextPath?.startsWith('/') && !nextPath.startsWith('//')) {
@@ -61,11 +60,6 @@ export default function SignUpPage() {
       e.age = 'You must confirm you are 18 years of age or older to create an account.'
     }
 
-    // hCaptcha (only required when site key is configured)
-    if (HCAPTCHA_SITE_KEY && !captchaToken) {
-      e.captcha = 'Please complete the CAPTCHA.'
-    }
-
     return e
   }
 
@@ -76,6 +70,15 @@ export default function SignUpPage() {
     setErrors({})
     setLoading(true)
     setServerError('')
+
+    let captchaToken: string | null
+    try {
+      captchaToken = await executeRecaptcha('signup')
+    } catch {
+      setServerError('Security verification could not load. Please refresh and try again.')
+      setLoading(false)
+      return
+    }
 
     const response = await fetch('/api/auth/signup', {
       method: 'POST',
@@ -94,8 +97,6 @@ export default function SignUpPage() {
 
     if (!response.ok) {
       setServerError(result.error || 'Your account could not be created. Please try again.')
-      captchaRef.current?.resetCaptcha()
-      setCaptchaToken(null)
       setLoading(false)
       return
     }
@@ -167,23 +168,6 @@ export default function SignUpPage() {
             </p>
           )}
         </div>
-
-        {/* hCaptcha, only rendered when site key is configured */}
-        {HCAPTCHA_SITE_KEY && (
-          <div>
-            <HCaptcha
-              ref={captchaRef}
-              sitekey={HCAPTCHA_SITE_KEY}
-              onVerify={(token) => setCaptchaToken(token)}
-              onExpire={() => setCaptchaToken(null)}
-            />
-            {errors.captcha && (
-              <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', color: '#B91C1C', marginTop: '0.25rem' }}>
-                {errors.captcha}
-              </p>
-            )}
-          </div>
-        )}
 
         {serverError && (
           <div

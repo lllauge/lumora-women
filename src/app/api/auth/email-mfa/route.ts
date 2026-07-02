@@ -12,9 +12,13 @@ import {
   hashClientEmailMfaCode,
 } from '@/lib/client-email-mfa'
 import { sendClientVerificationCode } from '@/lib/auth-email'
+import { verifyRecaptcha } from '@/lib/recaptcha'
 
 const RequestSchema = z.discriminatedUnion('action', [
-  z.object({ action: z.literal('send') }),
+  z.object({
+    action: z.literal('send'),
+    captchaToken: z.string().max(4096).nullable().optional(),
+  }),
   z.object({ action: z.literal('verify'), code: z.string().regex(/^\d{6}$/) }),
 ])
 
@@ -58,6 +62,16 @@ export async function POST(request: NextRequest) {
   }
 
   if (parsed.data.action === 'send') {
+    const captcha = await verifyRecaptcha({
+      token: parsed.data.captchaToken,
+      action: 'email_mfa_send',
+      request,
+      minimumScore: 0.5,
+    })
+    if (!captcha.ok) {
+      return NextResponse.json({ error: 'Security verification failed. Please try again.' }, { status: 400 })
+    }
+
     const ip = getClientIp(request.headers)
     const [userLimit, ipLimit] = await Promise.all([
       checkRateLimit(`client_email_mfa_user:${user.id}`, 5, 60 * 60),

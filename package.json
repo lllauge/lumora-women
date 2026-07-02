@@ -8,12 +8,11 @@
     "start": "next start",
     "lint": "eslint",
     "test:nutrition": "node --test --experimental-strip-types src/lib/nutrition-math.test.mjs src/lib/coaching-plan-schema.test.mjs",
-    "test:security": "node --test --experimental-strip-types src/lib/session-activity.test.mjs src/lib/client-email-mfa.test.mjs"
+    "test:security": "node --test --experimental-strip-types src/lib/session-activity.test.mjs src/lib/client-email-mfa.test.mjs src/lib/recaptcha.test.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1053.0",
     "@aws-sdk/s3-request-presigner": "^3.1053.0",
-    "@hcaptcha/react-hcaptcha": "^2.0.2",
     "@hookform/resolvers": "^5.4.0",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-dialog": "^1.1.15",

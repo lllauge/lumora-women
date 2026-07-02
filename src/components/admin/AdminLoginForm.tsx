@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { AtSign, Lock, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react'
 import { signInAdmin } from '@/app/actions/admin-auth'
+import { executeRecaptcha } from '@/lib/recaptcha-client'
 
 const fieldShellStyle: React.CSSProperties = {
   position: 'relative',
@@ -56,12 +57,23 @@ export default function AdminLoginForm({ initialError }: { initialError?: string
   const [emailFocused, setEmailFocused] = useState(false)
   const [passwordFocused, setPasswordFocused] = useState(false)
   const [error, setError] = useState<string | undefined>(initialError)
+  const [captchaPending, setCaptchaPending] = useState(false)
   const [pending, startTransition] = useTransition()
+  const busy = pending || captchaPending
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError(undefined)
     const formData = new FormData(e.currentTarget)
+    setCaptchaPending(true)
+    try {
+      formData.set('captchaToken', await executeRecaptcha('admin_login') ?? '')
+    } catch {
+      setError('Security verification could not load. Please refresh and try again.')
+      setCaptchaPending(false)
+      return
+    }
+    setCaptchaPending(false)
     startTransition(async () => {
       const result = await signInAdmin(formData)
       if (result?.error) setError(result.error)
@@ -82,7 +94,7 @@ export default function AdminLoginForm({ initialError }: { initialError?: string
             required
             autoComplete="email"
             placeholder="admin@lumora.com"
-            disabled={pending}
+            disabled={busy}
             onFocus={() => setEmailFocused(true)}
             onBlur={() => setEmailFocused(false)}
             style={inputStyle}
@@ -102,7 +114,7 @@ export default function AdminLoginForm({ initialError }: { initialError?: string
             required
             autoComplete="current-password"
             placeholder="••••••••"
-            disabled={pending}
+            disabled={busy}
             onFocus={() => setPasswordFocused(true)}
             onBlur={() => setPasswordFocused(false)}
             style={{ ...inputStyle, paddingRight: '2.75rem' }}
@@ -152,7 +164,7 @@ export default function AdminLoginForm({ initialError }: { initialError?: string
       {/* Submit */}
       <button
         type="submit"
-        disabled={pending}
+        disabled={busy}
         className="w-full flex items-center justify-center gap-2 group transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
         style={{
           marginTop: '1.5rem',
@@ -165,11 +177,11 @@ export default function AdminLoginForm({ initialError }: { initialError?: string
           fontSize: '0.9375rem',
           letterSpacing: '0.05em',
           border: 'none',
-          cursor: pending ? 'wait' : 'pointer',
+          cursor: busy ? 'wait' : 'pointer',
           boxShadow: '0 10px 25px -10px rgba(173, 206, 190, 0.4)',
         }}
       >
-        {pending ? (
+        {busy ? (
           <>
             <Loader2 size={18} className="animate-spin" />
             <span>Authenticating…</span>

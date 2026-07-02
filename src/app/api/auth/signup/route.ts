@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { safeRedirectPath, sendAuthActionEmail } from '@/lib/auth-email'
-import { verifyHcaptcha } from '@/lib/hcaptcha'
+import { verifyRecaptcha } from '@/lib/recaptcha'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { sanitizeField } from '@/lib/sanitize'
 import { requireSameOrigin } from '@/lib/request-security'
@@ -77,9 +77,14 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const captchaOk = await verifyHcaptcha(parsed.data.captchaToken)
-  if (!captchaOk) {
-    return NextResponse.json({ error: 'CAPTCHA verification failed. Please try again.' }, { status: 400 })
+  const captcha = await verifyRecaptcha({
+    token: parsed.data.captchaToken,
+    action: 'signup',
+    request: req,
+    minimumScore: 0.6,
+  })
+  if (!captcha.ok) {
+    return NextResponse.json({ error: 'Security verification failed. Please try again.' }, { status: 400 })
   }
 
   const firstName = sanitizeField(parsed.data.firstName, 80)

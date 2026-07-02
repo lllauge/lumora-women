@@ -4,10 +4,12 @@ import { z } from 'zod'
 import { safeRedirectPath, sendAuthActionEmail } from '@/lib/auth-email'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { requireSameOrigin } from '@/lib/request-security'
+import { verifyRecaptcha } from '@/lib/recaptcha'
 
 const ResendConfirmationSchema = z.object({
   email: z.string().email().max(254),
   redirectTo: z.string().optional().nullable(),
+  captchaToken: z.string().max(4096).nullable().optional(),
 })
 
 function getAdminClient() {
@@ -50,6 +52,16 @@ export async function POST(req: NextRequest) {
   const parsed = ResendConfirmationSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json({ error: 'Please enter a valid email address.' }, { status: 400 })
+  }
+
+  const captcha = await verifyRecaptcha({
+    token: parsed.data.captchaToken,
+    action: 'resend_confirmation',
+    request: req,
+    minimumScore: 0.5,
+  })
+  if (!captcha.ok) {
+    return NextResponse.json({ error: 'Security verification failed. Please try again.' }, { status: 400 })
   }
 
   const email = parsed.data.email.trim().toLowerCase()

@@ -1,36 +1,34 @@
 'use client'
 
-import { useState, useRef } from 'react'
-import HCaptcha from '@hcaptcha/react-hcaptcha'
+import { useState } from 'react'
 import { Mail, MessageSquare, Clock, Check } from 'lucide-react'
-
-const HCAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY ?? ''
+import { executeRecaptcha } from '@/lib/recaptcha-client'
 
 function ContactForm() {
-  const captchaRef = useRef<HCaptcha>(null)
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setErrorMsg('')
 
-    if (HCAPTCHA_SITE_KEY && !captchaToken) {
-      setErrorMsg('Please complete the CAPTCHA verification.')
-      setStatus('error')
-      return
-    }
-
     setStatus('loading')
 
     const formData = new FormData(e.currentTarget)
+    let captchaToken: string | null
+    try {
+      captchaToken = await executeRecaptcha('contact')
+    } catch {
+      setErrorMsg('Security verification could not load. Please refresh and try again.')
+      setStatus('error')
+      return
+    }
     const payload = {
       name:          formData.get('name'),
       email:         formData.get('email'),
       subject:       formData.get('subject'),
       message:       formData.get('message'),
-      hcaptchaToken: captchaToken,
+      captchaToken,
     }
 
     try {
@@ -44,8 +42,6 @@ function ContactForm() {
 
       if (!res.ok) {
         setErrorMsg(data.error ?? 'Something went wrong. Please try again.')
-        captchaRef.current?.resetCaptcha()
-        setCaptchaToken(null)
         setStatus('error')
         return
       }
@@ -53,8 +49,6 @@ function ContactForm() {
       setStatus('success')
     } catch {
       setErrorMsg('Something went wrong. Please try again or email us directly.')
-      captchaRef.current?.resetCaptcha()
-      setCaptchaToken(null)
       setStatus('error')
     }
   }
@@ -106,16 +100,6 @@ function ContactForm() {
         <label className="contact-label">Your Message</label>
         <textarea name="message" placeholder="Tell us what's on your mind…" required rows={5} maxLength={5000} className="contact-input" style={{ resize: 'vertical', minHeight: '120px' }} />
       </div>
-
-      {/* hCaptcha */}
-      {HCAPTCHA_SITE_KEY && (
-        <HCaptcha
-          ref={captchaRef}
-          sitekey={HCAPTCHA_SITE_KEY}
-          onVerify={(token) => setCaptchaToken(token)}
-          onExpire={() => setCaptchaToken(null)}
-        />
-      )}
 
       <button type="submit" disabled={status === 'loading'} className="contact-submit">
         {status === 'loading' ? 'Sending…' : 'Send Message'}

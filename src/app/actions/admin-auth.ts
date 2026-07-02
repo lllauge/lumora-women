@@ -12,6 +12,8 @@ import {
 import { sessionActivityCookies } from '@/lib/session-activity'
 import { sendAdminSms } from '@/lib/admin-sms'
 import { getVerifiedAdminUser } from '@/lib/admin-guard'
+import { NextRequest } from 'next/server'
+import { verifyRecaptcha } from '@/lib/recaptcha'
 
 export type AdminAuthResult = { error?: string }
 
@@ -40,9 +42,25 @@ async function getClientIpFromHeaders(): Promise<string> {
 export async function signInAdmin(formData: FormData): Promise<AdminAuthResult> {
   const email    = (formData.get('email') ?? '').toString().trim()
   const password = (formData.get('password') ?? '').toString()
+  const captchaToken = (formData.get('captchaToken') ?? '').toString()
 
   if (!email || !password) {
     return { error: 'Email and password are required.' }
+  }
+
+  const headerStore = await headers()
+  const requestHeaders = new Headers()
+  headerStore.forEach((value, key) => requestHeaders.set(key, value))
+  const host = headerStore.get('x-forwarded-host') || headerStore.get('host') || 'localhost'
+  const protocol = headerStore.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https')
+  const captcha = await verifyRecaptcha({
+    token: captchaToken,
+    action: 'admin_login',
+    request: new NextRequest(`${protocol}://${host}/admin/login`, { headers: requestHeaders }),
+    minimumScore: 0.7,
+  })
+  if (!captcha.ok) {
+    return { error: 'Security verification failed. Please refresh and try again.' }
   }
 
   // Rate limit: 5 attempts per 15 minutes per IP

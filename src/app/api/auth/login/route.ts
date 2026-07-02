@@ -4,6 +4,7 @@ import { createAdminClient, createClient } from '@/lib/supabase/server'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { requireSameOrigin } from '@/lib/request-security'
 import { sendAdminSms } from '@/lib/admin-sms'
+import { verifyRecaptcha } from '@/lib/recaptcha'
 
 const LoginSchema = z.object({
   email: z.string().trim().email().max(320),
@@ -17,32 +18,6 @@ async function stableAccountKey(email: string) {
   return Array.from(new Uint8Array(digest))
     .map((byte) => byte.toString(16).padStart(2, '0'))
     .join('')
-}
-
-async function verifyCaptcha(token: string | null | undefined, ip: string) {
-  const secret = process.env.HCAPTCHA_SECRET_KEY
-  const siteKeyConfigured = Boolean(process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY)
-  if (!siteKeyConfigured && !secret) return true
-  if (!secret) {
-    console.error('[auth-login] hCaptcha site key is configured without HCAPTCHA_SECRET_KEY.')
-    return false
-  }
-  if (!token) return false
-
-  const body = new URLSearchParams({
-    secret,
-    response: token,
-    remoteip: ip,
-  })
-  const response = await fetch('https://api.hcaptcha.com/siteverify', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body,
-    cache: 'no-store',
-  }).catch(() => null)
-  if (!response?.ok) return false
-  const result = await response.json().catch(() => null) as { success?: boolean } | null
-  return result?.success === true
 }
 
 export async function POST(request: NextRequest) {
@@ -78,7 +53,13 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  if (!await verifyCaptcha(parsed.data.captchaToken, ip)) {
+  const captcha = await verifyRecaptcha({
+    token: parsed.data.captchaToken,
+    action: 'login',
+    request,
+    minimumScore: 0.5,
+  })
+  if (!captcha.ok) {
     return NextResponse.json({ error: 'Please complete the security check again.' }, { status: 400 })
   }
 

@@ -1,13 +1,12 @@
 'use client'
 
-import { useState, useRef, Suspense } from 'react'
+import { useState, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import HCaptcha from '@hcaptcha/react-hcaptcha'
 import AuthCard from '@/components/layout/AuthCard'
 import AuthInput from '@/components/ui/AuthInput'
+import { executeRecaptcha } from '@/lib/recaptcha-client'
 
-const HCAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY ?? ''
 const MAX_ATTEMPTS = 5
 const LOCKOUT_MINUTES = 15
 
@@ -24,14 +23,11 @@ function LoginForm() {
   const passwordResetMessage = searchParams.get('passwordReset') === 'success'
     ? 'Your password was updated. Please log in with your new password.'
     : ''
-  const captchaRef = useRef<HCaptcha>(null)
-
   const [form, setForm] = useState({ email: '', password: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [failedAttempts, setFailedAttempts] = useState(0)
   const [lockedUntil, setLockedUntil] = useState<Date | null>(null)
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
 
   const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [field]: e.target.value }))
@@ -42,14 +38,17 @@ function LoginForm() {
     e.preventDefault()
     if (isLocked) return
 
-    // hCaptcha check (client-side only when configured)
-    if (HCAPTCHA_SITE_KEY && !captchaToken) {
-      setError('Please complete the CAPTCHA.')
-      return
-    }
-
     setLoading(true)
     setError('')
+
+    let captchaToken: string | null
+    try {
+      captchaToken = await executeRecaptcha('login')
+    } catch {
+      setError('Security verification could not load. Please refresh and try again.')
+      setLoading(false)
+      return
+    }
 
     const response = await fetch('/api/auth/login', {
       method: 'POST',
@@ -70,9 +69,6 @@ function LoginForm() {
     if (!response.ok) {
       const newAttempts = failedAttempts + 1
       setFailedAttempts(newAttempts)
-      captchaRef.current?.resetCaptcha()
-      setCaptchaToken(null)
-
       if (response.status === 429 || newAttempts >= MAX_ATTEMPTS) {
         const unlockTime = new Date(Date.now() + LOCKOUT_MINUTES * 60 * 1000)
         setLockedUntil(unlockTime)
@@ -184,16 +180,6 @@ function LoginForm() {
             onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--outline-variant)')}
           />
         </div>
-
-        {/* hCaptcha, only rendered when site key is configured */}
-        {HCAPTCHA_SITE_KEY && (
-          <HCaptcha
-            ref={captchaRef}
-            sitekey={HCAPTCHA_SITE_KEY}
-            onVerify={(token) => setCaptchaToken(token)}
-            onExpire={() => setCaptchaToken(null)}
-          />
-        )}
 
         {error && !isLocked && (
           <div

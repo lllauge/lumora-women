@@ -41,6 +41,37 @@ function sameIngredients(left: string[], right: string[] | undefined) {
   return left.every((ingredient, index) => ingredient.trim() === right[index]?.trim())
 }
 
+const LEADING_GRAMS = /^(\d+(?:\.\d+)?)\s*g\s+(.+)$/i
+const FOOD_DATABASE_TOKEN = /^\[(?:fdc:\d+|curated:[a-z0-9-]+)\]\s*/i
+
+/**
+ * Weigh-out fields for a library recipe scaled to the client multiplier,
+ * mirroring the editor's paste-mode scaling so the persisted breakdown always
+ * matches the persisted macros even when a save lands before the editor's
+ * live preview refreshes them.
+ */
+function scaledServingFields(ingredients: string[], multiplier: number) {
+  const parts: string[] = []
+  let totalRecipeGrams = 0
+  for (const raw of ingredients) {
+    const match = raw.replace(FOOD_DATABASE_TOKEN, '').trim().match(LEADING_GRAMS)
+    if (!match) continue
+    const grams = Number(match[1])
+    totalRecipeGrams += grams
+    const scaledGrams = Math.round(grams * multiplier * 10) / 10
+    if (scaledGrams > 0) parts.push(`${scaledGrams}g ${match[2].trim()}`)
+  }
+  const clientServingGrams = Math.round(totalRecipeGrams * multiplier)
+  const recipeShare = multiplier >= 1 ? 'the full recipe' : `${Math.round(multiplier * 100)}% of the full recipe`
+  const breakdown = parts.join(' + ')
+  return {
+    clientServingGrams: `${clientServingGrams}g`,
+    clientServingMeasure: `Prepare the ingredient weights below, then serve ${recipeShare} of the finished recipe. The listed inputs total about ${clientServingGrams}g before cooking or draining.`,
+    clientServingBreakdown: breakdown,
+    clientServing: breakdown || `${clientServingGrams}g`,
+  }
+}
+
 function recipeTotals(meal: PlanMeal, recipes: CoachingPlanDraft['recipes']) {
   return mealRecipeNames(meal).reduce((total, name) => {
     const recipe = recipes.find((candidate) => candidate.name === name)
@@ -117,6 +148,7 @@ export async function normalizeReferencedPlanNutrition({
       })
       return {
         ...recipe,
+        ...scaledServingFields(recipe.ingredients, multiplier),
         clientServingMultiplier: `${multiplier}`,
         calories: `${serving.calories}`,
         protein: `${serving.protein}g`,

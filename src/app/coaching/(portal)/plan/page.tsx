@@ -50,7 +50,7 @@ export default async function CoachingPlanPage({
 }: {
   searchParams: Promise<{ day?: string; meal?: string; recipe?: string }>
 }) {
-  const { client, plan } = await getPortalContext()
+  const { client, plan, individualPlanStyle } = await getPortalContext()
   const selected = await searchParams
   const selectedDayIndex = Number(selected.day)
   const selectedMealIndex = Number(selected.meal)
@@ -203,6 +203,7 @@ export default async function CoachingPlanPage({
                     day={day}
                     dayIndex={i}
                     recipes={plan.recipes}
+                    individualPlanStyle={individualPlanStyle}
                     selectedMealIndex={i === selectedDayIndex ? selectedMealIndex : -1}
                     selectedRecipeIndex={i === selectedDayIndex ? selectedRecipeIndex : -1}
                   />
@@ -360,12 +361,14 @@ function DayMeals({
   day,
   dayIndex,
   recipes,
+  individualPlanStyle,
   selectedMealIndex,
   selectedRecipeIndex,
 }: {
   day: CoachingPlanDraft['mealPlan'][number]
   dayIndex: number
   recipes: CoachingPlanDraft['recipes']
+  individualPlanStyle: boolean
   selectedMealIndex: number
   selectedRecipeIndex: number
 }) {
@@ -420,7 +423,7 @@ function DayMeals({
               const recipeIndex = recipes.findIndex((item) => item.name === name)
               const recipeLabel = displayRecipeName(name)
               const isAutoCustom = /^Custom\s+/i.test(recipeLabel)
-              const factor = clientPortionFactor(recipe)
+              const factor = clientPortionFactor(recipe, individualPlanStyle)
               const fraction = portionFraction(factor)
               const portion = fraction && fraction.label !== 'the whole recipe'
                 ? `${fraction.label} of recipe · ${Math.round(factor * 100)}%`
@@ -470,7 +473,7 @@ function DayMeals({
                         </span>
                       </summary>
                       <div style={{ borderTop: '1px solid rgba(200,220,192,0.6)', padding: '0 0.875rem 0.875rem' }}>
-                        <RecipeDetail recipe={recipe} />
+                        <RecipeDetail recipe={recipe} individualPlanStyle={individualPlanStyle} />
                       </div>
                     </details>
                   )}
@@ -490,7 +493,13 @@ function DayMeals({
   )
 }
 
-function RecipeDetail({ recipe }: { recipe: CoachingPlanDraft['recipes'][number] }) {
+function RecipeDetail({
+  recipe,
+  individualPlanStyle,
+}: {
+  recipe: CoachingPlanDraft['recipes'][number]
+  individualPlanStyle: boolean
+}) {
   const sectionTitle: React.CSSProperties = {
     fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', fontWeight: 700,
     color: 'var(--text-primary)', margin: '1rem 0 0.375rem',
@@ -498,9 +507,9 @@ function RecipeDetail({ recipe }: { recipe: CoachingPlanDraft['recipes'][number]
   const bodyText: React.CSSProperties = {
     fontFamily: 'var(--font-sans)', fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.6,
   }
-  const isFamily = Number(recipe.familyServings) > 1
-  const portionLines = clientPortionLines(recipe).filter((line) => line.grams !== null)
-  const detailFraction = portionFraction(clientPortionFactor(recipe))
+  const isFamily = !individualPlanStyle && Number(recipe.familyServings) > 1
+  const portionLines = clientPortionLines(recipe, individualPlanStyle).filter((line) => line.grams !== null)
+  const detailFraction = portionFraction(clientPortionFactor(recipe, individualPlanStyle))
   // For family recipes the headline is "¼ of the recipe" (human-friendly),
   // with the gram total kept as small subtext. For individual recipes the
   // gram weight IS the meaningful headline, so we show it as before.
@@ -578,7 +587,7 @@ function RecipeDetail({ recipe }: { recipe: CoachingPlanDraft['recipes'][number]
             <p style={{ ...bodyText, fontSize: '0.8125rem', marginTop: '0.375rem' }}>{cleanIngredientText(recipe.clientServingBreakdown)}</p>
           )}
           {(() => {
-            const fraction = portionFraction(clientPortionFactor(recipe))
+            const fraction = portionFraction(clientPortionFactor(recipe, individualPlanStyle))
             if (!fraction) return null
             const serving = fraction.qualifier
               ? `a ${fraction.qualifier} ${fraction.label}`

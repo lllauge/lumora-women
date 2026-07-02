@@ -2,6 +2,22 @@ import { redirect } from 'next/navigation'
 import { createAdminClient, createClient } from '@/lib/supabase/server'
 import { mealRecipeNames, parseCoachingPlan, type CoachingPlanDraft } from '@/lib/coaching-plan-schema'
 import { cookedGramsToRaw } from '@/lib/cooked-to-raw'
+import { cleanIngredientText } from '@/lib/client-portion'
+
+// Portion math lives in client-portion.ts (pure, unit-tested); re-exported so
+// portal pages keep one import site for coaching helpers.
+export {
+  cleanIngredientText,
+  clientPortionFactor,
+  clientPortionLines,
+  ingredientGrams,
+  ingredientWeighState,
+  portionFraction,
+  portionSummaryLine,
+  shortIngredientName,
+  type PortionFraction,
+  type PortionLine,
+} from '@/lib/client-portion'
 
 const COACHING_TIME_ZONE = 'America/New_York'
 
@@ -37,6 +53,12 @@ export type PortalContext = {
   client: { id: string; first_name: string | null; status: string }
   plan: CoachingPlanDraft
   planPublishedAt: string
+  /**
+   * True when the plan was built in individual-only style: recipe gram amounts
+   * are exactly what the client eats, so portion display must not carve
+   * declared family servings out of them.
+   */
+  individualPlanStyle: boolean
 }
 
 /** Today's date (YYYY-MM-DD) in the coaching time zone. */
@@ -85,111 +107,6 @@ export function cleanMealDescription(value: string): string {
   if (!v) return ''
   if (/\[(?:fdc|curated):|details:|client portion:|plate by the ingredient|total client serving/i.test(v)) return ''
   return v
-}
-
-/** Compact one-line weigh-out summary: "3 large eggs · 50g sweet potato (cooked)". */
-export function portionSummaryLine(recipe: CoachingPlanDraft['recipes'][number]): string {
-  const lines = clientPortionLines(recipe).filter((line) => line.grams !== null || line.count)
-  if (lines.length === 0) return ''
-  return lines.map((line) => {
-    if (line.count) {
-      const n = parseInt(line.count, 10)
-      const foodName = /egg/i.test(line.name) ? (n > 1 ? 'eggs' : 'egg') : line.name.split(',')[0].trim()
-      return `${line.count} ${foodName}`
-    }
-    const nameMentionsState = COOKED_WORDS.test(line.name) || RAW_WORDS.test(line.name)
-    const stateSuffix = nameMentionsState ? '' : line.state === 'raw' ? ' (raw)' : line.state === 'cooked' ? ' (cooked)' : ''
-    return `${line.grams}g ${line.name}${stateSuffix}`
-  }).join(' · ')
-}
-
-const FOOD_DATABASE_TOKEN = /\[(?:fdc:\d+|curated:[a-z0-9-]+)\]\s*/gi
-
-/** Strip internal food-database tokens and collapse whitespace for client display. */
-export function cleanIngredientText(value: string): string {
-  return value.replace(FOOD_DATABASE_TOKEN, '').replace(/\s+/g, ' ').trim()
-}
-
-/** Leading gram amount of an ingredient line ("50g Sweet potato…" → 50). */
-export function ingredientGrams(value: string): number | null {
-  const match = cleanIngredientText(value).match(/^(\d+(?:\.\d+)?)\s*g\b/i)
-  return match ? parseFloat(match[1]) : null
-}
-
-/** Ingredient name without the leading amount, trimmed to its first two comma segments. */
-export function shortIngredientName(value: string): string {
-  const withoutAmount = cleanIngredientText(value).replace(/^[\d.]+\s*(?:g|oz|lb|cups?|tbsp|tsp)\b\.?\s*/i, '')
-  const segments = withoutAmount.split(',').map((s) => s.trim()).filter(Boolean)
-  return segments.slice(0, 2).join(', ') || cleanIngredientText(value)
-}
-
-const COOKED_WORDS = /\b(cooked|baked|roasted|grilled|poached|boiled|steamed|toasted|saut[eé]ed|scrambled|fried)\b/i
-const RAW_WORDS = /\b(raw|uncooked|dry|dried)\b/i
-
-/** Whether the entry's weight refers to the food cooked or raw (from the USDA name). */
-export function ingredientWeighState(value: string): 'cooked' | 'raw' | null {
-  const v = cleanIngredientText(value)
-  if (COOKED_WORDS.test(v)) return 'cooked'
-  if (RAW_WORDS.test(v)) return 'raw'
-  return null
-}
-
-function ingredientCount(value: string): { n: number; unit: string } | null {
-  const match = cleanIngredientText(value).match(/\((\d+(?:\.\d+)?)\s*(extra-?large|large|medium|small)?\s*\)/i)
-  return match ? { n: parseFloat(match[1]), unit: match[2]?.toLowerCase() ?? '' } : null
-}
-
-export type PortionLine = {
-  grams: number | null
-  name: string
-  state: 'cooked' | 'raw' | null
-  count: string | null
-}
-
-/**
- * Per-ingredient weigh-out list for the client's portion: full-recipe gram
- * amounts scaled by her serving multiplier (family recipes get her carved
- * portion; individual recipes are eaten as entered, multiplier 1). Counts
- * like "(3 large)" carry through when they scale to a whole number.
- */
-/**
- * The fraction of the full recipe that's the client's portion. For family
- * recipes (familyServings > 1), a missing OR 1.0 multiplier means "default to
- * equal share" — no client eats a whole family pot. Use the saved multiplier
- * only when it's actually been carved (0 < m < 1).
- */
-export function clientPortionFactor(recipe: CoachingPlanDraft['recipes'][number]): number {
-  const multiplier = parseFloat(recipe.clientServingMultiplier)
-  const familyServings = parseFloat(recipe.familyServings)
-  const isFamily = Number.isFinite(familyServings) && familyServings > 1
-  if (isFamily) {
-    if (Number.isFinite(multiplier) && multiplier > 0 && multiplier < 1) return multiplier
-    return 1 / familyServings
-  }
-  return Number.isFinite(multiplier) && multiplier > 0 ? multiplier : 1
-}
-
-export function clientPortionLines(recipe: CoachingPlanDraft['recipes'][number]): PortionLine[] {
-  const factor = clientPortionFactor(recipe)
-  return recipe.ingredients
-    .map((ing) => {
-      const grams = ingredientGrams(ing)
-      const rawCount = ingredientCount(ing)
-      let count: string | null = null
-      if (rawCount) {
-        const scaled = rawCount.n * factor
-        if (Math.abs(scaled - Math.round(scaled)) < 0.01 && Math.round(scaled) >= 1) {
-          count = `${Math.round(scaled)}${rawCount.unit ? ` ${rawCount.unit}` : ''}`
-        }
-      }
-      return {
-        grams: grams !== null ? Math.round(grams * factor) : null,
-        name: shortIngredientName(ing),
-        state: ingredientWeighState(ing),
-        count,
-      }
-    })
-    .filter((line) => line.name)
 }
 
 // Approx grams per common shopping unit, so we can convert weights into what
@@ -270,35 +187,6 @@ export function groceryDisplay(item: string): string {
   const oz = Math.max(0.5, Math.round((grams / 28.35) * 2) / 2)
   const ozStr = oz.toFixed(1).replace(/\.0$/, '')
   return `${label}, ${ozStr} oz`
-}
-
-const FRACTIONS: [number, string][] = [
-  [1, 'the whole recipe'], [3 / 4, '¾'], [2 / 3, '⅔'], [3 / 5, '⅗'], [1 / 2, 'half'],
-  [2 / 5, '⅖'], [3 / 8, '⅜'], [1 / 3, '⅓'], [1 / 4, '¼'], [1 / 5, '⅕'], [1 / 6, '⅙'], [1 / 8, '⅛'],
-]
-
-export type PortionFraction = { label: string; qualifier: 'generous' | 'scant' | null }
-
-/**
- * The client's portion as an easy fraction of the cooked dish ("¼", "half"),
- * for nights she doesn't want to weigh food. The fraction must stay close to
- * her true serving multiplier so the no-scale portion still hits her macros:
- * within 3% reads as exact; up to 12% off gets a "generous"/"scant" steer;
- * anything further from a kitchen fraction shows nothing.
- */
-export function portionFraction(factor: number): PortionFraction | null {
-  if (!Number.isFinite(factor) || factor <= 0 || factor > 1.02) return null
-  let best: { label: string; deviation: number } | null = null
-  for (const [value, label] of FRACTIONS) {
-    const deviation = (factor - value) / value
-    if (!best || Math.abs(deviation) < Math.abs(best.deviation)) best = { label, deviation }
-  }
-  if (!best || Math.abs(best.deviation) > 0.12) return null
-  if (best.label === 'the whole recipe' && Math.abs(best.deviation) > 0.03) return null
-  return {
-    label: best.label,
-    qualifier: Math.abs(best.deviation) <= 0.03 ? null : best.deviation > 0 ? 'generous' : 'scant',
-  }
 }
 
 /** True when a stored portion string is clean enough to show a client. */
@@ -460,12 +348,14 @@ export async function getPortalContext(): Promise<PortalContext> {
 
   const { data: planRow } = await admin
     .from('coaching_plans')
-    .select('macro_targets, meal_plan, recipes, workout_plan, grocery_list, client_notes, status, updated_at')
+    .select('macro_targets, meal_plan, recipes, workout_plan, grocery_list, client_notes, status, updated_at, planning_inputs')
     .eq('coaching_client_id', client.id)
     .eq('status', 'published')
     .maybeSingle()
 
   if (!planRow) redirect('/dashboard')
+
+  const planningInputs = (planRow.planning_inputs ?? {}) as Record<string, unknown>
 
   const plan = parseCoachingPlan({
     macroTargets: planRow.macro_targets,
@@ -483,6 +373,7 @@ export async function getPortalContext(): Promise<PortalContext> {
     client: { id: client.id, first_name: client.first_name, status: client.status },
     plan,
     planPublishedAt: planRow.updated_at,
+    individualPlanStyle: planningInputs.mealPlanStyle === 'individual_only',
   }
 }
 

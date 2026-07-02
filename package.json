@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:nutrition": "node --test --experimental-strip-types src/lib/nutrition-math.test.mjs src/lib/coaching-plan-schema.test.mjs",
+    "test:nutrition": "node --test --experimental-strip-types src/lib/nutrition-math.test.mjs src/lib/coaching-plan-schema.test.mjs src/lib/client-portion.test.mjs",
     "test:security": "node --test --experimental-strip-types src/lib/session-activity.test.mjs src/lib/client-email-mfa.test.mjs src/lib/recaptcha.test.mjs"
   },
   "dependencies": {

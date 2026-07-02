@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 type MealEntry = CoachingPlanDraft['mealPlan'][number]['breakfast']
 
 export default async function CoachingTodayPage() {
-  const { firstName, client, plan, planPublishedAt } = await getPortalContext()
+  const { firstName, client, plan, planPublishedAt, individualPlanStyle } = await getPortalContext()
   const today = coachingToday()
   const logs = await getDailyLogs(client.id)
   const habits = habitsFromPlan(plan)
@@ -88,11 +88,11 @@ export default async function CoachingTodayPage() {
           </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
-            <MealCard slot="Breakfast" mealIndex={0} meal={mealDay.breakfast} recipes={plan.recipes} anchor={recipeAnchor} />
-            <MealCard slot="Lunch" mealIndex={1} meal={mealDay.lunch} recipes={plan.recipes} anchor={recipeAnchor} />
-            <MealCard slot="Dinner" mealIndex={2} meal={mealDay.dinner} recipes={plan.recipes} anchor={recipeAnchor} />
+            <MealCard slot="Breakfast" mealIndex={0} meal={mealDay.breakfast} recipes={plan.recipes} individualPlanStyle={individualPlanStyle} anchor={recipeAnchor} />
+            <MealCard slot="Lunch" mealIndex={1} meal={mealDay.lunch} recipes={plan.recipes} individualPlanStyle={individualPlanStyle} anchor={recipeAnchor} />
+            <MealCard slot="Dinner" mealIndex={2} meal={mealDay.dinner} recipes={plan.recipes} individualPlanStyle={individualPlanStyle} anchor={recipeAnchor} />
             {mealDay.snacks.map((snack, i) => (
-              <MealCard key={i} slot={mealDay.snacks.length > 1 ? `Snack ${i + 1}` : 'Snack'} mealIndex={3 + i} meal={snack} recipes={plan.recipes} anchor={recipeAnchor} />
+              <MealCard key={i} slot={mealDay.snacks.length > 1 ? `Snack ${i + 1}` : 'Snack'} mealIndex={3 + i} meal={snack} recipes={plan.recipes} individualPlanStyle={individualPlanStyle} anchor={recipeAnchor} />
             ))}
             {mealDay.notes.trim() && (
               <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-muted)', padding: '0 0.25rem' }}>
@@ -107,12 +107,13 @@ export default async function CoachingTodayPage() {
 }
 
 function MealCard({
-  slot, mealIndex, meal, recipes, anchor,
+  slot, mealIndex, meal, recipes, individualPlanStyle, anchor,
 }: {
   slot: string
   mealIndex: number
   meal: MealEntry
   recipes: CoachingPlanDraft['recipes']
+  individualPlanStyle: boolean
   anchor: (recipeName: string, mealIndex: number) => string
 }) {
   if (!meal.name.trim() && !meal.description.trim()) return null
@@ -123,7 +124,7 @@ function MealCard({
     || description
   const weighOut = names.map((name) => {
     const recipe = recipes.find((item) => item.name === name)
-    const portion = recipe ? portionSummaryLine(recipe) : ''
+    const portion = recipe ? portionSummaryLine(recipe, individualPlanStyle) : ''
     return portion ? `${displayRecipeName(name)}: ${portion}` : ''
   }).filter(Boolean).join(' · ')
   const firstRecipeName = names[0] ?? ''

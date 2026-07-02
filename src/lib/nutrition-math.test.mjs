@@ -34,6 +34,17 @@ test('preserves a fitted serving multiplier through later nutrition passes', () 
   assert.equal(resolvedServingMultiplier('not a number', 4, true), 0.25)
 })
 
+test('falls back to an equal family share when a stored multiplier claims the whole pot', () => {
+  // A plan drafted in individual style then switched to family style carries
+  // clientServingMultiplier "1" — pricing a whole family recipe as one client
+  // serving. Family recipes only honor an actually carved share (0 < m < 1).
+  assert.equal(resolvedServingMultiplier('1', 4, true), 0.25)
+  assert.equal(resolvedServingMultiplier('1.25', 6, true), 1 / 6)
+  // Individual recipes still honor multipliers of 1 and above.
+  assert.equal(resolvedServingMultiplier('1', 4, false), 1)
+  assert.equal(resolvedServingMultiplier('1.3', 1, false), 1.3)
+})
+
 test('reduces oversized dinner and snack portions to fit the daily targets', () => {
   const meal = (recipeName) => ({
     name: recipeName,

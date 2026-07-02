@@ -59,6 +59,18 @@ export function isSessionAbsoluteExpired(startedAt: number, now: number, timeout
   return now - startedAt > timeoutSeconds
 }
 
+export function initializeBrowserActivity(
+  storedActivity: number,
+  now: number,
+  timeoutMilliseconds: number,
+) {
+  return Number.isFinite(storedActivity)
+    && storedActivity > 0
+    && now - storedActivity <= timeoutMilliseconds
+    ? storedActivity
+    : now
+}
+
 export async function createSignedActivityCookie(
   area: SessionArea,
   userId: string,

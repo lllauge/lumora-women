@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
-import type { SessionArea } from '@/lib/session-activity'
+import {
+  initializeBrowserActivity,
+  type SessionArea,
+} from '@/lib/session-activity'
 
 const IDLE_MS: Record<SessionArea, number> = {
   admin: 15 * 60 * 1000,
@@ -67,11 +70,9 @@ export default function IdleSessionGuard() {
 
     const storageKey = `lumora_last_activity_${area}`
     const stored = Number(localStorage.getItem(storageKey))
-    lastActivityRef.current = Number.isFinite(stored) && stored > 0 ? stored : Date.now()
-    if (Date.now() - lastActivityRef.current > IDLE_MS[area]) {
-      signOutForInactivity(area)
-      return
-    }
+    const now = Date.now()
+    lastActivityRef.current = initializeBrowserActivity(stored, now, IDLE_MS[area])
+    localStorage.setItem(storageKey, String(lastActivityRef.current))
     void recordActivity(area, true)
 
     const onActivity = () => { void recordActivity(area) }

@@ -100,14 +100,14 @@ async function addUsdaServingMathToDraft(plan: CoachingPlanDraft, planningInputs
         `USDA calculated one declared serving for ${recipe.mealType || 'this meal'}.`,
         `Ingredient input weight for one serving: ${nutrition.clientServingGrams}g. ${nutrition.clientServingMeasure}`,
         nutrition.clientServingBreakdown ? `Ingredient breakdown: ${nutrition.clientServingBreakdown}.` : '',
-        `Client serving share: ${nutrition.clientServingMultiplier.toFixed(2)} of the full recipe.`,
+        `Client serving share: ${nutrition.clientServingMultiplier} of the full recipe.`,
         `Full recipe USDA total: ${nutrition.totalRecipe.calories} cal, ${nutrition.totalRecipe.protein}g protein, ${nutrition.totalRecipe.carbs}g carbs, ${nutrition.totalRecipe.fats}g fats.`,
         nutrition.warnings.length ? `Review USDA warnings: ${nutrition.warnings.join(' ')}` : '',
       ].filter(Boolean).join(' ')
 
       return {
         ...recipe,
-        clientServingMultiplier: nutrition.clientServingMultiplier.toFixed(2),
+        clientServingMultiplier: `${nutrition.clientServingMultiplier}`,
         clientServingGrams: `${nutrition.clientServingGrams}g`,
         clientServingMeasure: nutrition.clientServingMeasure,
         clientServingBreakdown: nutrition.clientServingBreakdown,

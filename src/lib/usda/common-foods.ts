@@ -19,6 +19,8 @@ export type CommonFood = {
   displayName: string
   /** Precise USDA search term — disambiguates from derivatives. */
   usdaQuery: string
+  /** Optional reviewed record for searches where USDA ranks a derivative first. */
+  fdcId?: number
 }
 
 export const COMMON_FOODS: CommonFood[] = [
@@ -80,7 +82,12 @@ export const COMMON_FOODS: CommonFood[] = [
   { aliases: ['corn tortilla', 'tortilla corn'], displayName: 'Corn tortilla', usdaQuery: 'tortillas corn ready-to-bake' },
 
   { aliases: ['sweet potato cooked', 'baked sweet potato'], displayName: 'Sweet potato, baked', usdaQuery: 'sweet potato cooked baked in skin without salt' },
-  { aliases: ['sweet potato', 'raw sweet potato'], displayName: 'Sweet potato, raw', usdaQuery: 'sweet potato raw unprepared' },
+  {
+    aliases: ['sweet potato', 'sweet potatoes', 'raw sweet potato', 'raw sweet potatoes'],
+    displayName: 'Sweet potato, raw',
+    usdaQuery: 'sweet potato raw unprepared',
+    fdcId: 168482,
+  },
   { aliases: ['potato cooked', 'baked potato'], displayName: 'Potato, baked', usdaQuery: 'potatoes russet flesh and skin baked' },
   { aliases: ['potato', 'raw potato'], displayName: 'Potato, raw', usdaQuery: 'potatoes russet flesh and skin raw' },
 
@@ -96,6 +103,7 @@ export const COMMON_FOODS: CommonFood[] = [
   { aliases: ['cherry tomato', 'grape tomato'], displayName: 'Cherry tomato, raw', usdaQuery: 'tomatoes red ripe raw year round average' },
   { aliases: ['tomato', 'tomatoes'], displayName: 'Tomato, raw', usdaQuery: 'tomatoes red ripe raw year round average' },
   { aliases: ['onion', 'yellow onion'], displayName: 'Onion, raw', usdaQuery: 'onions raw' },
+  { aliases: ['chili powder'], displayName: 'Chili powder', usdaQuery: 'spices chili powder', fdcId: 171319 },
   { aliases: ['garlic powder'], displayName: 'Garlic powder', usdaQuery: 'spices garlic powder' },
   { aliases: ['garlic'], displayName: 'Garlic, raw', usdaQuery: 'garlic raw' },
   { aliases: ['bell pepper', 'red bell pepper', 'green bell pepper'], displayName: 'Bell pepper, raw', usdaQuery: 'peppers sweet red raw' },

@@ -212,6 +212,11 @@ function cleanIngredientLine(line: string) {
   return line.replace(/^\[(?:fdc:\d+|curated:[a-z0-9-]+)\]\s*/i, '').trim()
 }
 
+function sameIngredientLines(left: string[], right: string[]) {
+  return left.length === right.length
+    && left.every((ingredient, index) => ingredient.trim() === right[index]?.trim())
+}
+
 // Paste-mode recipes carry stored macros on the library row. The plan recipe
 // shape uses strings everywhere, so convert and copy them when the recipe is
 // first dragged into a meal slot. Empty strings keep USDA-only recipes flowing
@@ -294,7 +299,7 @@ function scalePasteRecipe({
 
   const round1 = (n: number) => Math.round(n * 10) / 10
   return {
-    clientServingMultiplier: multiplier.toFixed(2),
+    clientServingMultiplier: `${multiplier}`,
     clientServingGrams: `${clientServingGrams}g`,
     clientServingMeasure,
     clientServingBreakdown,
@@ -579,7 +584,12 @@ export default function CoachingPlanEditor({
           : libraryRecipes.find((candidate) => candidate.name === recipe.name)
 
         const hasNutritionExclusions = recipe.ingredients.some(isExcludedNutritionIngredient)
-        if (libraryRecipe?.calories && libraryRecipe.calories > 0 && !hasNutritionExclusions) {
+        if (
+          libraryRecipe?.calories
+          && libraryRecipe.calories > 0
+          && !hasNutritionExclusions
+          && sameIngredientLines(recipe.ingredients, libraryRecipe.ingredients)
+        ) {
           const totalRecipeGrams = recipe.ingredients.reduce(
             (sum, line) => sum + (extractLeadingGrams(line)?.grams ?? 0),
             0,
@@ -624,7 +634,7 @@ export default function CoachingPlanEditor({
           return {
             name: recipe.name,
             patch: {
-              clientServingMultiplier: nutrition.clientServingMultiplier.toFixed(2),
+              clientServingMultiplier: `${nutrition.clientServingMultiplier}`,
               clientServingGrams: `${nutrition.clientServingGrams}g`,
               clientServingMeasure: nutrition.clientServingMeasure,
               clientServingBreakdown: nutrition.clientServingBreakdown,
@@ -1025,16 +1035,23 @@ export default function CoachingPlanEditor({
         // them as paste-mode would freeze the total even after ingredients
         // change (e.g. adding a banana wouldn't update the day count).
         const isCustomSlot = /\(d\d+-(?:breakfast|lunch|dinner|snack\d+)\)$/.test(recipe.name)
-        const storedCalories = firstNumber(recipe.calories)
+        const libraryRecipe = isCustomSlot
+          ? undefined
+          : libraryRecipes.find((candidate) => candidate.name === recipe.name)
         const hasNutritionExclusions = recipe.ingredients.some(isExcludedNutritionIngredient)
-        if (storedCalories > 0 && !isCustomSlot && !hasNutritionExclusions) {
+        if (
+          libraryRecipe?.calories
+          && libraryRecipe.calories > 0
+          && !hasNutritionExclusions
+          && sameIngredientLines(recipe.ingredients, libraryRecipe.ingredients)
+        ) {
           const totalRecipeGrams = recipe.ingredients.reduce((sum, line) => sum + (extractLeadingGrams(line)?.grams ?? 0), 0)
           const scaled = scalePasteRecipe({
-            recipeCalories: storedCalories,
-            recipeProtein: firstNumber(recipe.protein),
-            recipeCarbs: firstNumber(recipe.carbs),
-            recipeFats: firstNumber(recipe.fats),
-            recipeFiber: firstNumber(recipe.fiber),
+            recipeCalories: libraryRecipe.calories,
+            recipeProtein: libraryRecipe.protein ?? 0,
+            recipeCarbs: libraryRecipe.carbs ?? 0,
+            recipeFats: libraryRecipe.fats ?? 0,
+            recipeFiber: libraryRecipe.fiber ?? 0,
             totalRecipeGrams,
             ingredients: recipe.ingredients,
             isFamily,
@@ -1074,7 +1091,7 @@ export default function CoachingPlanEditor({
         }
         updatedRecipes[index] = {
           ...r,
-          clientServingMultiplier: nutrition.clientServingMultiplier.toFixed(2),
+          clientServingMultiplier: `${nutrition.clientServingMultiplier}`,
           clientServingGrams: `${nutrition.clientServingGrams}g`,
           clientServingMeasure: nutrition.clientServingMeasure,
           clientServingBreakdown: nutrition.clientServingBreakdown,

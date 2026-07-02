@@ -5,6 +5,11 @@ import { CoachingPlanSchema, parseCoachingPlan } from '@/lib/coaching-plan-schem
 import { validatePlan, summarizeValidation } from '@/lib/recipe-validator'
 import { requireSameOrigin } from '@/lib/request-security'
 import { createAdminClient } from '@/lib/supabase/server'
+import {
+  normalizeReferencedPlanNutrition,
+  NutritionNormalizationError,
+} from '@/lib/normalize-plan-nutrition'
+import { getUsdaApiKey } from '@/lib/usda/api-key'
 
 const SavePlanSchema = z.object({
   clientId: z.string().uuid(),
@@ -34,7 +39,40 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Please check the plan and try again.' }, { status: 400 })
   }
 
-  const { clientId, plan, planningInputs } = parsed.data
+  const { clientId, planningInputs } = parsed.data
+  let plan = parsed.data.plan
+  const supabase = await createAdminClient()
+
+  const { data: libraryRecipes, error: libraryError } = await supabase
+    .from('recipe_library')
+    .select('name, ingredients, calories, protein, carbs, fats, fiber')
+
+  if (libraryError) {
+    return NextResponse.json({ error: 'Could not verify recipe nutrition before saving.' }, { status: 500 })
+  }
+
+  const usdaKey = getUsdaApiKey()
+  if (usdaKey.source === 'DEMO_KEY') {
+    return NextResponse.json({
+      error: 'Nutrition verification is unavailable, so this plan was not saved. Configure USDA_FDC_API_KEY and try again.',
+    }, { status: 503 })
+  }
+
+  try {
+    plan = await normalizeReferencedPlanNutrition({
+      plan,
+      mealPlanStyle: planningInputs?.mealPlanStyle,
+      libraryRecipes: libraryRecipes ?? [],
+      apiKey: usdaKey.key,
+    })
+  } catch (error) {
+    const message = error instanceof NutritionNormalizationError
+      ? error.message
+      : 'Nutrition verification failed unexpectedly.'
+    return NextResponse.json({
+      error: `Plan not saved because its nutrition could not be verified: ${message}`,
+    }, { status: 422 })
+  }
 
   // Block incomplete recipes. A calorie-vs-4/4/9 difference alone is only a
   // review warning because USDA-specific Atwater factors, fiber, and label
@@ -48,8 +86,6 @@ export async function POST(req: NextRequest) {
       }, { status: 422 })
     }
   }
-
-  const supabase = await createAdminClient()
 
   const { data: savedPlan, error } = await supabase
     .from('coaching_plans')

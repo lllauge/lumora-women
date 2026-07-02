@@ -5,6 +5,7 @@ import {
   atwaterGeneralCalories,
   declaredServingMultiplier,
   resolvedFoodCalories,
+  scaleFullRecipeNutrition,
 } from './nutrition-math.ts'
 import {
   inferredDiscardedBrineIndexes,
@@ -16,11 +17,30 @@ import {
   getCuratedBrandedFood,
   searchCuratedBrandedFoods,
 } from './curated-branded-foods.ts'
+import { matchCommonFood } from './usda/common-foods.ts'
 
 test('uses one declared serving for a family recipe', () => {
   assert.equal(declaredServingMultiplier(4, true), 0.25)
   assert.equal(declaredServingMultiplier(6, true), 1 / 6)
   assert.equal(declaredServingMultiplier(4, false), 1)
+})
+
+test('scales full-recipe totals once and never re-divides saved serving calories', () => {
+  const multiplier = declaredServingMultiplier(6, true)
+  assert.deepEqual(scaleFullRecipeNutrition({
+    calories: 1037.2,
+    protein: 15.2,
+    carbs: 185.8,
+    fats: 28.1,
+    fiber: 28.5,
+    multiplier,
+  }), {
+    calories: 173,
+    protein: 2.5,
+    carbs: 31,
+    fats: 4.7,
+    fiber: 4.8,
+  })
 })
 
 test('keeps reported USDA energy when it differs from general 4/4/9 math', () => {
@@ -87,4 +107,17 @@ test('finds the label-verified Truvani chocolate protein and preserves its servi
     fats: 3,
     fiber: 2,
   })
+})
+
+test('maps plural sweet potatoes to the raw sweet potato staple', () => {
+  const food = matchCommonFood('sweet potatoes')
+  assert.equal(food?.displayName, 'Sweet potato, raw')
+  assert.equal(food?.usdaQuery, 'sweet potato raw unprepared')
+  assert.equal(food?.fdcId, 168482)
+})
+
+test('maps chili powder to the USDA spice instead of powdered sugar', () => {
+  const food = matchCommonFood('chili powder')
+  assert.equal(food?.displayName, 'Chili powder')
+  assert.equal(food?.fdcId, 171319)
 })

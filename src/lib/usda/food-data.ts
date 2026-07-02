@@ -230,6 +230,9 @@ function macrosPer100g(food: FoodSearchResult) {
 
 async function searchFood(query: string, apiKey: string) {
   const commonFood = matchCommonFood(query)
+  if (commonFood?.fdcId) {
+    return fetchFoodById(commonFood.fdcId, apiKey)
+  }
   const searchQuery = commonFood?.usdaQuery ?? query
   const url = new URL(USDA_SEARCH_URL)
   url.searchParams.set('api_key', apiKey)
@@ -453,7 +456,11 @@ export async function searchFoodsForPicker(query: string, apiKey: string): Promi
           dataType: ['Branded'],
         })
       : Promise.resolve(null),
-    commonFood
+    commonFood?.fdcId
+      ? fetchFoodById(commonFood.fdcId, apiKey)
+          .then((food) => food ? { foods: [food] } : null)
+          .catch(() => null)
+      : commonFood
       ? fetchSearch({
           query: commonFood.usdaQuery,
           pageSize: 5,

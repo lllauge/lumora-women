@@ -26,3 +26,28 @@ export function resolvedFoodCalories({
 export function declaredServingMultiplier(familyServings: number, isFamily: boolean) {
   return isFamily && familyServings > 1 ? 1 / familyServings : 1
 }
+
+export function scaleFullRecipeNutrition({
+  calories,
+  protein,
+  carbs,
+  fats,
+  fiber,
+  multiplier,
+}: {
+  calories: number
+  protein: number
+  carbs: number
+  fats: number
+  fiber: number
+  multiplier: number
+}) {
+  const round1 = (value: number) => Math.round(value * 10) / 10
+  return {
+    calories: Math.round(calories * multiplier),
+    protein: round1(protein * multiplier),
+    carbs: round1(carbs * multiplier),
+    fats: round1(fats * multiplier),
+    fiber: round1(fiber * multiplier),
+  }
+}

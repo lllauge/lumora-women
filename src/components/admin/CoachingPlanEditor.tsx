@@ -310,6 +310,51 @@ function scalePasteRecipe({
   }
 }
 
+const SLOT_NAME_SUFFIX = /\s*\(d\d+-(?:breakfast|lunch|dinner|snack\d+)\)$/
+
+// Copying a meal into another slot must clone its per-slot custom recipe
+// under the target slot's name — sharing one "(d1-lunch)" recipe across slots
+// would make later ingredient edits on one day silently change the other.
+// Library recipes are shared by name on purpose, so those copy by reference.
+function cloneMealForSlot(
+  meal: PlanMeal,
+  recipes: CoachingPlanDraft['recipes'],
+  targetSlotKey: string,
+): { meal: PlanMeal; clones: CoachingPlanDraft['recipes'] } {
+  const names = mealRecipeNames(meal)
+  if (names.length === 0) return { meal: { ...meal }, clones: [] }
+  const clones: CoachingPlanDraft['recipes'] = []
+  const targetNames = names.map((name) => {
+    if (!SLOT_NAME_SUFFIX.test(name)) return name
+    const source = recipes.find((recipe) => recipe.name === name)
+    if (!source) return name
+    const cloneName = normalizedSlotRecipeName(name, 'Custom meal', targetSlotKey)
+    clones.push({
+      ...source,
+      name: cloneName,
+      ingredients: [...source.ingredients],
+      instructions: [...source.instructions],
+      swaps: [...source.swaps],
+    })
+    return cloneName
+  })
+  return { meal: withMealRecipeNames(meal, targetNames), clones }
+}
+
+function upsertRecipes(
+  recipes: CoachingPlanDraft['recipes'],
+  clones: CoachingPlanDraft['recipes'],
+): CoachingPlanDraft['recipes'] {
+  if (clones.length === 0) return recipes
+  const next = [...recipes]
+  for (const clone of clones) {
+    const idx = next.findIndex((recipe) => recipe.name === clone.name)
+    if (idx >= 0) next[idx] = clone
+    else next.push(clone)
+  }
+  return next
+}
+
 // Auto-created per-slot recipe copies look like "Name (d2-lunch)" — drop them once no slot uses them.
 function removeOrphanSlotRecipes(plan: CoachingPlanDraft): CoachingPlanDraft {
   const referenced = new Set<string>()
@@ -694,6 +739,59 @@ export default function CoachingPlanEditor({
       }
       mealPlan[dayIndex] = { ...day, snacks }
       return { ...current, recipes: newRecipes, mealPlan }
+    })
+  }
+
+  function copyMealToDay(sourceDayIndex: number, mealKey: 'breakfast' | 'lunch' | 'dinner', targetDayIndex: number) {
+    setPlan((current) => {
+      const sourceMeal = current.mealPlan[sourceDayIndex]?.[mealKey]
+      const targetDay = current.mealPlan[targetDayIndex]
+      if (!sourceMeal || !targetDay || sourceDayIndex === targetDayIndex) return current
+      const { meal, clones } = cloneMealForSlot(sourceMeal, current.recipes, `d${targetDayIndex + 1}-${mealKey}`)
+      const mealPlan = [...current.mealPlan]
+      mealPlan[targetDayIndex] = { ...targetDay, [mealKey]: meal }
+      return removeOrphanSlotRecipes({ ...current, recipes: upsertRecipes(current.recipes, clones), mealPlan })
+    })
+  }
+
+  function copySnacksToDay(sourceDayIndex: number, targetDayIndex: number) {
+    setPlan((current) => {
+      const sourceDay = current.mealPlan[sourceDayIndex]
+      const targetDay = current.mealPlan[targetDayIndex]
+      if (!sourceDay || !targetDay || sourceDayIndex === targetDayIndex) return current
+      let recipes = current.recipes
+      const snacks = sourceDay.snacks.map((snack, snackIndex) => {
+        const cloned = cloneMealForSlot(snack, current.recipes, `d${targetDayIndex + 1}-snack${snackIndex}`)
+        recipes = upsertRecipes(recipes, cloned.clones)
+        return cloned.meal
+      })
+      const mealPlan = [...current.mealPlan]
+      mealPlan[targetDayIndex] = { ...targetDay, snacks }
+      return removeOrphanSlotRecipes({ ...current, recipes, mealPlan })
+    })
+  }
+
+  function copyDayToDay(sourceDayIndex: number, targetDayIndex: number) {
+    setPlan((current) => {
+      const sourceDay = current.mealPlan[sourceDayIndex]
+      const targetDay = current.mealPlan[targetDayIndex]
+      if (!sourceDay || !targetDay || sourceDayIndex === targetDayIndex) return current
+      let recipes = current.recipes
+      const cloneMeal = (meal: PlanMeal, slot: string) => {
+        const cloned = cloneMealForSlot(meal, current.recipes, `d${targetDayIndex + 1}-${slot}`)
+        recipes = upsertRecipes(recipes, cloned.clones)
+        return cloned.meal
+      }
+      const mealPlan = [...current.mealPlan]
+      mealPlan[targetDayIndex] = {
+        ...targetDay, // the target keeps its own day label
+        breakfast: cloneMeal(sourceDay.breakfast, 'breakfast'),
+        lunch: cloneMeal(sourceDay.lunch, 'lunch'),
+        dinner: cloneMeal(sourceDay.dinner, 'dinner'),
+        snacks: sourceDay.snacks.map((snack, i) => cloneMeal(snack, `snack${i}`)),
+        notes: sourceDay.notes,
+      }
+      return removeOrphanSlotRecipes({ ...current, recipes, mealPlan })
     })
   }
 
@@ -1599,6 +1697,29 @@ export default function CoachingPlanEditor({
                   })()}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {plan.mealPlan.length > 1 && (
+                    <select
+                      className="admin-input"
+                      aria-label={`Copy all of ${day.day || `Day ${dayIndex + 1}`}'s meals to another day`}
+                      style={{ width: 'auto', fontSize: '0.78rem', padding: '4px 8px' }}
+                      value=""
+                      onClick={(event) => event.stopPropagation()}
+                      onChange={(event) => {
+                        const value = event.target.value
+                        if (value === 'all') {
+                          plan.mealPlan.forEach((_, i) => copyDayToDay(dayIndex, i))
+                        } else if (value !== '') {
+                          copyDayToDay(dayIndex, Number(value))
+                        }
+                      }}
+                    >
+                      <option value="">Copy day to…</option>
+                      {plan.mealPlan.map((target, i) => (
+                        i === dayIndex ? null : <option key={i} value={i}>{target.day || `Day ${i + 1}`}</option>
+                      ))}
+                      <option value="all">All other days</option>
+                    </select>
+                  )}
                   <button
                     type="button"
                     className="admin-btn-ghost"
@@ -1683,6 +1804,20 @@ export default function CoachingPlanEditor({
                           </ul>
                         )}
                         <IngredientPicker onAdd={(ing) => addIngredientToSlot(dayIndex, mealKey, ing)} />
+                        {plan.mealPlan.length > 1 && (selectedNames.length > 0 || meal.name.trim() || meal.description.trim()) && (
+                          <select
+                            className="admin-input"
+                            aria-label={`Copy this ${mealKey} to another day`}
+                            style={{ fontSize: '0.78rem' }}
+                            value=""
+                            onChange={(e) => { if (e.target.value !== '') copyMealToDay(dayIndex, mealKey, Number(e.target.value)) }}
+                          >
+                            <option value="">Copy {mealKey} to…</option>
+                            {plan.mealPlan.map((target, i) => (
+                              i === dayIndex ? null : <option key={i} value={i}>{target.day || `Day ${i + 1}`}</option>
+                            ))}
+                          </select>
+                        )}
                       </div>
                     )
                   })}
@@ -1763,6 +1898,20 @@ export default function CoachingPlanEditor({
                         </div>
                       )
                     })}
+                    {plan.mealPlan.length > 1 && day.snacks.length > 0 && (
+                      <select
+                        className="admin-input"
+                        aria-label="Copy this day's snacks to another day"
+                        style={{ fontSize: '0.78rem' }}
+                        value=""
+                        onChange={(e) => { if (e.target.value !== '') copySnacksToDay(dayIndex, Number(e.target.value)) }}
+                      >
+                        <option value="">Copy snacks to…</option>
+                        {plan.mealPlan.map((target, i) => (
+                          i === dayIndex ? null : <option key={i} value={i}>{target.day || `Day ${i + 1}`}</option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                 </div>
               </div>

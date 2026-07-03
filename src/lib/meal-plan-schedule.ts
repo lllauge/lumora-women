@@ -1,33 +1,38 @@
-// Two-week release schedule for long meal plans. The coach authors up to a
-// month of days; the client sees only the current 14-day block, and the next
-// block (with its grocery list) unlocks a couple of days early so she can
-// shop before the switch. Pure module (no server deps) so the date math is
+// Two-week release schedule for long meal plans. The coach authors 7-day
+// menus (Monday–Sunday); each menu is what the client eats for two calendar
+// weeks. A month is 14 authored days: days 1–7 cover weeks 1–2, days 8–14
+// cover weeks 3–4. The client sees only the current menu, and the next menu
+// (with its grocery list) unlocks a couple of days early so she can shop
+// before the switch. Pure module (no server deps) so the date math is
 // unit-testable; explicit .ts extensions keep it loading under `node --test
 // --experimental-strip-types`.
 
-export const BLOCK_DAYS = 14
+/** Days the coach authors per block: one week's menu. */
+export const BLOCK_MENU_DAYS = 7
+/** Calendar days each menu is live: the menu repeats for two weeks. */
+export const BLOCK_CALENDAR_DAYS = 14
 export const NEXT_BLOCK_PREVIEW_DAYS = 2
 
-/** Day-index ranges [start, end) chunked into 14-day blocks. */
+/** Day-index ranges [start, end) chunked into 7-day menus. */
 export function mealPlanBlocks(totalDays: number): { start: number; end: number }[] {
   const blocks: { start: number; end: number }[] = []
-  for (let start = 0; start < totalDays; start += BLOCK_DAYS) {
-    blocks.push({ start, end: Math.min(start + BLOCK_DAYS, totalDays) })
+  for (let start = 0; start < totalDays; start += BLOCK_MENU_DAYS) {
+    blocks.push({ start, end: Math.min(start + BLOCK_MENU_DAYS, totalDays) })
   }
   return blocks
 }
 
 export type MealPlanSchedule = {
-  /** True when the plan is long enough to gate AND a valid start date exists. */
+  /** True when the plan has more than one menu AND a valid start date exists. */
   active: boolean
   /** Index into mealPlanBlocks(); 0 when inactive. */
   currentBlock: number
   /** Absolute mealPlan index for today's meals; -1 when inactive (caller falls back to weekday logic). */
   todayDayIndex: number
   nextBlockVisible: boolean
-  /** Calendar days until the next block starts; 0 when there is no next block. */
+  /** Calendar days until the next menu starts; 0 when there is no next menu. */
   daysUntilNextBlock: number
-  /** ISO date the next block begins; '' when there is no next block. */
+  /** ISO date the next menu begins; '' when there is no next menu. */
   nextBlockStartsOn: string
 }
 
@@ -56,25 +61,25 @@ export function mealPlanSchedule(totalDays: number, startDate: string, today: st
     return inactive
   }
 
-  // Before the start date the client sees block one with day one as "today".
+  // Before the start date the client sees the first menu with day one as "today".
   const daysSince = Math.max(0, daysBetween(startDate.trim(), today))
-  const currentBlock = Math.min(Math.floor(daysSince / BLOCK_DAYS), blocks.length - 1)
+  const currentBlock = Math.min(Math.floor(daysSince / BLOCK_CALENDAR_DAYS), blocks.length - 1)
   const block = blocks[currentBlock]
   const blockLength = block.end - block.start
-  // Past the final block the client stays on it, rotating through its days so
-  // "today" keeps moving until the coach publishes the next month.
-  const dayInBlock = (daysSince - currentBlock * BLOCK_DAYS) % blockLength
+  // The menu repeats weekly within its two weeks; past the final menu the
+  // client stays on it, still rotating, until the coach publishes new weeks.
+  const dayInMenu = (daysSince - currentBlock * BLOCK_CALENDAR_DAYS) % blockLength
 
   const hasNext = currentBlock < blocks.length - 1
-  const daysUntilNextBlock = hasNext ? (currentBlock + 1) * BLOCK_DAYS - daysSince : 0
+  const daysUntilNextBlock = hasNext ? (currentBlock + 1) * BLOCK_CALENDAR_DAYS - daysSince : 0
 
   return {
     active: true,
     currentBlock,
-    todayDayIndex: block.start + dayInBlock,
+    todayDayIndex: block.start + dayInMenu,
     nextBlockVisible: hasNext && daysUntilNextBlock <= NEXT_BLOCK_PREVIEW_DAYS,
     daysUntilNextBlock,
-    nextBlockStartsOn: hasNext ? shiftDate(startDate.trim(), (currentBlock + 1) * BLOCK_DAYS) : '',
+    nextBlockStartsOn: hasNext ? shiftDate(startDate.trim(), (currentBlock + 1) * BLOCK_CALENDAR_DAYS) : '',
   }
 }
 
@@ -84,4 +89,9 @@ export function friendlyBlockDate(isoDate: string): string {
   return new Intl.DateTimeFormat('en-US', {
     timeZone: 'UTC', weekday: 'long', month: 'long', day: 'numeric',
   }).format(new Date(`${isoDate}T12:00:00Z`))
+}
+
+/** "Weeks 1–2" for block 0, "Weeks 3–4" for block 1, … */
+export function blockWeeksLabel(blockIndex: number): string {
+  return `Weeks ${blockIndex * 2 + 1}–${blockIndex * 2 + 2}`
 }

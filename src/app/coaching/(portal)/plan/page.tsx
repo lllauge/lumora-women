@@ -185,7 +185,7 @@ export default async function CoachingPlanPage({
             icon={<CalendarDays style={headerIcon} aria-hidden="true" />}
             title={schedule.active ? 'Your 2 Weeks' : 'Your Week'}
             subtitle={schedule.active
-              ? 'Your current two weeks of meals. Tap a day to see every meal.'
+              ? 'Your menu for these two weeks — repeat it both weeks. Tap a day to see every meal.'
               : 'Tap a day to see every meal.'}
           />
           <div className="portal-card">
@@ -377,7 +377,7 @@ export default async function CoachingPlanPage({
             icon={<ShoppingBasket style={headerIcon} aria-hidden="true" />}
             title="Grocery List"
             subtitle={schedule.active
-              ? 'Everything for your current two weeks. Check items off as you shop, it remembers between visits.'
+              ? 'One week of your menu — shop it each week. Check items off as you go, it remembers between visits.'
               : 'Check items off as you shop, it remembers between visits.'}
           />
           <div className="portal-card">
@@ -437,7 +437,7 @@ export default async function CoachingPlanPage({
               <SectionHeader
                 icon={<ShoppingBasket style={headerIcon} aria-hidden="true" />}
                 title="Grocery List for the Next 2 Weeks"
-                subtitle="Shop this list now so you're ready on day one."
+                subtitle="One week's shopping for your new menu — grab it before day one."
               />
               <div className="portal-card">
                 <div className="portal-gold-line" aria-hidden="true" />

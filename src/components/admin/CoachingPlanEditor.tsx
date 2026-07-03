@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, ChevronDown, Sparkles, Trash2 } from 'lucide-react'
 import type { CoachingPlanDraft, PlanMeal } from '@/lib/coaching-plan-schema'
 import {
@@ -24,6 +24,7 @@ import {
   type LibraryExercise,
 } from '@/lib/workout-generator'
 import { buildGroceryList, cleanIngredientLine, mergeGroceryList } from '@/lib/grocery-list'
+import { blockWeeksLabel, BLOCK_MENU_DAYS } from '@/lib/meal-plan-schedule'
 import { isExcludedNutritionIngredient } from '@/lib/nutrition-ingredient'
 import { resolvedServingMultiplier } from '@/lib/nutrition-math'
 
@@ -741,6 +742,15 @@ export default function CoachingPlanEditor({
       mealPlan[dayIndex] = { ...day, snacks }
       return { ...current, recipes: newRecipes, mealPlan }
     })
+  }
+
+  // Two menus can both contain a "Monday", so the copy dropdowns carry the
+  // client-weeks context once the plan spans more than one menu.
+  const dayOptionLabel = (target: CoachingPlanDraft['mealPlan'][number], i: number) => {
+    const label = target.day || `Day ${i + 1}`
+    return plan.mealPlan.length > BLOCK_MENU_DAYS
+      ? `${label} — ${blockWeeksLabel(Math.floor(i / BLOCK_MENU_DAYS))}`
+      : label
   }
 
   function copyMealToDay(sourceDayIndex: number, mealKey: 'breakfast' | 'lunch' | 'dinner', targetDayIndex: number) {
@@ -1679,9 +1689,10 @@ export default function CoachingPlanEditor({
               />
             </label>
             <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.78rem', color: 'var(--admin-on-surface-variant)', margin: 0, flex: 1, minWidth: 220 }}>
-              Build up to a month of days. With more than 14 days and a start date set, the client
-              sees two weeks at a time — the next two weeks and their grocery list unlock 2 days
-              before they begin, so she knows exactly what to buy for meal prep.
+              Every 7 days you build is one menu the client eats for two weeks: days 1–7 are
+              weeks 1–2, days 8–14 are weeks 3–4. With more than 7 days and a start date set,
+              the client sees one menu at a time — the next menu and its grocery list unlock
+              2 days before it begins, so she knows exactly what to buy for meal prep.
             </p>
           </div>
           {plan.mealPlan.length === 0 && (
@@ -1691,17 +1702,19 @@ export default function CoachingPlanEditor({
             </p>
           )}
           {plan.mealPlan.map((day, dayIndex) => (
-            <details key={dayIndex} style={{ border: '1px solid var(--admin-outline-variant)', borderRadius: 10, overflow: 'hidden' }} open={dayIndex === 0}>
+            <Fragment key={dayIndex}>
+            {plan.mealPlan.length > BLOCK_MENU_DAYS && dayIndex % BLOCK_MENU_DAYS === 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: dayIndex === 0 ? 0 : 10 }}>
+                <span style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--admin-primary)', whiteSpace: 'nowrap' }}>
+                  Client {blockWeeksLabel(Math.floor(dayIndex / BLOCK_MENU_DAYS))} · Menu {Math.floor(dayIndex / BLOCK_MENU_DAYS) + 1}
+                </span>
+                <span aria-hidden="true" style={{ flex: 1, height: 1, background: 'var(--admin-outline-variant)' }} />
+              </div>
+            )}
+            <details style={{ border: '1px solid var(--admin-outline-variant)', borderRadius: 10, overflow: 'hidden' }} open={dayIndex === 0}>
               <summary style={{ listStyle: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: 'pointer', background: 'var(--admin-surface-low)' }}>
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontFamily: 'var(--font-hanken)', fontWeight: 700, fontSize: '0.92rem', color: 'var(--admin-on-surface)' }}>{day.day || `Day ${dayIndex + 1}`}</span>
-                    {plan.mealPlan.length > 14 && (
-                      <span style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.68rem', fontWeight: 700, color: 'var(--admin-on-surface-variant)', border: '1px solid var(--admin-outline-variant)', borderRadius: 999, padding: '2px 8px', whiteSpace: 'nowrap' }}>
-                        Client weeks {Math.floor(dayIndex / 14) * 2 + 1}–{Math.floor(dayIndex / 14) * 2 + 2}
-                      </span>
-                    )}
-                  </div>
+                  <div style={{ fontFamily: 'var(--font-hanken)', fontWeight: 700, fontSize: '0.92rem', color: 'var(--admin-on-surface)' }}>{day.day || `Day ${dayIndex + 1}`}</div>
                   {(() => {
                     const total = dayMacroTotal(day, plan.recipes)
                     const hasDayMacros = total.calories || total.protein || total.carbs || total.fats
@@ -1739,7 +1752,7 @@ export default function CoachingPlanEditor({
                     >
                       <option value="">Copy day to…</option>
                       {plan.mealPlan.map((target, i) => (
-                        i === dayIndex ? null : <option key={i} value={i}>{target.day || `Day ${i + 1}`}</option>
+                        i === dayIndex ? null : <option key={i} value={i}>{dayOptionLabel(target, i)}</option>
                       ))}
                       <option value="all">All other days</option>
                     </select>
@@ -1838,7 +1851,7 @@ export default function CoachingPlanEditor({
                           >
                             <option value="">Copy {mealKey} to…</option>
                             {plan.mealPlan.map((target, i) => (
-                              i === dayIndex ? null : <option key={i} value={i}>{target.day || `Day ${i + 1}`}</option>
+                              i === dayIndex ? null : <option key={i} value={i}>{dayOptionLabel(target, i)}</option>
                             ))}
                           </select>
                         )}
@@ -1932,7 +1945,7 @@ export default function CoachingPlanEditor({
                       >
                         <option value="">Copy snacks to…</option>
                         {plan.mealPlan.map((target, i) => (
-                          i === dayIndex ? null : <option key={i} value={i}>{target.day || `Day ${i + 1}`}</option>
+                          i === dayIndex ? null : <option key={i} value={i}>{dayOptionLabel(target, i)}</option>
                         ))}
                       </select>
                     )}
@@ -1940,6 +1953,7 @@ export default function CoachingPlanEditor({
                 </div>
               </div>
             </details>
+            </Fragment>
           ))}
         </div>
       </div>

@@ -7,6 +7,7 @@ import {
   clientRecipeNotes, groceryDisplay, shoppingPrepLines,
 } from '@/lib/coaching-engagement'
 import GroceryChecklist from '@/components/coaching/GroceryChecklist'
+import { clientGroceryList } from '@/lib/grocery-list'
 import InstructionSteps from '@/components/coaching/InstructionSteps'
 import PrepIngredientList from '@/components/coaching/PrepIngredientList'
 import { mealRecipeNames, type CoachingPlanDraft } from '@/lib/coaching-plan-schema'
@@ -67,6 +68,11 @@ export default async function CoachingPlanPage({
     t.steps.trim() && { label: 'Steps', value: t.steps.trim(), winKey: 'steps' },
     t.workoutTarget.trim() && { label: 'Movement', value: t.workoutTarget.trim(), winKey: 'workout' },
   ].filter(Boolean) as { label: string; value: string; winKey?: string }[]
+
+  // Derived fresh from the meal plan's recipes on every render, so the
+  // master list stays complete even when the stored plan.groceryList is
+  // stale from an older save.
+  const groceryItems = clientGroceryList(plan)
 
   const macros = [
     t.protein.trim() && { label: 'Protein', value: withGrams(t.protein) },
@@ -339,7 +345,7 @@ export default async function CoachingPlanPage({
       )}
 
       {/* Grocery list */}
-      {plan.groceryList.length > 0 && (
+      {groceryItems.length > 0 && (
         <section aria-label="Grocery list">
           <SectionHeader
             icon={<ShoppingBasket style={headerIcon} aria-hidden="true" />}
@@ -350,7 +356,7 @@ export default async function CoachingPlanPage({
             <div className="portal-gold-line" aria-hidden="true" />
             <div style={{ padding: '1rem 1.25rem' }}>
               <GroceryChecklist
-                items={plan.groceryList.map((item) => groceryDisplay(item))}
+                items={groceryItems.map((item) => groceryDisplay(item))}
                 storageKey={`lumora-grocery-${client.id}`}
               />
             </div>

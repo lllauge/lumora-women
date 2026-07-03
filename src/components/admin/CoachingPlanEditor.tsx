@@ -24,7 +24,7 @@ import {
   type LibraryExercise,
 } from '@/lib/workout-generator'
 import { buildGroceryList, cleanIngredientLine, mergeGroceryList } from '@/lib/grocery-list'
-import { blockWeeksLabel, BLOCK_MENU_DAYS } from '@/lib/meal-plan-schedule'
+import { blockWeeksLabel, mealPlanBlocks, BLOCK_MENU_DAYS } from '@/lib/meal-plan-schedule'
 import { isExcludedNutritionIngredient } from '@/lib/nutrition-ingredient'
 import { resolvedServingMultiplier } from '@/lib/nutrition-math'
 
@@ -1701,17 +1701,13 @@ export default function CoachingPlanEditor({
               <a href="/admin/recipes" style={{ color: 'var(--admin-primary)', fontWeight: 600 }}>Recipe Library</a>.
             </p>
           )}
-          {plan.mealPlan.map((day, dayIndex) => (
-            <Fragment key={dayIndex}>
-            {plan.mealPlan.length > BLOCK_MENU_DAYS && dayIndex % BLOCK_MENU_DAYS === 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: dayIndex === 0 ? 0 : 10 }}>
-                <span style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--admin-primary)', whiteSpace: 'nowrap' }}>
-                  Client {blockWeeksLabel(Math.floor(dayIndex / BLOCK_MENU_DAYS))} · Menu {Math.floor(dayIndex / BLOCK_MENU_DAYS) + 1}
-                </span>
-                <span aria-hidden="true" style={{ flex: 1, height: 1, background: 'var(--admin-outline-variant)' }} />
-              </div>
-            )}
-            <details style={{ border: '1px solid var(--admin-outline-variant)', borderRadius: 10, overflow: 'hidden' }} open={dayIndex === 0}>
+          {mealPlanBlocks(plan.mealPlan.length).map((menuBlock, menuIndex) => {
+            const menuGrouped = plan.mealPlan.length > BLOCK_MENU_DAYS
+            const menuDays = plan.mealPlan
+              .slice(menuBlock.start, menuBlock.end)
+              .map((day, offset) => ({ day, dayIndex: menuBlock.start + offset }))
+              .map(({ day, dayIndex }) => (
+            <details key={dayIndex} style={{ border: '1px solid var(--admin-outline-variant)', borderRadius: 10, overflow: 'hidden', background: 'var(--admin-surface)' }} open={dayIndex === 0}>
               <summary style={{ listStyle: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: 'pointer', background: 'var(--admin-surface-low)' }}>
                 <div>
                   <div style={{ fontFamily: 'var(--font-hanken)', fontWeight: 700, fontSize: '0.92rem', color: 'var(--admin-on-surface)' }}>{day.day || `Day ${dayIndex + 1}`}</div>
@@ -1953,8 +1949,33 @@ export default function CoachingPlanEditor({
                 </div>
               </div>
             </details>
-            </Fragment>
-          ))}
+              ))
+            if (!menuGrouped) return <Fragment key={menuIndex}>{menuDays}</Fragment>
+            return (
+              <details
+                key={menuIndex}
+                // The menu being built stays open; earlier menus collapse out
+                // of the way. Manual toggles still work between edits.
+                open={menuIndex === Math.floor((plan.mealPlan.length - 1) / BLOCK_MENU_DAYS)}
+                style={{ border: '1px solid var(--admin-outline-variant)', borderRadius: 12, overflow: 'hidden', background: 'var(--admin-surface-low)' }}
+              >
+                <summary style={{ listStyle: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '12px 16px', cursor: 'pointer' }}>
+                  <span style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.78rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--admin-primary)' }}>
+                    Client {blockWeeksLabel(menuIndex)} · Menu {menuIndex + 1}
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.75rem', color: 'var(--admin-on-surface-variant)' }}>
+                      {menuDays.length} day{menuDays.length !== 1 ? 's' : ''}
+                    </span>
+                    <ChevronDown size={15} style={{ color: 'var(--admin-on-surface-variant)' }} />
+                  </span>
+                </summary>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 12, borderTop: '1px solid var(--admin-outline-variant)' }}>
+                  {menuDays}
+                </div>
+              </details>
+            )
+          })}
         </div>
       </div>
 

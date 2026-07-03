@@ -1096,6 +1096,30 @@ export default function CoachingPlanEditor({
 
     nextPlan = removeOrphanSlotRecipes(nextPlan)
 
+    // Plan recipes are snapshots taken when a recipe was dropped into a meal
+    // slot; they go stale when the Recipe Library is edited afterwards.
+    // Re-sync them on every save so the client always sees the library
+    // version. Custom per-slot recipes have no library counterpart.
+    if (libraryRecipesLoaded && libraryRecipes.length > 0) {
+      nextPlan = {
+        ...nextPlan,
+        recipes: nextPlan.recipes.map((recipe) => {
+          if (/\(d\d+-(?:breakfast|lunch|dinner|snack\d+)\)$/.test(recipe.name)) return recipe
+          const library = libraryRecipes.find((candidate) => candidate.name === recipe.name)
+          if (!library) return recipe
+          return {
+            ...recipe,
+            mealType: library.meal_type || recipe.mealType,
+            servings: library.family_servings || recipe.servings,
+            familyServings: library.family_servings || recipe.familyServings,
+            ingredients: [...library.ingredients],
+            instructions: [...library.instructions],
+            notes: library.notes || recipe.notes,
+          }
+        }),
+      }
+    }
+
     // Auto-calculate USDA macros for any recipe that has ingredients
     const individualPlanStyle = planningInputs.mealPlanStyle === 'individual_only'
     const referencedRecipeNames = new Set(

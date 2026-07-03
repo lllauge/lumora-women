@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import {
+  cleanIngredientText,
   clientPortionFactor,
   clientPortionLines,
   portionFraction,
@@ -108,6 +109,22 @@ test('scaled counts carry through only when they land on whole items', () => {
   assert.equal(line.grams, 100)
   assert.equal(line.count, '2 large')
   assert.equal(portionSummaryLine(r), '2 large eggs')
+})
+
+test('all-caps USDA descriptions are sentence-cased for client display', () => {
+  assert.equal(
+    cleanIngredientText('[fdc:123] 15g EXTRA VIRGIN OLIVE OIL (CALIFORNIA OLIVE RANCH)'),
+    '15g Extra virgin olive oil (California olive ranch)',
+  )
+  assert.equal(
+    cleanIngredientText('2g MRS. DASH, ORIGINAL SALT-FREE SEASONING BLEND (MRS. DASH)'),
+    '2g Mrs. dash, Original salt-free seasoning blend (Mrs. dash)',
+  )
+  // Coach-typed mixed case passes through untouched.
+  assert.equal(cleanIngredientText('5g fine sea salt'), '5g fine sea salt')
+  assert.equal(cleanIngredientText('907g Sweet potatoes'), '907g Sweet potatoes')
+  // Short all-caps tokens that are likely intentional stay as-is.
+  assert.equal(cleanIngredientText('BBQ rub'), 'BBQ rub')
 })
 
 test('no-scale fraction stays honest to the true multiplier', () => {

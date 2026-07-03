@@ -6,9 +6,22 @@ import type { CoachingPlanDraft } from './coaching-plan-schema'
 
 const FOOD_DATABASE_TOKEN = /\[(?:fdc:\d+|curated:[a-z0-9-]+)\]\s*/gi
 
+// USDA-matched lines carry the database's all-caps food descriptions
+// ("EXTRA VIRGIN OLIVE OIL (CALIFORNIA OLIVE RANCH)"). Sentence-case them
+// for client display; mixed-case text the coach typed passes through as-is.
+function unshout(value: string): string {
+  const letters = value.replace(/[^a-z]/gi, '')
+  const uppercase = letters.replace(/[^A-Z]/g, '')
+  if (letters.length < 4 || uppercase.length / letters.length < 0.8) return value
+  return value
+    .toLowerCase()
+    .replace(/^((?:\d[\d.]*\s*g\s+)?)([a-z])/, (_, amount: string, letter: string) => `${amount}${letter.toUpperCase()}`)
+    .replace(/([(,]\s*)([a-z])/g, (_, prefix: string, letter: string) => `${prefix}${letter.toUpperCase()}`)
+}
+
 /** Strip internal food-database tokens and collapse whitespace for client display. */
 export function cleanIngredientText(value: string): string {
-  return value.replace(FOOD_DATABASE_TOKEN, '').replace(/\s+/g, ' ').trim()
+  return unshout(value.replace(FOOD_DATABASE_TOKEN, '').replace(/\s+/g, ' ').trim())
 }
 
 /** Leading gram amount of an ingredient line ("50g Sweet potato…" → 50). */

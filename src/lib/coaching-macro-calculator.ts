@@ -6,6 +6,8 @@ export type MacroCalculationInputs = {
   primaryGoal: string
   planGoal: string
   mealPlanStyle: string
+  /** ISO date the meal plan's Day 1 begins; drives the client's two-week release schedule. */
+  mealPlanStartDate: string
   activityLevel: string
   steps: string
   strengthTraining: string

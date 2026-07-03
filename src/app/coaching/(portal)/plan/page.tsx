@@ -7,7 +7,8 @@ import {
   clientRecipeNotes, groceryDisplay, shoppingPrepLines,
 } from '@/lib/coaching-engagement'
 import GroceryChecklist from '@/components/coaching/GroceryChecklist'
-import { clientGroceryList } from '@/lib/grocery-list'
+import { buildGroceryList, clientGroceryList } from '@/lib/grocery-list'
+import { mealPlanBlocks, mealPlanSchedule, friendlyBlockDate } from '@/lib/meal-plan-schedule'
 import InstructionSteps from '@/components/coaching/InstructionSteps'
 import PrepIngredientList from '@/components/coaching/PrepIngredientList'
 import { mealRecipeNames, type CoachingPlanDraft } from '@/lib/coaching-plan-schema'
@@ -52,16 +53,30 @@ export default async function CoachingPlanPage({
 }: {
   searchParams: Promise<{ day?: string; meal?: string; recipe?: string }>
 }) {
-  const { client, plan, individualPlanStyle } = await getPortalContext()
+  const { client, plan, individualPlanStyle, mealPlanStartDate } = await getPortalContext()
   const selected = await searchParams
   const selectedDayIndex = Number(selected.day)
   const selectedMealIndex = Number(selected.meal)
   const selectedRecipeIndex = Number(selected.recipe)
   const t = plan.macroTargets
-  const todayIdx = todayMealDayIndex(plan)
   const today = coachingToday()
   const todayLogs = await getDailyLogs(client.id, 7)
   const todayWins = todayLogs.find((l) => l.log_date === today)?.wins ?? {}
+
+  // Long plans release two weeks at a time: the client sees the current
+  // 14-day block, and the next block (plus its grocery list) unlocks two
+  // days early so she can shop before the switch.
+  const schedule = mealPlanSchedule(plan.mealPlan.length, mealPlanStartDate, today)
+  const blocks = mealPlanBlocks(plan.mealPlan.length)
+  const todayIdx = schedule.active ? schedule.todayDayIndex : todayMealDayIndex(plan)
+  const allDays = plan.mealPlan.map((day, index) => ({ day, index }))
+  const currentDays = schedule.active
+    ? allDays.slice(blocks[schedule.currentBlock].start, blocks[schedule.currentBlock].end)
+    : allDays
+  const nextDays = schedule.active && schedule.nextBlockVisible
+    ? allDays.slice(blocks[schedule.currentBlock + 1].start, blocks[schedule.currentBlock + 1].end)
+    : []
+  const nextBlockDate = friendlyBlockDate(schedule.nextBlockStartsOn)
 
   const secondaryTargets = [
     t.water.trim() && { label: 'Water', value: t.water.trim(), winKey: 'water' },
@@ -71,8 +86,17 @@ export default async function CoachingPlanPage({
 
   // Derived fresh from the meal plan's recipes on every render, so the
   // master list stays complete even when the stored plan.groceryList is
-  // stale from an older save.
-  const groceryItems = clientGroceryList(plan)
+  // stale from an older save. When the two-week schedule is active, each
+  // block gets its own list covering just those days.
+  const groceryItems = clientGroceryList(
+    schedule.active ? { ...plan, mealPlan: currentDays.map(({ day }) => day) } : plan,
+  )
+  const nextGroceryItems = nextDays.length > 0
+    ? buildGroceryList({ ...plan, mealPlan: nextDays.map(({ day }) => day) })
+    : []
+  const groceryStorageKey = schedule.active
+    ? `lumora-grocery-${client.id}-b${schedule.currentBlock}`
+    : `lumora-grocery-${client.id}`
 
   const macros = [
     t.protein.trim() && { label: 'Protein', value: withGrams(t.protein) },
@@ -155,12 +179,14 @@ export default async function CoachingPlanPage({
       )}
 
       {/* Weekly meal plan */}
-      {plan.mealPlan.length > 0 && (
+      {currentDays.length > 0 && (
         <section aria-label="Weekly meal plan" style={{ marginBottom: '2.25rem' }}>
           <SectionHeader
             icon={<CalendarDays style={headerIcon} aria-hidden="true" />}
-            title="Your Week"
-            subtitle="Tap a day to see every meal."
+            title={schedule.active ? 'Your 2 Weeks' : 'Your Week'}
+            subtitle={schedule.active
+              ? 'Your current two weeks of meals. Tap a day to see every meal.'
+              : 'Tap a day to see every meal.'}
           />
           <div className="portal-card">
             <div className="portal-gold-line" aria-hidden="true" />
@@ -181,13 +207,13 @@ export default async function CoachingPlanPage({
                 ))}
               </div>
             )}
-            {plan.mealPlan.map((day, i) => (
+            {currentDays.map(({ day, index: i }, pos) => (
               <details
                 key={i}
                 id={`day-${i}`}
                 className="portal-details"
                 open={i === todayIdx || i === selectedDayIndex}
-                style={{ borderTop: i === 0 ? 'none' : '1px solid rgba(200,220,192,0.3)' }}
+                style={{ borderTop: pos === 0 ? 'none' : '1px solid rgba(200,220,192,0.3)' }}
               >
                 <summary style={{
                   padding: '0.9375rem 1.25rem', minHeight: '52px',
@@ -350,17 +376,80 @@ export default async function CoachingPlanPage({
           <SectionHeader
             icon={<ShoppingBasket style={headerIcon} aria-hidden="true" />}
             title="Grocery List"
-            subtitle="Check items off as you shop, it remembers between visits."
+            subtitle={schedule.active
+              ? 'Everything for your current two weeks. Check items off as you shop, it remembers between visits.'
+              : 'Check items off as you shop, it remembers between visits.'}
           />
           <div className="portal-card">
             <div className="portal-gold-line" aria-hidden="true" />
             <div style={{ padding: '1rem 1.25rem' }}>
               <GroceryChecklist
                 items={groceryItems.map((item) => groceryDisplay(item))}
-                storageKey={`lumora-grocery-${client.id}`}
+                storageKey={groceryStorageKey}
               />
             </div>
           </div>
+        </section>
+      )}
+
+      {/* Next two weeks, unlocked shortly before they start so she can shop ahead */}
+      {nextDays.length > 0 && (
+        <section aria-label="Your next two weeks" style={{ marginTop: '2.25rem' }}>
+          <SectionHeader
+            icon={<CalendarDays style={headerIcon} aria-hidden="true" />}
+            title="Coming Up: Your Next 2 Weeks"
+            subtitle={`Starting ${nextBlockDate} — here's what's ahead so you can shop and meal prep before the switch.`}
+          />
+          <div className="portal-card" style={{ marginBottom: '1.25rem' }}>
+            <div className="portal-gold-line" aria-hidden="true" />
+            {nextDays.map(({ day, index: i }, pos) => (
+              <details
+                key={i}
+                id={`day-${i}`}
+                className="portal-details"
+                open={i === selectedDayIndex}
+                style={{ borderTop: pos === 0 ? 'none' : '1px solid rgba(200,220,192,0.3)' }}
+              >
+                <summary style={{
+                  padding: '0.9375rem 1.25rem', minHeight: '52px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem',
+                }}>
+                  <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                    {day.day.trim() || `Day ${i + 1}`}
+                  </span>
+                  <ChevronDown className="portal-chevron" style={{ width: '1.125rem', height: '1.125rem', color: 'var(--botanical-green)' }} aria-hidden="true" />
+                </summary>
+                <div style={{ padding: '0.25rem 1.25rem 1rem' }}>
+                  <DayMeals
+                    day={day}
+                    dayIndex={i}
+                    recipes={plan.recipes}
+                    individualPlanStyle={individualPlanStyle}
+                    selectedMealIndex={i === selectedDayIndex ? selectedMealIndex : -1}
+                    selectedRecipeIndex={i === selectedDayIndex ? selectedRecipeIndex : -1}
+                  />
+                </div>
+              </details>
+            ))}
+          </div>
+          {nextGroceryItems.length > 0 && (
+            <>
+              <SectionHeader
+                icon={<ShoppingBasket style={headerIcon} aria-hidden="true" />}
+                title="Grocery List for the Next 2 Weeks"
+                subtitle="Shop this list now so you're ready on day one."
+              />
+              <div className="portal-card">
+                <div className="portal-gold-line" aria-hidden="true" />
+                <div style={{ padding: '1rem 1.25rem' }}>
+                  <GroceryChecklist
+                    items={nextGroceryItems.map((item) => groceryDisplay(item))}
+                    storageKey={`lumora-grocery-${client.id}-b${schedule.currentBlock + 1}`}
+                  />
+                </div>
+              </div>
+            </>
+          )}
         </section>
       )}
     </div>

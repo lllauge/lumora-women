@@ -11,13 +11,15 @@ export const metadata: Metadata = {
 }
 
 export default async function CoachingTodayPage() {
-  const { firstName, client, plan, planPublishedAt } = await getPortalContext()
+  const { firstName, client, plan, planPublishedAt, mealPlanStartDate } = await getPortalContext()
   const today = coachingToday()
   const logs = await getDailyLogs(client.id)
   const habits = habitsFromPlan(plan)
   const streak = currentStreak(logs, habits, today)
   const week = weekConsistency(logs, habits, today)
-  const weekNum = planWeekNumber(planPublishedAt, today)
+  // Anchor the week counter to the plan's start date when the coach set one;
+  // updated_at moves on every save and would reset the count.
+  const weekNum = planWeekNumber(mealPlanStartDate || planPublishedAt, today)
   const todayWins = logs.find((l) => l.log_date === today)?.wins ?? {}
 
   return (

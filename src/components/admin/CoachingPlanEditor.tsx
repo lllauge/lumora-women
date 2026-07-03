@@ -115,6 +115,7 @@ function buildPlanningInputs(onboardingData: Record<string, unknown>): MacroCalc
     primaryGoal: stringField(goals, 'primaryGoal'),
     planGoal: 'recomposition',
     mealPlanStyle: 'family_dinners',
+    mealPlanStartDate: '',
     activityLevel: 'light_daily_movement',
     steps: stringField(lifestyle, 'steps'),
     strengthTraining: stringField(lifestyle, 'strengthTraining') || 'not_sure',
@@ -1667,6 +1668,22 @@ export default function CoachingPlanEditor({
           </p>
         )}
         <div style={{ ...sBody, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: 12, padding: 12, background: 'var(--admin-surface-low)', borderRadius: 8 }}>
+            <label>
+              <span className="admin-label">Client Start Date (Day 1)</span>
+              <input
+                type="date"
+                className="admin-input"
+                value={planningInputs.mealPlanStartDate}
+                onChange={(e) => updatePlanningInput('mealPlanStartDate', e.target.value)}
+              />
+            </label>
+            <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.78rem', color: 'var(--admin-on-surface-variant)', margin: 0, flex: 1, minWidth: 220 }}>
+              Build up to a month of days. With more than 14 days and a start date set, the client
+              sees two weeks at a time — the next two weeks and their grocery list unlock 2 days
+              before they begin, so she knows exactly what to buy for meal prep.
+            </p>
+          </div>
           {plan.mealPlan.length === 0 && (
             <p style={{ fontFamily: 'var(--font-hanken)', color: 'var(--admin-on-surface-variant)', fontSize: '0.85rem', textAlign: 'center', padding: '20px 0' }}>
               No days added yet. Click &quot;+ Add Day&quot; to start building the week. Add recipes first at{' '}
@@ -1677,7 +1694,14 @@ export default function CoachingPlanEditor({
             <details key={dayIndex} style={{ border: '1px solid var(--admin-outline-variant)', borderRadius: 10, overflow: 'hidden' }} open={dayIndex === 0}>
               <summary style={{ listStyle: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: 'pointer', background: 'var(--admin-surface-low)' }}>
                 <div>
-                  <div style={{ fontFamily: 'var(--font-hanken)', fontWeight: 700, fontSize: '0.92rem', color: 'var(--admin-on-surface)' }}>{day.day || `Day ${dayIndex + 1}`}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontFamily: 'var(--font-hanken)', fontWeight: 700, fontSize: '0.92rem', color: 'var(--admin-on-surface)' }}>{day.day || `Day ${dayIndex + 1}`}</span>
+                    {plan.mealPlan.length > 14 && (
+                      <span style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.68rem', fontWeight: 700, color: 'var(--admin-on-surface-variant)', border: '1px solid var(--admin-outline-variant)', borderRadius: 999, padding: '2px 8px', whiteSpace: 'nowrap' }}>
+                        Client weeks {Math.floor(dayIndex / 14) * 2 + 1}–{Math.floor(dayIndex / 14) * 2 + 2}
+                      </span>
+                    )}
+                  </div>
                   {(() => {
                     const total = dayMacroTotal(day, plan.recipes)
                     const hasDayMacros = total.calories || total.protein || total.carbs || total.fats

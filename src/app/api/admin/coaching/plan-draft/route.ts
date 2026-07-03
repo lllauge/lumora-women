@@ -260,6 +260,7 @@ export async function POST(req: NextRequest) {
         primaryGoal: parsed.data.planningInputs.primaryGoal ?? '',
         planGoal: parsed.data.planningInputs.planGoal ?? 'recomposition',
         mealPlanStyle: parsed.data.planningInputs.mealPlanStyle ?? 'family_dinners',
+        mealPlanStartDate: parsed.data.planningInputs.mealPlanStartDate ?? '',
         activityLevel: parsed.data.planningInputs.activityLevel ?? 'light_daily_movement',
         steps: parsed.data.planningInputs.steps ?? '',
         strengthTraining: parsed.data.planningInputs.strengthTraining ?? 'not_sure',

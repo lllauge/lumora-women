@@ -60,6 +60,8 @@ export type PortalContext = {
    * declared family servings out of them.
    */
   individualPlanStyle: boolean
+  /** ISO date the plan's Day 1 begins; '' when the coach hasn't set one. */
+  mealPlanStartDate: string
 }
 
 /** Today's date (YYYY-MM-DD) in the coaching time zone. */
@@ -295,6 +297,7 @@ export async function getPortalContext(): Promise<PortalContext> {
     plan,
     planPublishedAt: planRow.updated_at,
     individualPlanStyle: planningInputs.mealPlanStyle === 'individual_only',
+    mealPlanStartDate: typeof planningInputs.mealPlanStartDate === 'string' ? planningInputs.mealPlanStartDate : '',
   }
 }
 

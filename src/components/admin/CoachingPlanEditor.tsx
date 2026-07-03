@@ -355,6 +355,29 @@ function buildGroceryList(plan: CoachingPlanDraft): string[] {
   ]
 }
 
+// Rebuilt grocery lines lead with a gram weight or end with a cook-count
+// marker; anything else in the saved list is a staple the coach typed herself
+// ("paper towels") and survives the rebuild — unless the rebuilt list already
+// covers that ingredient under a machine-formatted line.
+function mergeGroceryList(current: string[], generated: string[]): string[] {
+  const labelOf = (line: string) => line
+    .toLowerCase()
+    .replace(/^\d+(?:\.\d+)?\s*g\b\s*/i, '')
+    .replace(/\s*\(×\d+\)\s*$/, '')
+    .replace(/,\s*raw\s*$/, '')
+    .trim()
+  const generatedLabels = generated.map(labelOf)
+  const machineOwned = (line: string) =>
+    /^\d+(?:\.\d+)?\s*g\b/i.test(line.trim()) || /\(×\d+\)\s*$/.test(line.trim())
+  const extras = current.filter((line) => {
+    if (machineOwned(line)) return false
+    const label = labelOf(line)
+    if (!label) return false
+    return !generatedLabels.some((g) => g.includes(label) || label.includes(g))
+  })
+  return [...generated, ...extras]
+}
+
 // Auto-created per-slot recipe copies look like "Name (d2-lunch)" — drop them once no slot uses them.
 function removeOrphanSlotRecipes(plan: CoachingPlanDraft): CoachingPlanDraft {
   const referenced = new Set<string>()
@@ -1179,10 +1202,12 @@ export default function CoachingPlanEditor({
       return
     }
 
-    // Fill the grocery list from the recipes in the meal plan when it's empty.
-    if (nextPlan.groceryList.length === 0) {
-      const generated = buildGroceryList(nextPlan)
-      if (generated.length > 0) nextPlan = { ...nextPlan, groceryList: generated }
+    // Rebuild the grocery list from the meal plan on every save so recipe
+    // additions and swaps always reach the client's master list. Coach-typed
+    // staples are carried over by mergeGroceryList.
+    const generatedGroceries = buildGroceryList(nextPlan)
+    if (generatedGroceries.length > 0) {
+      nextPlan = { ...nextPlan, groceryList: mergeGroceryList(nextPlan.groceryList, generatedGroceries) }
     }
     setPlan(nextPlan)
 
@@ -1226,7 +1251,10 @@ export default function CoachingPlanEditor({
     if (!response.ok || !result.plan) {
       setError(result.error || 'Could not generate a draft.')
     } else {
-      setPlan(result.plan)
+      // Drop the AI's grocery list: its free-form lines ("Chicken – 2 lbs")
+      // dodge the machine-owned format, so they'd survive the rebuild on save
+      // and duplicate the deterministic list built from the recipes.
+      setPlan({ ...result.plan, groceryList: [] })
       setMessage('AI draft created. Review and save when ready.')
     }
 
@@ -2025,7 +2053,7 @@ export default function CoachingPlanEditor({
         <summary style={{ listStyle: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', cursor: 'pointer', userSelect: 'none' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <SectionNum n={6} done={plan.groceryList.length > 0} />
-            <SectionTitle title="Grocery List" subtitle="Fills in from the meal plan's recipes on save when empty — clear it to regenerate, or edit manually" />
+            <SectionTitle title="Grocery List" subtitle="Rebuilds from every recipe in the meal plan each save — add your own staples on their own lines and they'll be kept" />
           </div>
           <ChevronDown size={16} style={{ color: 'var(--admin-on-surface-variant)', flexShrink: 0 }} />
         </summary>

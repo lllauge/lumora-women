@@ -58,7 +58,9 @@ export default function ResultsPage() {
               fontWeight: 700,
               letterSpacing: '0.2em',
               textTransform: 'uppercase',
-              color: 'var(--botanical-green)',
+              /* Darker than --botanical-green: the translucent pill over the
+                 tinted section composites to #d7e4d0, which needs ~4.8:1. */
+              color: '#3F6936',
               background: 'rgba(74,122,64,0.12)',
               padding: '0.375rem 1rem',
               borderRadius: '999px',

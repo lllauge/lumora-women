@@ -113,7 +113,7 @@ export default function GlobalError({
             We&apos;re sorry, an unexpected error occurred. Please try again. If the problem persists, contact us at{' '}
             <a
               href="mailto:hello@lumorawomen.com"
-              style={{ color: '#4A7A40', textDecoration: 'underline' }}
+              style={{ color: 'var(--botanical-green)', textDecoration: 'underline' }}
             >
               hello@lumorawomen.com
             </a>

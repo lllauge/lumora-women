@@ -19,7 +19,7 @@
   --text-primary:      #1A2818;   /* deep ink — all headlines + body on light */
   --text-secondary:    #3A4A38;   /* secondary — descriptions, card copy */
   --text-muted:        #5A6B58;   /* muted — captions, dates, labels — darkened to meet 4.5:1 AA on white */
-  --botanical-green:   #4A7A40;   /* tags, eyebrow labels, small accents */
+  --botanical-green:   #44713B;   /* tags, eyebrow labels, small accents — darkened to meet 4.5:1 AA on tinted backgrounds (#EAF2E4/#EAF4E2) */
   --botanical-light:   #C8DCC0;   /* text on dark backgrounds */
 
   /* Gold system */
@@ -1471,6 +1471,9 @@ blockquote, .pull-quote {
     background: #162814;
     border-top: 1px solid rgba(200, 220, 192, 0.15);
     padding: 0.375rem 0.25rem calc(0.375rem + env(safe-area-inset-bottom));
+    /* Own compositor layer: iOS Safari otherwise repaints fixed elements
+       lazily during momentum scroll, making the bar drift and snap back. */
+    transform: translateZ(0);
   }
   .portal-tabbar a {
     display: flex;

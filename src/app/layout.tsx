@@ -1,5 +1,14 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
+
+// viewport-fit=cover activates env(safe-area-inset-*) on iPhones, which the
+// coaching portal's fixed bottom tab bar depends on — without it the inset is
+// 0 and the bar visibly rides Safari's collapsing toolbar while scrolling.
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+}
 import AxeProvider from '@/components/dev/AxeProvider'
 import IdleSessionGuard from '@/components/auth/IdleSessionGuard'
 

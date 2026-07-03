@@ -387,7 +387,7 @@ export default function WorkWithMePage() {
             <p style={{
               fontFamily: 'var(--font-sans)',
               fontSize: '0.8125rem',
-              color: 'rgba(200, 220, 192, 0.5)',
+              color: 'rgba(200, 220, 192, 0.75)',
               marginTop: '1rem',
             }}>
               Questions first?{' '}
@@ -411,7 +411,7 @@ export default function WorkWithMePage() {
         <p style={{
           fontFamily: 'var(--font-sans)',
           fontSize: '0.8125rem',
-          color: 'rgba(200, 220, 192, 0.45)',
+          color: 'rgba(200, 220, 192, 0.75)',
         }}>
           © {new Date().getFullYear()} Lumora Women · All rights reserved ·{' '}
           <Link href="/privacy-policy" style={{ color: 'inherit', textDecoration: 'underline' }}>Privacy</Link>

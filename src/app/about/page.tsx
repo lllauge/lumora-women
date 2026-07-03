@@ -123,7 +123,6 @@ export default function AboutPage() {
             fontFamily: 'var(--font-sans)',
             fontSize: '0.8125rem',
             color: 'var(--botanical-green)',
-            opacity: 0.7,
             letterSpacing: '0.05em',
           }}>
             Your photo here

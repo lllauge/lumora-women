@@ -123,6 +123,16 @@
 
 html { scroll-behavior: smooth; }
 
+/* No page may ever scroll sideways on a phone: any element wider than the
+   viewport would let iOS pan diagonally, making fixed bars appear to float
+   "in all directions" while scrolling. clip (preferred) avoids creating a
+   scroll container so position: sticky and fixed keep working; hidden is the
+   fallback the CSS minifier keeps for older targets. */
+html, body {
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+
 body {
   background: var(--page-bg);
   color: var(--text-primary);

@@ -262,11 +262,14 @@ export default async function CoachingPlanPage({
                       <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                         {day.exercises.map((exercise, idx) => (
                           <li key={idx} style={{ background: 'var(--section-tint)', borderRadius: '0.625rem', padding: '0.625rem 0.875rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.625rem' }}>
+                            {/* flexWrap: a long exercise name next to nowrap
+                                sets/reps text must drop to a second line, not
+                                push the page wider than the phone screen. */}
+                            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.25rem 0.625rem' }}>
                               <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                                 {idx + 1}. {exercise.name || 'Exercise'}
                               </span>
-                              <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', fontWeight: 700, color: '#3F6936', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                              <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', fontWeight: 700, color: '#3F6936' }}>
                                 {[exercise.sets, exercise.reps].filter(Boolean).join(' × ')}
                                 {exercise.rest.trim() && (
                                   <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · rest {exercise.rest.trim()}</span>

@@ -1841,6 +1841,9 @@ export default function CoachingPlanEditor({
                                     {selectedRecipe?.calories && (
                                       <span style={{ color: 'var(--admin-on-surface-variant)' }}> · {selectedRecipe.calories.replace(/\s*k?cal$/i, '')} cal</span>
                                     )}
+                                    {libraryRecipesLoaded && !SLOT_NAME_SUFFIX.test(name) && !libraryRecipes.some((r) => r.name === name) && (
+                                      <span title="This recipe lives only inside this plan. Library edits won't reach it — remove it and re-add the recipe from your library to link them." style={{ color: '#B45309', fontWeight: 700 }}> · not in your library</span>
+                                    )}
                                   </span>
                                   <button type="button" aria-label={`Remove ${stripSlotRecipeSuffixes(name)}`} onClick={() => removeRecipeFromMeal(dayIndex, mealKey, name)}
                                     style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--admin-error)', padding: 0, fontSize: '0.9rem' }}>×</button>
@@ -1931,6 +1934,9 @@ export default function CoachingPlanEditor({
                                       {stripSlotRecipeSuffixes(name)}
                                       {selectedRecipe?.calories && (
                                         <span style={{ color: 'var(--admin-on-surface-variant)' }}> · {selectedRecipe.calories.replace(/\s*k?cal$/i, '')} cal</span>
+                                      )}
+                                      {libraryRecipesLoaded && !SLOT_NAME_SUFFIX.test(name) && !libraryRecipes.some((r) => r.name === name) && (
+                                        <span title="This recipe lives only inside this plan. Library edits won't reach it — remove it and re-add the recipe from your library to link them." style={{ color: '#B45309', fontWeight: 700 }}> · not in your library</span>
                                       )}
                                     </span>
                                     <button type="button" aria-label={`Remove ${stripSlotRecipeSuffixes(name)}`} onClick={() => removeRecipeFromSnack(dayIndex, snackIndex, name)}

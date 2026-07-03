@@ -4,10 +4,11 @@ import { Leaf, ShoppingBasket, CalendarDays, ChevronDown, Check, Dumbbell, PlayC
 import {
   getPortalContext, todayMealDayIndex, withGrams, displayRecipeName,
   getDailyLogs, coachingToday, cleanIngredientText, clientPortionFactor, clientPortionLines, isClientReadable, portionFraction,
-  ingredientWeighState, groceryDisplay,
+  clientRecipeNotes, groceryDisplay, shoppingPrepLines,
 } from '@/lib/coaching-engagement'
 import GroceryChecklist from '@/components/coaching/GroceryChecklist'
 import InstructionSteps from '@/components/coaching/InstructionSteps'
+import PrepIngredientList from '@/components/coaching/PrepIngredientList'
 import { mealRecipeNames, type CoachingPlanDraft } from '@/lib/coaching-plan-schema'
 
 export const metadata: Metadata = {
@@ -631,24 +632,11 @@ function RecipeDetail({
             {isFamily ? 'Shopping & prep (full family recipe)' : 'Shopping & prep'}
           </h3>
           <p style={{ ...bodyText, fontSize: '0.8125rem', fontStyle: 'italic', marginBottom: '0.5rem' }}>
-            These are the amounts to buy and prep, most items are listed raw, since that&apos;s how the recipe was built.
+            Amounts to buy and prep — raw, before cooking, unless a line says cooked weight.
+            When you weigh your serving above, use the food as it&apos;s listed there: cooked
+            unless marked otherwise.
           </p>
-          <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
-            {recipe.ingredients.map((ing, i) => {
-              const state = ingredientWeighState(ing)
-              return (
-                <li key={i} style={{ ...bodyText, marginBottom: '0.25rem' }}>
-                  {cleanIngredientText(ing)}
-                  {state === 'raw' && (
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}> · raw</span>
-                  )}
-                  {state === 'cooked' && (
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}> · cooked weight</span>
-                  )}
-                </li>
-              )
-            })}
-          </ul>
+          <PrepIngredientList lines={shoppingPrepLines(recipe.ingredients)} />
         </>
       )}
 
@@ -673,8 +661,10 @@ function RecipeDetail({
         </>
       )}
 
-      {recipe.notes.trim() && (
-        <p style={{ ...bodyText, marginTop: '0.75rem', fontStyle: 'italic' }}>{recipe.notes}</p>
+      {clientRecipeNotes(recipe.notes) && (
+        <p style={{ ...bodyText, marginTop: '0.75rem', fontStyle: 'italic', whiteSpace: 'pre-line' }}>
+          {clientRecipeNotes(recipe.notes)}
+        </p>
       )}
     </div>
   )

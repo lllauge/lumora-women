@@ -1,15 +1,15 @@
 import { redirect } from 'next/navigation'
 import { createAdminClient, createClient } from '@/lib/supabase/server'
 import { mealRecipeNames, parseCoachingPlan, type CoachingPlanDraft } from '@/lib/coaching-plan-schema'
-import { cookedGramsToRaw } from '@/lib/cooked-to-raw'
-import { cleanIngredientText } from '@/lib/client-portion'
 
-// Portion math lives in client-portion.ts (pure, unit-tested); re-exported so
-// portal pages keep one import site for coaching helpers.
+// Portion and measurement math lives in client-portion.ts and
+// household-measure.ts (pure, unit-tested); re-exported so portal pages keep
+// one import site for coaching helpers.
 export {
   cleanIngredientText,
   clientPortionFactor,
   clientPortionLines,
+  clientRecipeNotes,
   ingredientGrams,
   ingredientWeighState,
   portionFraction,
@@ -18,6 +18,7 @@ export {
   type PortionFraction,
   type PortionLine,
 } from '@/lib/client-portion'
+export { groceryDisplay, shoppingPrepLines, type PrepLine } from '@/lib/household-measure'
 
 const COACHING_TIME_ZONE = 'America/New_York'
 
@@ -107,86 +108,6 @@ export function cleanMealDescription(value: string): string {
   if (!v) return ''
   if (/\[(?:fdc|curated):|details:|client portion:|plate by the ingredient|total client serving/i.test(v)) return ''
   return v
-}
-
-// Approx grams per common shopping unit, so we can convert weights into what
-// a shopper actually reaches for. Wider tolerances than the recipe parser —
-// grocery lists round generously ("about 1 tsp", "2 cloves").
-const GROCERY_UNITS: Array<{ match: RegExp; label: string; gramsPer: number; minCount?: number; template?: (n: number) => string }> = [
-  // Cloves of garlic — count-based, no oz/g needed.
-  { match: /\bgarlic\b|\bcloves?\b/, label: 'clove', gramsPer: 3, template: (n) => `${n} clove${n === 1 ? '' : 's'} garlic` },
-  // Whole eggs.
-  { match: /\begg(s|\b)/, label: 'egg', gramsPer: 50, template: (n) => `${n} large egg${n === 1 ? '' : 's'}` },
-  // Dried leafy herbs (~1g/tsp).
-  { match: /\b(oregano|basil|thyme|rosemary|parsley|sage|dill|tarragon|marjoram|italian seasoning|bay leaf|bay leaves)\b/, label: 'tsp', gramsPer: 1 },
-  // Medium ground spices (~2g/tsp).
-  { match: /\b(cumin|black pepper|white pepper|ground pepper|chili powder|paprika|cayenne|coriander|ginger|cardamom|cloves? ground|allspice|red pepper flakes?|taco seasoning|garam masala|curry powder)\b/, label: 'tsp', gramsPer: 2 },
-  // Salt (~6g/tsp).
-  { match: /\bsalt\b/, label: 'tsp', gramsPer: 6 },
-  // Powders (~3g/tsp): garlic powder, onion powder, turmeric.
-  { match: /\b(garlic powder|onion powder|turmeric)\b/, label: 'tsp', gramsPer: 3 },
-  // Cinnamon, nutmeg (~2.5g/tsp).
-  { match: /\b(cinnamon|nutmeg|mace)\b/, label: 'tsp', gramsPer: 2.5 },
-  // Extracts (~4g/tsp).
-  { match: /\b(vanilla extract|almond extract|extract)\b/, label: 'tsp', gramsPer: 4 },
-  // Oils (~14g/tbsp).
-  { match: /\b(olive oil|avocado oil|coconut oil|canola oil|vegetable oil|sesame oil|oil)\b/, label: 'tbsp', gramsPer: 14 },
-  // Butter (~14g/tbsp).
-  { match: /\bbutter\b|\bghee\b/, label: 'tbsp', gramsPer: 14 },
-  // Nut butters (~16g/tbsp).
-  { match: /\b(peanut butter|almond butter|cashew butter|sunflower butter|nut butter)\b/, label: 'tbsp', gramsPer: 16 },
-  // Honey / maple / molasses (~21g/tbsp).
-  { match: /\b(honey|maple syrup|agave|molasses)\b/, label: 'tbsp', gramsPer: 21 },
-]
-
-/** Round to a friendly cooking increment: ¼, ½, ¾ up through 4, then whole. */
-function friendlyCount(value: number): string {
-  if (value < 0.375) return '¼'
-  if (value < 0.625) return '½'
-  if (value < 0.875) return '¾'
-  if (value < 1.25) return '1'
-  if (value < 1.625) return '1¼'
-  if (value < 1.875) return '1½'
-  if (value < 2.25) return '2'
-  return String(Math.round(value))
-}
-
-/**
- * Grocery-friendly amount from grams: cloves, tsp/tbsp, oz, cups, lb depending
- * on what a shopper would actually count. Skips grams entirely — the meal
- * plan shows precise grams for weighing at cook time; the shopping list is
- * about what to grab off the shelf.
- */
-export function groceryDisplay(item: string): string {
-  const cleaned = cleanIngredientText(item)
-  const match = cleaned.match(/^(\d+(?:\.\d+)?)\s*g\b\s*(.+)$/i)
-  if (!match) return cleaned
-  const parsedGrams = parseFloat(match[1])
-  if (!Number.isFinite(parsedGrams) || parsedGrams <= 0) return cleaned
-
-  const { grams, label } = cookedGramsToRaw(match[2].trim(), parsedGrams)
-  const lower = label.toLowerCase()
-
-  // Match against practical shopping units first — herbs/spices/cloves/eggs.
-  for (const unit of GROCERY_UNITS) {
-    if (unit.match.test(lower)) {
-      const count = grams / unit.gramsPer
-      if (unit.template) {
-        return unit.template(Math.max(1, Math.round(count)))
-      }
-      return `${friendlyCount(count)} ${unit.label} ${label}`
-    }
-  }
-
-  // Bulk items: lbs when a pound or more, oz otherwise. Round oz to 0.5.
-  if (grams >= 454) {
-    const lb = Math.round((grams / 453.59) * 4) / 4
-    const lbStr = lb.toFixed(2).replace(/\.?0+$/, '')
-    return `${label}, ${lbStr} lb`
-  }
-  const oz = Math.max(0.5, Math.round((grams / 28.35) * 2) / 2)
-  const ozStr = oz.toFixed(1).replace(/\.0$/, '')
-  return `${label}, ${ozStr} oz`
 }
 
 /** True when a stored portion string is clean enough to show a client. */

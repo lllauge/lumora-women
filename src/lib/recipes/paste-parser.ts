@@ -246,7 +246,12 @@ function normalizeForLookup(name: string): string {
     .replace(/(\w{3,})s\b/g, '$1')} `
 }
 
-function lookupCupGrams(name: string): number | null {
+/**
+ * Grams per one cup of the named ingredient, from the density table above.
+ * Exported so client-facing household-measure display can convert gram
+ * amounts back into cups/spoons with the same numbers used for parsing.
+ */
+export function lookupCupGrams(name: string): number | null {
   const lower = normalizeForLookup(name)
   for (const { match, grams } of CUP_GRAMS) {
     if (match.test(lower)) return grams

@@ -125,6 +125,32 @@ export function portionSummaryLine(
   }).join(' · ')
 }
 
+// Note lines that exist for Laura, not the client: where a recipe was
+// imported from (she often adapts recipes, so the source shouldn't be shown),
+// and the USDA calculation trail the draft pipeline appends for auditing.
+const INTERNAL_NOTE_LINE = new RegExp(
+  '^(?:'
+  + 'source:\\s*\\S+'
+  + '|usda calculated full-recipe nutrition\\b.*'
+  + '|usda auto-scaling skipped\\b.*'
+  + '|final macro-fitted client portion\\b.*'
+  + ')$',
+  'i',
+)
+
+/**
+ * Recipe notes with coach-only lines removed for client display. Laura's own
+ * tips pass through untouched.
+ */
+export function clientRecipeNotes(notes: string): string {
+  return notes
+    .split('\n')
+    .filter((line) => !INTERNAL_NOTE_LINE.test(line.trim()))
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
 const FRACTIONS: [number, string][] = [
   [1, 'the whole recipe'], [3 / 4, '¾'], [2 / 3, '⅔'], [3 / 5, '⅗'], [1 / 2, 'half'],
   [2 / 5, '⅖'], [3 / 8, '⅜'], [1 / 3, '⅓'], [1 / 4, '¼'], [1 / 5, '⅕'], [1 / 6, '⅙'], [1 / 8, '⅛'],

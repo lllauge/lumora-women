@@ -24,9 +24,11 @@ import {
   type LibraryExercise,
 } from '@/lib/workout-generator'
 import { buildGroceryList, cleanIngredientLine, mergeGroceryList } from '@/lib/grocery-list'
-import { blockWeeksLabel, mealPlanBlocks, BLOCK_MENU_DAYS } from '@/lib/meal-plan-schedule'
+import { blockWeeksLabel, mealPlanBlocks, startDateWeekdayWarning, BLOCK_MENU_DAYS } from '@/lib/meal-plan-schedule'
 import { isExcludedNutritionIngredient } from '@/lib/nutrition-ingredient'
 import { resolvedServingMultiplier } from '@/lib/nutrition-math'
+import { fitRecipeServingMultipliers } from '@/lib/meal-portion-fitting'
+import { findLibraryRecipe, syncRecipesWithLibrary } from '@/lib/plan-library-sync'
 
 type UsdaNutritionResponse = {
   error?: string
@@ -566,7 +568,7 @@ export default function CoachingPlanEditor({
         const isCustomSlot = /\(d\d+-(?:breakfast|lunch|dinner|snack\d+)\)$/.test(recipe.name)
         const libraryRecipe = isCustomSlot
           ? undefined
-          : libraryRecipes.find((candidate) => candidate.name === recipe.name)
+          : findLibraryRecipe(libraryRecipes, recipe.name)
 
         const hasNutritionExclusions = recipe.ingredients.some(isExcludedNutritionIngredient)
         if (
@@ -1103,20 +1105,7 @@ export default function CoachingPlanEditor({
     if (libraryRecipesLoaded && libraryRecipes.length > 0) {
       nextPlan = {
         ...nextPlan,
-        recipes: nextPlan.recipes.map((recipe) => {
-          if (/\(d\d+-(?:breakfast|lunch|dinner|snack\d+)\)$/.test(recipe.name)) return recipe
-          const library = libraryRecipes.find((candidate) => candidate.name === recipe.name)
-          if (!library) return recipe
-          return {
-            ...recipe,
-            mealType: library.meal_type || recipe.mealType,
-            servings: library.family_servings || recipe.servings,
-            familyServings: library.family_servings || recipe.familyServings,
-            ingredients: [...library.ingredients],
-            instructions: [...library.instructions],
-            notes: library.notes || recipe.notes,
-          }
-        }),
+        recipes: syncRecipesWithLibrary(nextPlan.recipes, libraryRecipes),
       }
     }
 
@@ -1136,22 +1125,28 @@ export default function CoachingPlanEditor({
     const skippedRecipes: string[] = []
 
     if (recipesToCalc.length > 0) {
-      const results = await Promise.all(recipesToCalc.map(async ({ recipe, index }) => {
-        // Preserve any macro-fitted portion from draft generation. Newly added
-        // recipes without one still begin at one declared recipe serving.
+      // Derives the client-portion card fields for one recipe at the given
+      // portion multiplier (defaults to the stored/declared portion).
+      //
+      // Paste-mode signal: stored calories on the recipe row. Scale locally
+      // using the publisher's macros — no USDA call needed. Custom per-slot
+      // recipes (name ends in "(d1-breakfast)" etc.) always come through
+      // USDA — their stored calories are just the last USDA calc, so treating
+      // them as paste-mode would freeze the total even after ingredients
+      // change (e.g. adding a banana wouldn't update the day count).
+      const deriveCard = async (
+        recipe: CoachingPlanDraft['recipes'][number],
+        explicitMultiplier?: number,
+      ) => {
         const familyCount = firstNumber(recipe.familyServings || recipe.servings)
         const isFamily = !individualPlanStyle && familyCount > 1
+        const multiplier = explicitMultiplier
+          ?? resolvedServingMultiplier(recipe.clientServingMultiplier, familyCount, isFamily)
 
-        // Paste-mode signal: stored calories on the recipe row. Scale locally
-        // using the publisher's macros — no USDA call needed. Custom per-slot
-        // recipes (name ends in "(d1-breakfast)" etc.) always come through
-        // USDA — their stored calories are just the last USDA calc, so treating
-        // them as paste-mode would freeze the total even after ingredients
-        // change (e.g. adding a banana wouldn't update the day count).
         const isCustomSlot = /\(d\d+-(?:breakfast|lunch|dinner|snack\d+)\)$/.test(recipe.name)
         const libraryRecipe = isCustomSlot
           ? undefined
-          : libraryRecipes.find((candidate) => candidate.name === recipe.name)
+          : findLibraryRecipe(libraryRecipes, recipe.name)
         const hasNutritionExclusions = recipe.ingredients.some(isExcludedNutritionIngredient)
         if (
           libraryRecipe?.calories
@@ -1170,13 +1165,9 @@ export default function CoachingPlanEditor({
             ingredients: recipe.ingredients,
             isFamily,
             familyServings: familyCount,
-            servingMultiplier: resolvedServingMultiplier(
-              recipe.clientServingMultiplier,
-              familyCount,
-              isFamily,
-            ),
+            servingMultiplier: multiplier,
           })
-          return { index, pasteScaled: scaled, nutrition: null as UsdaNutritionResponse['nutrition'] | null }
+          return { pasteScaled: scaled, nutrition: null as UsdaNutritionResponse['nutrition'] | null }
         }
 
         const res = await fetch('/api/admin/coaching/nutrition', {
@@ -1184,36 +1175,31 @@ export default function CoachingPlanEditor({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             ingredients: recipe.ingredients,
-            clientServingMultiplier: `${resolvedServingMultiplier(
-              recipe.clientServingMultiplier,
-              familyCount,
-              isFamily,
-            )}`,
+            clientServingMultiplier: `${multiplier}`,
             familyServings: recipe.familyServings || recipe.servings,
           }),
         })
         const data = await res.json().catch(() => ({} as UsdaNutritionResponse)) as UsdaNutritionResponse
         return {
-          index,
           pasteScaled: null as ReturnType<typeof scalePasteRecipe> | null,
           nutrition: res.ok ? data.nutrition ?? null : null,
         }
-      }))
+      }
 
-      const updatedRecipes = [...nextPlan.recipes]
-      for (const { index, nutrition, pasteScaled } of results) {
-        const r = updatedRecipes[index]
-        if (pasteScaled) {
-          updatedRecipes[index] = { ...r, ...pasteScaled }
-          continue
-        }
-        // Never overwrite macros with zeros when USDA matched nothing (e.g. cup/tbsp units).
+      // Applies a derived card onto the recipe; null means the calculation
+      // failed and the existing card must be kept. Never overwrite macros
+      // with zeros when USDA matched nothing (e.g. cup/tbsp units).
+      const applyDerived = (
+        recipe: CoachingPlanDraft['recipes'][number],
+        derived: Awaited<ReturnType<typeof deriveCard>>,
+      ): CoachingPlanDraft['recipes'][number] | null => {
+        if (derived.pasteScaled) return { ...recipe, ...derived.pasteScaled }
+        const nutrition = derived.nutrition
         if (!nutrition || nutrition.ingredients.length === 0 || !nutrition.totalRecipe.calories) {
-          skippedRecipes.push(r.name)
-          continue
+          return null
         }
-        updatedRecipes[index] = {
-          ...r,
+        return {
+          ...recipe,
           clientServingMultiplier: `${nutrition.clientServingMultiplier}`,
           clientServingGrams: `${nutrition.clientServingGrams}g`,
           clientServingMeasure: nutrition.clientServingMeasure,
@@ -1225,6 +1211,56 @@ export default function CoachingPlanEditor({
           fats: `${nutrition.clientServing.fats}g`,
           fiber: `${nutrition.clientServing.fiber}g`,
         }
+      }
+
+      // First pass: price every referenced recipe at its stored portion
+      // (recipes the library sync reset start back at one declared serving).
+      const results = await Promise.all(recipesToCalc.map(async ({ recipe, index }) => ({
+        index,
+        derived: await deriveCard(recipe),
+      })))
+
+      const updatedRecipes = [...nextPlan.recipes]
+      for (const { index, derived } of results) {
+        const applied = applyDerived(updatedRecipes[index], derived)
+        if (!applied) {
+          skippedRecipes.push(updatedRecipes[index].name)
+          continue
+        }
+        updatedRecipes[index] = applied
+      }
+
+      // Second pass: library edits synced into the plan change recipe
+      // nutrition out from under portions that were carved against the old
+      // version, so re-fit the portions to the client's daily targets on
+      // every save. Custom slot foods are exact coach-entered quantities and
+      // are never resized by the fitter.
+      const fittedMultipliers = fitRecipeServingMultipliers(
+        { ...nextPlan, recipes: updatedRecipes },
+        planningInputs,
+      )
+      const refits = [...fittedMultipliers].flatMap(([name, fitted]) => {
+        const index = updatedRecipes.findIndex((recipe) => recipe.name === name)
+        if (index < 0) return []
+        const recipe = updatedRecipes[index]
+        if (recipe.ingredients.length === 0 || skippedRecipes.includes(recipe.name)) return []
+        // Within 0.5% of the fitted portion already — leave the card alone so
+        // repeat saves settle instead of churning USDA recalculations.
+        const current = parseFloat(recipe.clientServingMultiplier)
+        if (Number.isFinite(current) && current > 0 && Math.abs(fitted - current) / current < 0.005) {
+          return []
+        }
+        return [{ index, recipe, fitted }]
+      })
+      const refitResults = await Promise.all(refits.map(async ({ index, recipe, fitted }) => ({
+        index,
+        derived: await deriveCard(recipe, fitted),
+      })))
+      for (const { index, derived } of refitResults) {
+        const applied = applyDerived(updatedRecipes[index], derived)
+        // A failed refit keeps the first-pass card: macros are still accurate
+        // for the stored portion, just not yet re-carved to target.
+        if (applied) updatedRecipes[index] = applied
       }
 
       // Also update meal plan descriptions with fresh macros
@@ -1710,7 +1746,13 @@ export default function CoachingPlanEditor({
                 className="admin-input"
                 value={planningInputs.mealPlanStartDate}
                 onChange={(e) => updatePlanningInput('mealPlanStartDate', e.target.value)}
+                aria-describedby={startDateWeekdayWarning(planningInputs.mealPlanStartDate) ? 'start-date-weekday-warning' : undefined}
               />
+              {startDateWeekdayWarning(planningInputs.mealPlanStartDate) && (
+                <span id="start-date-weekday-warning" role="alert" style={{ display: 'block', maxWidth: 240, fontFamily: 'var(--font-hanken)', fontSize: '0.75rem', color: '#B45309', marginTop: 4 }}>
+                  {startDateWeekdayWarning(planningInputs.mealPlanStartDate)}
+                </span>
+              )}
             </label>
             <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.78rem', color: 'var(--admin-on-surface-variant)', margin: 0, flex: 1, minWidth: 220 }}>
               Every 7 days you build is one menu the client eats for two weeks: days 1–7 are
@@ -1841,7 +1883,7 @@ export default function CoachingPlanEditor({
                                     {selectedRecipe?.calories && (
                                       <span style={{ color: 'var(--admin-on-surface-variant)' }}> · {selectedRecipe.calories.replace(/\s*k?cal$/i, '')} cal</span>
                                     )}
-                                    {libraryRecipesLoaded && !SLOT_NAME_SUFFIX.test(name) && !libraryRecipes.some((r) => r.name === name) && (
+                                    {libraryRecipesLoaded && !SLOT_NAME_SUFFIX.test(name) && !findLibraryRecipe(libraryRecipes, name) && (
                                       <span title="This recipe lives only inside this plan. Library edits won't reach it — remove it and re-add the recipe from your library to link them." style={{ color: '#B45309', fontWeight: 700 }}> · not in your library</span>
                                     )}
                                   </span>
@@ -1935,7 +1977,7 @@ export default function CoachingPlanEditor({
                                       {selectedRecipe?.calories && (
                                         <span style={{ color: 'var(--admin-on-surface-variant)' }}> · {selectedRecipe.calories.replace(/\s*k?cal$/i, '')} cal</span>
                                       )}
-                                      {libraryRecipesLoaded && !SLOT_NAME_SUFFIX.test(name) && !libraryRecipes.some((r) => r.name === name) && (
+                                      {libraryRecipesLoaded && !SLOT_NAME_SUFFIX.test(name) && !findLibraryRecipe(libraryRecipes, name) && (
                                         <span title="This recipe lives only inside this plan. Library edits won't reach it — remove it and re-add the recipe from your library to link them." style={{ color: '#B45309', fontWeight: 700 }}> · not in your library</span>
                                       )}
                                     </span>

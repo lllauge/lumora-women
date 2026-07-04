@@ -2,6 +2,7 @@ import type {
   CoachingPlanDraft,
   PlanMeal,
 } from './coaching-plan-schema'
+import { declaredServingMultiplier } from './nutrition-math.ts'
 
 type Nutrients = {
   calories: number
@@ -15,6 +16,9 @@ type MealPercentages = {
   lunchPct?: string
   dinnerPct?: string
   snackPct?: string
+  // 'individual_only' plans treat recipes as exact grams as entered, so a
+  // recipe's declared family servings don't shape its portion bounds.
+  mealPlanStyle?: string
 }
 
 function firstNumber(value: string | undefined) {
@@ -76,11 +80,23 @@ function median(values: number[]) {
     : (sorted[middle - 1] + sorted[middle]) / 2
 }
 
+// A family recipe portion must stay a genuine share of the pot — never a
+// whole (or nearly whole) family recipe priced as one client serving.
+const MAX_FAMILY_SHARE = 0.9
+const MAX_INDIVIDUAL_MULTIPLIER = 4
+
 /**
  * Fit recipe portions to the client's daily calories and macros while keeping
  * the chosen foods unchanged. Meal percentages guide distribution; a final
  * daily calorie correction prevents small macro-ratio compromises from
  * leaving the day materially above or below target.
+ *
+ * This runs both at draft generation and again on every plan save (library
+ * edits re-synced into a plan change recipe nutrition, and the portions must
+ * be re-carved to keep the client's day on target). Family recipe portions
+ * are therefore bounded against the recipe's *declared* equal share — at most
+ * 50% smaller or larger — not against the previous fitted value, so repeated
+ * refits converge on the target instead of compounding drift save after save.
  */
 export function fitRecipeServingMultipliers(
   plan: CoachingPlanDraft,
@@ -148,15 +164,30 @@ export function fitRecipeServingMultipliers(
       ? Math.max(0, dailyTarget.calories - fixedCalories) / predictedAdjustableCalories
       : 1
 
+    const individualPlanStyle = percentages.mealPlanStyle === 'individual_only'
     for (const { adjustableNames, scale } of fitted) {
       for (const name of adjustableNames) {
         const recipe = plan.recipes.find((candidate) => candidate.name === name)
         if (!recipe) continue
-        const baseline = firstNumber(recipe.clientServingMultiplier) || 1
+        const familyCount = firstNumber(recipe.familyServings || recipe.servings)
+        const isFamily = !individualPlanStyle && familyCount > 1
+        const declared = declaredServingMultiplier(familyCount, isFamily)
+        const baseline = firstNumber(recipe.clientServingMultiplier) || declared
         // Keep portions practical: at most 50% smaller or larger than the
-        // recipe's declared serving, then round to a stable 0.1% share.
-        const relativeScale = Math.max(0.5, Math.min(1.5, scale * dayCorrection))
-        const desired = Math.round(baseline * relativeScale * 1000) / 1000
+        // anchor, then round to a stable 0.1% share. Family recipes anchor to
+        // the declared equal share so refits after library edits converge on
+        // the target instead of compounding around a stale carve. Recipes
+        // without declared family servings have no such reference — their
+        // multiplier is a deliberate fraction of the whole dish — so they
+        // anchor to the current portion, as fitting always has.
+        const anchor = isFamily ? declared : baseline
+        const minShare = anchor * 0.5
+        const maxShare = Math.min(
+          anchor * 1.5,
+          isFamily ? MAX_FAMILY_SHARE : MAX_INDIVIDUAL_MULTIPLIER,
+        )
+        const unbounded = baseline * scale * dayCorrection
+        const desired = Math.round(Math.min(maxShare, Math.max(minShare, unbounded)) * 1000) / 1000
         const values = candidates.get(name) ?? []
         values.push(desired)
         candidates.set(name, values)

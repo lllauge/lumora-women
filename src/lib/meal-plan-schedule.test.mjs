@@ -84,3 +84,13 @@ test('labels for client-facing dates and admin block headers', () => {
   assert.strictEqual(blockWeeksLabel(1), 'Weeks 3–4')
   assert.strictEqual(blockWeeksLabel(2), 'Weeks 5–6')
 })
+
+test('warns when a start date is not a Monday, stays quiet otherwise', async () => {
+  const { startDateWeekdayWarning } = await import('./meal-plan-schedule.ts')
+  assert.strictEqual(startDateWeekdayWarning('2026-07-06'), null) // Monday
+  assert.strictEqual(startDateWeekdayWarning(''), null)
+  assert.strictEqual(startDateWeekdayWarning('not-a-date'), null)
+  const warning = startDateWeekdayWarning('2026-07-08') // Wednesday
+  assert.ok(warning && warning.includes('Wednesday'))
+  assert.ok(warning.includes('Monday'))
+})

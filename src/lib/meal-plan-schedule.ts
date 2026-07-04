@@ -95,3 +95,18 @@ export function friendlyBlockDate(isoDate: string): string {
 export function blockWeeksLabel(blockIndex: number): string {
   return `Weeks ${blockIndex * 2 + 1}–${blockIndex * 2 + 2}`
 }
+
+/**
+ * Menus are authored Monday–Sunday, but the schedule rotates from the start
+ * date — a mid-week start makes every day label (and the TODAY badge) point
+ * at the wrong real-world weekday for the entire plan. Returns a coach-facing
+ * warning for non-Monday start dates, or null when the date is fine/blank.
+ */
+export function startDateWeekdayWarning(startDate: string): string | null {
+  const trimmed = startDate.trim()
+  if (!ISO_DATE.test(trimmed)) return null
+  const weekday = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'long' })
+    .format(new Date(`${trimmed}T12:00:00Z`))
+  if (weekday === 'Monday') return null
+  return `${friendlyBlockDate(trimmed)} is a ${weekday}. Menu days are labeled Monday–Sunday and rotate from this date, so the client's "today" won't match her real weekday. Pick a Monday.`
+}

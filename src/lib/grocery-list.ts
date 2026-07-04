@@ -11,6 +11,16 @@ export function cleanIngredientLine(line: string) {
   return line.replace(/^\[(?:fdc:\d+|curated:[a-z0-9-]+)\]\s*/i, '').trim()
 }
 
+// "(not consumed)" is a nutrition-exclusion marker (brine water, discarded
+// marinade) — the food still gets bought and used, so it stays on the list
+// without the internal marker. Plain water is the one exception: nobody puts
+// tap water on a shopping list.
+function shoppableLabel(label: string): string | null {
+  const cleaned = label.replace(/\s*\(not consumed\)\s*$/i, '').trim()
+  if (/^water\b(?!melon)/i.test(cleaned)) return null
+  return cleaned
+}
+
 // Every meal-slot usage of a recipe means the full dish gets cooked once,
 // so the grocery list aggregates full-recipe ingredients per usage.
 export function buildGroceryList(plan: CoachingPlanDraft): string[] {
@@ -33,15 +43,19 @@ export function buildGroceryList(plan: CoachingPlanDraft): string[] {
       if (!line) continue
       const gramMatch = line.match(/^(\d+(?:\.\d+)?)\s*g\s+(.+)$/i)
       if (gramMatch) {
+        const shoppable = shoppableLabel(gramMatch[2].trim())
+        if (!shoppable) continue
         const cookedGrams = Number(gramMatch[1]) * times
-        const { grams, label } = cookedGramsToRaw(gramMatch[2].trim(), cookedGrams)
+        const { grams, label } = cookedGramsToRaw(shoppable, cookedGrams)
         const key = label.toLowerCase()
         const existing = gramTotals.get(key)
         gramTotals.set(key, { label, grams: (existing?.grams ?? 0) + grams })
       } else {
-        const key = line.toLowerCase()
+        const shoppable = shoppableLabel(line)
+        if (!shoppable) continue
+        const key = shoppable.toLowerCase()
         const existing = otherCounts.get(key)
-        otherCounts.set(key, { label: line, count: (existing?.count ?? 0) + times })
+        otherCounts.set(key, { label: shoppable, count: (existing?.count ?? 0) + times })
       }
     }
   }

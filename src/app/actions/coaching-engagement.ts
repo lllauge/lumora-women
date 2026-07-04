@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { createAdminClient, createClient } from '@/lib/supabase/server'
-import { coachingToday } from '@/lib/coaching-engagement'
+import { coachingToday, findCoachingClientForUser } from '@/lib/coaching-engagement'
 import { sendClientMessageNotification } from '@/lib/coaching-email'
 
 type ActionResult = { ok: boolean; error?: string }
@@ -14,14 +14,9 @@ async function getOwnedClient() {
   if (!user?.email) return null
 
   const admin = await createAdminClient()
-  const { data: client } = await admin
-    .from('coaching_clients')
-    .select('id, user_id, first_name, email')
-    .or(`user_id.eq.${user.id},email.eq.${user.email.toLowerCase()}`)
-    .maybeSingle()
+  const client = await findCoachingClientForUser(admin, { id: user.id, email: user.email })
 
   if (!client) return null
-  if (client.user_id && client.user_id !== user.id) return null
   return { admin, user, client }
 }
 

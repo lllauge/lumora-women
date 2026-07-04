@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createAdminClient, createClient } from '@/lib/supabase/server'
+import { findCoachingClientForUser } from '@/lib/coaching-engagement'
 import { BookOpen, LayoutDashboard, Settings, LogOut, ChevronRight, Play } from 'lucide-react'
 
 export const metadata: Metadata = {
@@ -87,13 +88,8 @@ async function getEnrolledCourses(userId: string) {
 async function getCoachingClient(userId: string, email: string | undefined) {
   if (!email) return null
   const supabase = await createAdminClient()
-  const normalized = email.toLowerCase()
 
-  const { data } = await supabase
-    .from('coaching_clients')
-    .select('id, status, onboarding_status')
-    .or(`user_id.eq.${userId},email.eq.${normalized}`)
-    .maybeSingle()
+  const data = await findCoachingClientForUser(supabase, { id: userId, email })
 
   if (data && data.onboarding_status !== 'submitted') {
     await supabase

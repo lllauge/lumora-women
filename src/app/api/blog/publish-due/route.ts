@@ -26,6 +26,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: 'Unauthorized.' }, { status: 401 })
   }
 
+  return publishDue()
+}
+
+async function publishDue() {
   const supabase = await createAdminClient()
   const nowIso = new Date().toISOString()
 
@@ -56,7 +60,16 @@ export async function POST(request: Request) {
   return NextResponse.json({ ok: true, published: due.length, ids: due.map((p) => p.id) })
 }
 
-/** Health check only. Publishing is intentionally POST-only. */
-export async function GET() {
+/**
+ * Vercel Cron invokes scheduled paths with GET and an
+ * `Authorization: Bearer ${CRON_SECRET}` header. A correctly authorized GET
+ * publishes due posts; anything else stays a plain health check.
+ */
+export async function GET(request: Request) {
+  const secret = process.env.CRON_SECRET
+  const auth = request.headers.get('authorization') ?? ''
+  if (secret && auth === `Bearer ${secret}`) {
+    return publishDue()
+  }
   return NextResponse.json({ ok: true, endpoint: 'publish-due', method: 'POST' })
 }

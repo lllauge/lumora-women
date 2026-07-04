@@ -1,16 +1,43 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Check } from 'lucide-react'
 
+// Checked state is keyed by the item's name with amounts masked out — never
+// by list index. The list is regenerated on every plan save (items reorder,
+// amounts shift as portions re-fit), and index keys would silently move
+// checkmarks onto different foods. Masking digits keeps a check on "chicken
+// breast, 2 lbs" when it becomes "chicken breast, 2.5 lbs".
+function itemKeyBase(item: string) {
+  return item.toLowerCase().replace(/\d+(?:\.\d+)?/g, '#').replace(/\s+/g, ' ').trim()
+}
+
 export default function GroceryChecklist({ items, storageKey }: { items: string[]; storageKey: string }) {
-  const [checked, setChecked] = useState<Record<number, boolean>>({})
+  const [checked, setChecked] = useState<Record<string, boolean>>({})
   const [loaded, setLoaded] = useState(false)
+
+  const itemKeys = useMemo(() => {
+    const seen = new Map<string, number>()
+    return items.map((item) => {
+      const base = itemKeyBase(item)
+      const count = seen.get(base) ?? 0
+      seen.set(base, count + 1)
+      return count === 0 ? base : `${base}~${count}`
+    })
+  }, [items])
 
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(storageKey)
-      if (raw) setChecked(JSON.parse(raw))
+      if (raw) {
+        const parsed = JSON.parse(raw) as Record<string, boolean>
+        // Old versions stored index-keyed entries; those can point at the
+        // wrong item after a list change, so only label-shaped keys survive.
+        const safe = Object.fromEntries(
+          Object.entries(parsed).filter(([key]) => /[a-z]/.test(key)),
+        )
+        setChecked(safe)
+      }
     } catch { /* fresh list */ }
     setLoaded(true)
   }, [storageKey])
@@ -22,7 +49,7 @@ export default function GroceryChecklist({ items, storageKey }: { items: string[
     } catch { /* storage full or blocked, checkboxes still work for the session */ }
   }, [checked, loaded, storageKey])
 
-  const doneCount = items.filter((_, i) => checked[i]).length
+  const doneCount = itemKeys.filter((key) => checked[key]).length
 
   return (
     <div>
@@ -42,12 +69,13 @@ export default function GroceryChecklist({ items, storageKey }: { items: string[
       </div>
       <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
         {items.map((item, i) => {
-          const done = !!checked[i]
+          const key = itemKeys[i]
+          const done = !!checked[key]
           return (
-            <li key={i} style={{ borderTop: i === 0 ? 'none' : '1px solid rgba(200,220,192,0.3)' }}>
+            <li key={key} style={{ borderTop: i === 0 ? 'none' : '1px solid rgba(200,220,192,0.3)' }}>
               <button
                 type="button"
-                onClick={() => setChecked((prev) => ({ ...prev, [i]: !prev[i] }))}
+                onClick={() => setChecked((prev) => ({ ...prev, [key]: !prev[key] }))}
                 aria-pressed={done}
                 style={{
                   width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem',

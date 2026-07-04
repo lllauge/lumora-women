@@ -37,7 +37,10 @@ export async function logAdminAction({
       : (headerStore.get('x-real-ip') ?? 'unknown')
 
     const supabase = getServiceClient()
-    await supabase.from('audit_logs').insert({
+    // Supabase returns failures instead of throwing — a discarded error here
+    // hid a missing audit_logs table for weeks. Log it so schema drift shows
+    // up in server logs instead of silently dropping the audit trail.
+    const { error } = await supabase.from('audit_logs').insert({
       admin_user_id: adminUserId,
       action,
       table_name: tableName ?? null,
@@ -46,6 +49,9 @@ export async function logAdminAction({
       new_values: newValues ?? null,
       ip_address: ip,
     })
+    if (error) {
+      console.error('[audit-log] Failed to write audit entry:', error.message)
+    }
   } catch (err) {
     // Never let audit logging failures break the main flow
     console.error('[audit-log] Failed to write audit entry:', err)

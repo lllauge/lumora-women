@@ -39,8 +39,11 @@ function exerciseDemoHref(exercise: CoachingPlanDraft['workoutPlan'][number]['ex
   const savedUrl = exercise.videoUrl.trim()
   if (savedUrl) {
     if (/^https?:\/\//i.test(savedUrl)) return savedUrl
-    if (/^(www\.)?(youtube\.com|youtu\.be)\//i.test(savedUrl)) return `https://${savedUrl}`
-    return savedUrl
+    // Saved links are pasted by hand and often arrive without a protocol
+    // ("vimeo.com/123"). Rendered as-is they'd become relative links under
+    // /coaching/… and 404. Anything domain-shaped gets https://; anything
+    // else falls through to the YouTube search below.
+    if (/^(www\.)?[\w-]+(\.[\w-]+)+(\/|$)/i.test(savedUrl)) return `https://${savedUrl}`
   }
 
   const name = exercise.name.trim()
@@ -606,7 +609,10 @@ function RecipeDetail({
   const bodyText: React.CSSProperties = {
     fontFamily: 'var(--font-sans)', fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.6,
   }
-  const isFamily = !individualPlanStyle && Number(recipe.familyServings) > 1
+  // parseFloat, not Number: the stored value can carry text ("4 servings"),
+  // and the portion math (clientPortionFactor) parses it the same way — the
+  // family label and the carved factor must never disagree.
+  const isFamily = !individualPlanStyle && parseFloat(recipe.familyServings) > 1
   const portionLines = clientPortionLines(recipe, individualPlanStyle).filter((line) => line.grams !== null)
   const detailFraction = portionFraction(clientPortionFactor(recipe, individualPlanStyle))
   // For family recipes the headline is "¼ of the recipe" (human-friendly),

@@ -5,6 +5,7 @@ import NavbarWrapper from '@/components/layout/NavbarWrapper'
 import FooterWrapper from '@/components/layout/FooterWrapper'
 import { createAdminClient, createClient } from '@/lib/supabase/server'
 import { sanitizeBlogHtml } from '@/lib/blog-html'
+import { publishDueBlogPosts } from '@/lib/blog-scheduling'
 
 type Params = Promise<{ slug: string }>
 type SearchParams = Promise<{ preview?: string }>
@@ -50,6 +51,10 @@ async function loadPost(slug: string, preview: boolean): Promise<BlogPost | null
       .maybeSingle<BlogPost>()
     return data ?? null
   }
+
+  // A direct visit to a scheduled post's URL at/after its go-live moment
+  // publishes it on the spot instead of showing a 404.
+  await publishDueBlogPosts()
 
   const supabase = await createClient()
   const { data } = await supabase

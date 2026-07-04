@@ -10,6 +10,7 @@ import FooterWrapper from '@/components/layout/FooterWrapper'
 import EmailCaptureForm from '@/components/home/EmailCaptureForm'
 import HeroBloomVideo from '@/components/home/HeroBloomVideo'
 import { createClient } from '@/lib/supabase/server'
+import { publishDueBlogPosts } from '@/lib/blog-scheduling'
 import { ArrowRight, Quote } from 'lucide-react'
 
 // ─── Data fetching ────────────────────────────────────────────────────────────
@@ -26,6 +27,7 @@ async function getFeaturedCourses() {
 }
 
 async function getRecentPosts() {
+  await publishDueBlogPosts()
   const supabase = await createClient()
   const { data } = await supabase
     .from('blog_posts')

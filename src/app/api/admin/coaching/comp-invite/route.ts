@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getVerifiedAdminUser } from '@/lib/admin-guard'
 import { sendCoachingCompInviteEmail } from '@/lib/coaching-email'
+import { upsertCoachingClientForOrder } from '@/lib/stripe-coaching-fulfillment'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { requireSameOrigin } from '@/lib/request-security'
 import { createAdminClient } from '@/lib/supabase/server'
@@ -91,25 +92,16 @@ export async function POST(req: NextRequest) {
     orderId = order.id
   }
 
-  const { error: clientError } = await supabase
-    .from('coaching_clients')
-    .upsert(
-      {
-        user_id: userProfile?.id ?? null,
-        email,
-        first_name: userProfile?.first_name ?? firstName,
-        last_name: userProfile?.last_name ?? lastName,
-        status: 'needs_onboarding',
-        onboarding_status: 'not_started',
-        coaching_order_id: orderId,
-        paid_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'email' }
-    )
+  const client = await upsertCoachingClientForOrder(supabase, {
+    email,
+    userProfileId: userProfile?.id ?? null,
+    firstName: userProfile?.first_name ?? firstName,
+    lastName: userProfile?.last_name ?? lastName,
+    orderId,
+  })
 
-  if (clientError) {
-    return NextResponse.json({ error: clientError.message }, { status: 500 })
+  if (!client.ok) {
+    return NextResponse.json({ error: client.error }, { status: 500 })
   }
 
   const baseUrl = siteUrl(req)

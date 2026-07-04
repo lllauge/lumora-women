@@ -250,6 +250,52 @@ export function todayMealDayIndex(plan: CoachingPlanDraft): number {
   return isoIndex % plan.mealPlan.length
 }
 
+export type CoachingClientRow = {
+  id: string
+  user_id: string | null
+  email: string
+  first_name: string | null
+  last_name: string | null
+  status: string
+  onboarding_status: string
+}
+
+/**
+ * The coaching client record belonging to this signed-in user.
+ *
+ * Looks up by linked auth user first, then by login email. Never uses a
+ * single-row query across both keys: a comp invite plus a purchase under two
+ * emails can legitimately leave two rows matching one person, and a
+ * multiple-rows error must degrade to "pick her row", not lock a paying
+ * client out of the portal. Rows already linked to a different auth user are
+ * never returned.
+ */
+export async function findCoachingClientForUser(
+  admin: Awaited<ReturnType<typeof createAdminClient>>,
+  user: { id: string; email: string },
+): Promise<CoachingClientRow | null> {
+  const columns = 'id, user_id, email, first_name, last_name, status, onboarding_status'
+
+  const { data: byUser } = await admin
+    .from('coaching_clients')
+    .select(columns)
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: true })
+    .limit(1)
+  if (byUser && byUser.length > 0) return byUser[0] as CoachingClientRow
+
+  const { data: byEmail } = await admin
+    .from('coaching_clients')
+    .select(columns)
+    .eq('email', user.email.toLowerCase())
+    .order('created_at', { ascending: true })
+    .limit(5)
+  const rows = (byEmail ?? []) as CoachingClientRow[]
+  return rows.find((row) => row.user_id === user.id)
+    ?? rows.find((row) => !row.user_id)
+    ?? null
+}
+
 /**
  * Loads the signed-in user's coaching portal context, redirecting away when
  * the user has no published plan. Every portal page calls this.
@@ -260,14 +306,9 @@ export async function getPortalContext(): Promise<PortalContext> {
   if (!user?.email) redirect('/login?redirectTo=/coaching')
 
   const admin = await createAdminClient()
-  const { data: client } = await admin
-    .from('coaching_clients')
-    .select('id, user_id, first_name, status')
-    .or(`user_id.eq.${user.id},email.eq.${user.email.toLowerCase()}`)
-    .maybeSingle()
+  const client = await findCoachingClientForUser(admin, { id: user.id, email: user.email })
 
   if (!client) redirect('/dashboard')
-  if (client.user_id && client.user_id !== user.id) redirect('/dashboard')
 
   const { data: planRow } = await admin
     .from('coaching_plans')

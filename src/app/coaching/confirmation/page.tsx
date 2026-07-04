@@ -25,9 +25,21 @@ async function confirm(sessionId: string | undefined) {
   }
 
   const stripe = new Stripe(stripeKey)
-  const session = await stripe.checkout.sessions.retrieve(sessionId, {
-    expand: ['payment_intent'],
-  })
+  // Emailed checkout links arrive truncated or mangled often enough that a
+  // bad session id must land on this friendly card, never an error page.
+  let session: Stripe.Checkout.Session
+  try {
+    session = await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ['payment_intent'],
+    })
+  } catch (err) {
+    console.error('[coaching confirmation] session lookup failed:', err instanceof Error ? err.message : err)
+    return {
+      ok: false,
+      title: 'Payment Link Problem',
+      message: 'We could not verify this checkout link. If you just paid, your payment is safe — write to hello@lumorawomen.com and Laura will confirm your access.',
+    }
+  }
 
   const fulfilled = await fulfillCoachingCheckout(session)
   if (!fulfilled.ok) {

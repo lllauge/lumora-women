@@ -62,6 +62,19 @@ test('grocery display keeps its shopper-friendly formatting', () => {
   assert.equal(groceryDisplay('[fdc:3] 100g Egg, whole, raw (2 large)'), '2 large eggs')
 })
 
+test('bulk spoon amounts escalate to cups instead of piling up tablespoons', () => {
+  // A month of salt aggregated onto the grocery list: 702g is 117 tsp.
+  // Nobody measures 39 tablespoons — show 2½ cups.
+  assert.equal(groceryDisplay('[fdc:2] 702g sea salt'), '2½ cups sea salt')
+  assert.equal(householdMeasure('sea salt', 702), '2½ cups sea salt')
+  assert.equal(groceryDisplay('[fdc:4] 234g salt'), '¾ cup salt')
+  // Oils cross into cups at 4 tbsp on the grocery list too.
+  assert.equal(groceryDisplay('[fdc:5] 112g olive oil'), '½ cup olive oil')
+  // Small amounts keep their natural spoon units.
+  assert.equal(groceryDisplay('[fdc:6] 4g cumin'), '2 tsp cumin')
+  assert.equal(groceryDisplay('[fdc:7] 28g olive oil'), '2 tbsp olive oil')
+})
+
 test('client recipe notes hide sources and the USDA calculation trail', () => {
   const notes = [
     'Great with a squeeze of lime.',

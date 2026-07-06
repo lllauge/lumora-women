@@ -80,6 +80,16 @@ function cupsText(cups: number, label: string): string {
   return `${text} cup${plural ? 's' : ''} ${label}`
 }
 
+// Spoon counts escalate to the next unit so bulk amounts stay readable:
+// 3 tsp make a tbsp, 4+ tbsp read as cups. Without the second step, a
+// month of salt on the grocery list shows up as "39 tbsp sea salt".
+function spoonMeasure(count: number, unit: string, label: string): string {
+  if (unit === 'tsp' && count < 3) return `${friendlyCount(count)} tsp ${label}`
+  const tbsp = unit === 'tsp' ? count / 3 : count
+  if (tbsp < 4) return `${friendlyCount(tbsp)} tbsp ${label}`
+  return cupsText(tbsp / 16, label)
+}
+
 /** "200" grams → "7 oz"; "907" → "2 lb". Mirrors the grocery-list rounding. */
 export function approxWeightMeasure(grams: number): string {
   if (grams >= 454) {
@@ -101,9 +111,7 @@ export function householdMeasure(label: string, grams: number): string | null {
     if (unit.match.test(lower)) {
       const count = grams / unit.gramsPer
       if (unit.template) return unit.template(Math.max(1, Math.round(count)))
-      if (unit.label === 'tsp' && count >= 3) return `${friendlyCount(count / 3)} tbsp ${label}`
-      if (unit.label === 'tbsp' && count >= 4) return cupsText(count / 16, label)
-      return `${friendlyCount(count)} ${unit.label} ${label}`
+      return spoonMeasure(count, unit.label, label)
     }
   }
   const cupGrams = lookupCupGrams(label)
@@ -175,7 +183,7 @@ export function groceryDisplay(item: string): string {
       if (unit.template) {
         return unit.template(Math.max(1, Math.round(count)))
       }
-      return `${friendlyCount(count)} ${unit.label} ${label}`
+      return spoonMeasure(count, unit.label, label)
     }
   }
 

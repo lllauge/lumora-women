@@ -139,11 +139,14 @@ export function withGrams(value: string): string {
  */
 export function habitsFromPlan(plan: CoachingPlanDraft): Habit[] {
   const t = plan.macroTargets
+  // No protein habit on purpose: in this program, eating the planned meals
+  // IS hitting the macros — a separate protein checkbox double-counts the
+  // same behavior. The 'workout' key stays on the strength habit so clients'
+  // historical movement wins keep counting toward streaks.
   const habits: Habit[] = [{ key: 'meals', label: 'Ate my planned meals' }]
-  if (t.protein.trim()) habits.push({ key: 'protein', label: `Hit ${withGrams(t.protein)} protein` })
   if (t.water.trim()) habits.push({ key: 'water', label: `Drank ${t.water.trim()} water` })
   if (t.steps.trim()) habits.push({ key: 'steps', label: `${t.steps.trim()} steps` })
-  if (t.workoutTarget.trim()) habits.push({ key: 'workout', label: 'Got my movement in' })
+  if (t.workoutTarget.trim()) habits.push({ key: 'workout', label: 'Did my strength training' })
   return habits.slice(0, 5)
 }
 

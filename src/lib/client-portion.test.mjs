@@ -128,9 +128,18 @@ test('all-caps USDA descriptions are sentence-cased for client display', () => {
 })
 
 test('no-scale fraction stays honest to the true multiplier', () => {
-  assert.deepEqual(portionFraction(0.25), { label: '¼', qualifier: null })
-  assert.deepEqual(portionFraction(0.27), { label: '¼', qualifier: 'generous' })
+  assert.deepEqual(portionFraction(0.25), { label: '¼', qualifier: null, parts: 4, take: 1 })
+  assert.deepEqual(portionFraction(0.27), { label: '¼', qualifier: 'generous', parts: 4, take: 1 })
   assert.equal(portionFraction(0.29), null)
-  assert.deepEqual(portionFraction(1), { label: 'the whole recipe', qualifier: null })
+  assert.deepEqual(portionFraction(1), { label: 'the whole recipe', qualifier: null, parts: 1, take: 1 })
   assert.equal(portionFraction(1.3), null)
+})
+
+test('no-scale fraction carries the division for multi-part shares', () => {
+  // Half the pot: split into 2, take 1 — the fit the new portion math can
+  // produce for a light family recipe.
+  assert.deepEqual(portionFraction(0.5), { label: 'half', qualifier: null, parts: 2, take: 1 })
+  // Non-unit fractions tell her how many of the equal portions are hers.
+  assert.deepEqual(portionFraction(2 / 3), { label: '⅔', qualifier: null, parts: 3, take: 2 })
+  assert.deepEqual(portionFraction(0.38), { label: '⅜', qualifier: null, parts: 8, take: 3 })
 })

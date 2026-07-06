@@ -694,9 +694,6 @@ function RecipeDetail({
           {(() => {
             const fraction = portionFraction(clientPortionFactor(recipe, individualPlanStyle))
             if (!fraction) return null
-            const serving = fraction.qualifier
-              ? `a ${fraction.qualifier} ${fraction.label}`
-              : `about ${fraction.label}`
             return (
               <p style={{
                 fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-secondary)',
@@ -705,9 +702,11 @@ function RecipeDetail({
                 <span style={{ fontWeight: 700, color: '#3F6936' }}>No scale? </span>
                 {fraction.label === 'the whole recipe'
                   ? 'This whole recipe is your portion, enjoy all of it.'
-                  : `Cook the full recipe, then serve yourself ${serving} of it${
+                  : `Cook the full recipe and divide it into ${fraction.parts} equal portions — ${
+                      fraction.take === 1 ? `one is your serving (about ${fraction.label})` : `${fraction.take} of them are your serving (about ${fraction.label})`
+                    }${
                       fraction.qualifier === 'generous' ? ', a little over is right' : fraction.qualifier === 'scant' ? ', a little under is right' : ''
-                    }. That division keeps the listed calories and macros on track.`}
+                    }. That split keeps the listed calories and macros on track.`}
               </p>
             )
           })()}

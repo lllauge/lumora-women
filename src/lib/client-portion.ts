@@ -164,31 +164,44 @@ export function clientRecipeNotes(notes: string): string {
     .trim()
 }
 
-const FRACTIONS: [number, string][] = [
-  [1, 'the whole recipe'], [3 / 4, '¾'], [2 / 3, '⅔'], [3 / 5, '⅗'], [1 / 2, 'half'],
-  [2 / 5, '⅖'], [3 / 8, '⅜'], [1 / 3, '⅓'], [1 / 4, '¼'], [1 / 5, '⅕'], [1 / 6, '⅙'], [1 / 8, '⅛'],
+// [value, label, divide the dish into `parts`, serve `take` of them]
+const FRACTIONS: [number, string, number, number][] = [
+  [1, 'the whole recipe', 1, 1], [3 / 4, '¾', 4, 3], [2 / 3, '⅔', 3, 2], [3 / 5, '⅗', 5, 3],
+  [1 / 2, 'half', 2, 1], [2 / 5, '⅖', 5, 2], [3 / 8, '⅜', 8, 3], [1 / 3, '⅓', 3, 1],
+  [1 / 4, '¼', 4, 1], [1 / 5, '⅕', 5, 1], [1 / 6, '⅙', 6, 1], [1 / 8, '⅛', 8, 1],
 ]
 
-export type PortionFraction = { label: string; qualifier: 'generous' | 'scant' | null }
+export type PortionFraction = {
+  label: string
+  qualifier: 'generous' | 'scant' | null
+  /** Divide the cooked dish into this many equal portions… */
+  parts: number
+  /** …and this many of them are the client's serving. */
+  take: number
+}
 
 /**
  * The client's portion as an easy fraction of the cooked dish ("¼", "half"),
- * for nights she doesn't want to weigh food. The fraction must stay close to
- * her true serving multiplier so the no-scale portion still hits her macros:
- * within 3% reads as exact; up to 12% off gets a "generous"/"scant" steer;
- * anything further from a kitchen fraction shows nothing.
+ * for nights she doesn't want to weigh food, with the matching division
+ * ("split into 4, take 1") for portioning straight into containers. The
+ * fraction must stay close to her true serving multiplier so the no-scale
+ * portion still hits her macros: within 3% reads as exact; up to 12% off gets
+ * a "generous"/"scant" steer; anything further from a kitchen fraction shows
+ * nothing.
  */
 export function portionFraction(factor: number): PortionFraction | null {
   if (!Number.isFinite(factor) || factor <= 0 || factor > 1.02) return null
-  let best: { label: string; deviation: number } | null = null
-  for (const [value, label] of FRACTIONS) {
+  let best: { label: string; parts: number; take: number; deviation: number } | null = null
+  for (const [value, label, parts, take] of FRACTIONS) {
     const deviation = (factor - value) / value
-    if (!best || Math.abs(deviation) < Math.abs(best.deviation)) best = { label, deviation }
+    if (!best || Math.abs(deviation) < Math.abs(best.deviation)) best = { label, parts, take, deviation }
   }
   if (!best || Math.abs(best.deviation) > 0.12) return null
   if (best.label === 'the whole recipe' && Math.abs(best.deviation) > 0.03) return null
   return {
     label: best.label,
+    parts: best.parts,
+    take: best.take,
     qualifier: Math.abs(best.deviation) <= 0.03 ? null : best.deviation > 0 ? 'generous' : 'scant',
   }
 }

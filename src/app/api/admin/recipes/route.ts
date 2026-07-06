@@ -3,6 +3,8 @@ import { z } from 'zod'
 import { getVerifiedAdminUser } from '@/lib/admin-guard'
 import { requireSameOrigin } from '@/lib/request-security'
 import { createAdminClient } from '@/lib/supabase/server'
+import { getUsdaApiKey } from '@/lib/usda/api-key'
+import { resyncPlansForRecipes } from '@/lib/plan-resync'
 
 const RecipeSchema = z.object({
   name: z.string().min(1),
@@ -67,5 +69,16 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ recipe: data })
+
+  // A new library recipe can adopt plan cards that carried its name before
+  // it existed (cards flagged "not in your library") — link them right away.
+  const usdaKey = getUsdaApiKey()
+  const resync = usdaKey.source === 'DEMO_KEY'
+    ? undefined
+    : await resyncPlansForRecipes({ supabase, apiKey: usdaKey.key, recipeNames: [data.name] })
+  if (resync?.failed.length) {
+    console.error('[plan resync] failures:', JSON.stringify(resync.failed))
+  }
+
+  return NextResponse.json({ recipe: data, resync })
 }

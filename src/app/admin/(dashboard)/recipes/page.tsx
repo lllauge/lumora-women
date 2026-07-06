@@ -822,6 +822,7 @@ export default function RecipeLibraryPage() {
   const [saving, setSaving] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
   const [drafts, setDrafts] = useState<Record<string, typeof EMPTY_RECIPE>>({})
   const [newRecipe, setNewRecipe] = useState({ ...EMPTY_RECIPE })
   const [addingNew, setAddingNew] = useState(false)
@@ -864,9 +865,20 @@ export default function RecipeLibraryPage() {
     setDrafts(prev => ({ ...prev, [id]: { ...prev[id], ...patch } }))
   }
 
+  // e.g. "2 client plans using this recipe were re-synced automatically."
+  function resyncNotice(resync: { affected: number; updated: number; failed: { clientId: string; error: string }[] } | undefined) {
+    if (!resync || resync.affected === 0) return ''
+    const plans = (n: number) => `${n} client plan${n === 1 ? '' : 's'}`
+    if (resync.failed.length > 0) {
+      return `Saved. ${plans(resync.updated)} re-synced, but ${plans(resync.failed.length)} could not re-sync — open that client's plan, fix the flagged recipe, and save.`
+    }
+    return `Saved. ${plans(resync.updated)} using this recipe ${resync.updated === 1 ? 'was' : 'were'} re-synced automatically — portions and grocery lists are already updated.`
+  }
+
   async function saveRecipe(id: string) {
     setSaving(id)
     setError('')
+    setNotice('')
     try {
       const res = await fetch(`/api/admin/recipes/${id}`, {
         method: 'PUT',
@@ -876,6 +888,7 @@ export default function RecipeLibraryPage() {
       if (!res.ok) throw new Error()
       const data = await res.json()
       setRecipes(prev => prev.map(r => r.id === id ? data.recipe : r))
+      setNotice(resyncNotice(data.resync))
     } catch {
       setError('Failed to save. Please try again.')
     } finally {
@@ -908,6 +921,7 @@ export default function RecipeLibraryPage() {
       })
       if (!res.ok) throw new Error()
       const data = await res.json()
+      setNotice(resyncNotice(data.resync))
       setRecipes(prev => [data.recipe, ...prev])
       setDrafts(prev => ({
         ...prev,
@@ -959,6 +973,12 @@ export default function RecipeLibraryPage() {
       {error && (
         <div className="admin-card" style={{ padding: '12px 16px', marginBottom: 16, background: '#fef2f2', border: '1px solid #fca5a5' }}>
           <p style={{ fontFamily: 'var(--font-hanken)', color: '#b91c1c', fontSize: '0.88rem', margin: 0 }}>{error}</p>
+        </div>
+      )}
+
+      {notice && (
+        <div className="admin-card" role="status" style={{ padding: '12px 16px', marginBottom: 16, background: '#f0f7ee', border: '1px solid #b6cfae' }}>
+          <p style={{ fontFamily: 'var(--font-hanken)', color: '#2e5a28', fontSize: '0.88rem', margin: 0 }}>{notice}</p>
         </div>
       )}
 

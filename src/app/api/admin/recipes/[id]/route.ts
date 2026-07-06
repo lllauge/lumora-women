@@ -3,6 +3,8 @@ import { z } from 'zod'
 import { getVerifiedAdminUser } from '@/lib/admin-guard'
 import { requireSameOrigin } from '@/lib/request-security'
 import { createAdminClient } from '@/lib/supabase/server'
+import { getUsdaApiKey } from '@/lib/usda/api-key'
+import { resyncPlansForRecipes } from '@/lib/plan-resync'
 
 const RecipeUpdateSchema = z.object({
   name: z.string().min(1).optional(),
@@ -45,6 +47,15 @@ export async function PUT(req: NextRequest, { params }: RouteContext) {
 
   const supabase = await createAdminClient()
 
+  // The pre-update name matters for the plan resync below: plan cards match
+  // the library by name, so a renamed recipe must resync plans that still
+  // reference the old name too.
+  const { data: before } = await supabase
+    .from('recipe_library')
+    .select('name')
+    .eq('id', id)
+    .maybeSingle()
+
   // Stored macro totals (paste-mode / URL imports) describe the ingredient
   // list they were entered with. If the ingredients change and the totals
   // were not deliberately updated in the same save, clear them — otherwise
@@ -86,7 +97,23 @@ export async function PUT(req: NextRequest, { params }: RouteContext) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ recipe: data })
+
+  // Push the change into every client plan that uses this recipe, so plans
+  // never serve stale snapshots. A resync problem never fails the recipe
+  // save — the summary tells the admin UI what happened.
+  const usdaKey = getUsdaApiKey()
+  const resync = usdaKey.source === 'DEMO_KEY'
+    ? undefined
+    : await resyncPlansForRecipes({
+      supabase,
+      apiKey: usdaKey.key,
+      recipeNames: [before?.name, data.name].filter((name): name is string => Boolean(name)),
+    })
+  if (resync?.failed.length) {
+    console.error('[plan resync] failures:', JSON.stringify(resync.failed))
+  }
+
+  return NextResponse.json({ recipe: data, resync })
 }
 
 export async function DELETE(req: NextRequest, { params }: RouteContext) {

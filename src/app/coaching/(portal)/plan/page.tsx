@@ -80,6 +80,10 @@ export default async function CoachingPlanPage({
     ? allDays.slice(blocks[schedule.currentBlock + 1].start, blocks[schedule.currentBlock + 1].end)
     : []
   const nextBlockDate = friendlyBlockDate(schedule.nextBlockStartsOn)
+  // A single 7-day menu is still eaten for two weeks in Laura's program —
+  // present it with the same two-week framing the scheduled 14-day blocks
+  // get, instead of downgrading the client to "Your Week".
+  const twoWeekMenu = schedule.active || allDays.length <= 7
 
   const secondaryTargets = [
     t.water.trim() && { label: 'Water', value: t.water.trim(), winKey: 'water' },
@@ -186,8 +190,8 @@ export default async function CoachingPlanPage({
         <section aria-label="Weekly meal plan" style={{ marginBottom: '2.25rem' }}>
           <SectionHeader
             icon={<CalendarDays style={headerIcon} aria-hidden="true" />}
-            title={schedule.active ? 'Your 2 Weeks' : 'Your Week'}
-            subtitle={schedule.active
+            title={twoWeekMenu ? 'Your 2 Weeks' : 'Your Week'}
+            subtitle={twoWeekMenu
               ? 'Your menu for these two weeks — repeat it both weeks. Tap a day to see every meal.'
               : 'Tap a day to see every meal.'}
           />
@@ -379,7 +383,7 @@ export default async function CoachingPlanPage({
           <SectionHeader
             icon={<ShoppingBasket style={headerIcon} aria-hidden="true" />}
             title="Grocery List"
-            subtitle={schedule.active
+            subtitle={twoWeekMenu
               ? 'One week of your menu — shop it each week. Check items off as you go, it remembers between visits.'
               : 'Check items off as you shop, it remembers between visits.'}
           />

@@ -62,7 +62,7 @@ function scaledServingFields(ingredients: string[], multiplier: number) {
     if (scaledGrams > 0) parts.push(`${scaledGrams}g ${match[2].trim()}`)
   }
   const clientServingGrams = Math.round(totalRecipeGrams * multiplier)
-  const recipeShare = multiplier >= 1 ? 'the full recipe' : `${Math.round(multiplier * 100)}% of the full recipe`
+  const recipeShare = multiplier === 1 ? 'the full recipe' : `${Math.round(multiplier * 100)}% of the full recipe`
   const breakdown = parts.join(' + ')
   return {
     clientServingGrams: `${clientServingGrams}g`,

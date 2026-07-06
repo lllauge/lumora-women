@@ -738,7 +738,7 @@ function practicalServingMeasure({
   multiplier: number
   clientServingGrams: number
 }) {
-  const recipeShare = multiplier >= 1 ? 'the full recipe' : `${Math.round(multiplier * 100)}% of the full recipe`
+  const recipeShare = multiplier === 1 ? 'the full recipe' : `${Math.round(multiplier * 100)}% of the full recipe`
   return `Prepare the ingredient weights below, then serve ${recipeShare} of the finished recipe. The listed inputs total about ${clientServingGrams}g before cooking or draining.`
 }
 

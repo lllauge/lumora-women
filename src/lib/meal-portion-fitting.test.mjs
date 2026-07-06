@@ -103,10 +103,11 @@ test('re-carves inflated portions back to the daily calorie target', () => {
   )
 })
 
-test('portions are bounded by the declared serving, not the stale carve', () => {
-  // Half the pot of a 6-serving recipe can never survive a refit: the bound
-  // anchors to the declared 1/6 share (max 1.5x = 0.25), so repeated saves
-  // converge instead of compounding around a corrupt baseline.
+test('a stale inflated carve is re-fitted to the targets, not preserved', () => {
+  // The sweet potato card kept a corrupt half-pot carve of a 6-serving
+  // recipe. The fit re-derives the portion from the targets (the card macros
+  // scale with the baseline, so the baseline cancels out), bringing the day
+  // back to the 1775 target instead of compounding around the bad carve.
   const plan = incidentPlan({
     sweetPotato: {
       clientServingMultiplier: '0.5',
@@ -116,8 +117,77 @@ test('portions are bounded by the declared serving, not the stale carve', () => 
   const fitted = fitRecipeServingMultipliers(plan, percentages)
   const potato = fitted.get('Roasted Sweet Potato')
   assert.ok(potato !== undefined)
-  assert.ok(potato <= 0.25 + 1e-9, `expected at most 0.25 of the pot, got ${potato}`)
-  assert.ok(potato >= 1 / 6 * 0.5 - 1e-9)
+  assert.ok(potato < 0.4, `expected the half-pot carve corrected down, got ${potato}`)
+  const dayTotal = dayCaloriesAfterFit(plan, fitted)
+  assert.ok(
+    Math.abs(dayTotal - 1775) / 1775 < 0.025,
+    `expected day near 1775 cal, got ${Math.round(dayTotal)}`,
+  )
+})
+
+test('a light family pot can exceed its declared equal share', () => {
+  // Serves 4, but the whole pot is only 1000 cal. With a 500-cal dinner
+  // target the client needs two declared servings — half the pot. The old
+  // fitter capped family portions at 1.5x the equal share (0.375); the
+  // declared serving count must not bound the fit.
+  const plan = {
+    macroTargets: { calories: '2000', protein: '150g', carbs: '175g', fats: '78g' },
+    mealPlan: [{
+      day: 'Monday',
+      breakfast: meal(['Custom breakfast (d1-breakfast)']),
+      lunch: meal(['Custom lunch (d1-lunch)']),
+      dinner: meal(['Sheet-Pan Chicken']),
+      snacks: [meal(['Custom Snack (d1-snack0)'])],
+    }],
+    recipes: [
+      recipe({ name: 'Custom breakfast (d1-breakfast)', calories: '700', protein: '52g', carbs: '61g', fats: '27g' }),
+      recipe({ name: 'Custom lunch (d1-lunch)', calories: '600', protein: '45g', carbs: '53g', fats: '23g' }),
+      recipe({ name: 'Custom Snack (d1-snack0)', calories: '200', protein: '15g', carbs: '17g', fats: '8g' }),
+      recipe({
+        name: 'Sheet-Pan Chicken',
+        familyServings: '4',
+        clientServingMultiplier: '0.25',
+        calories: '250', protein: '18.8g', carbs: '21.9g', fats: '9.8g',
+      }),
+    ],
+  }
+  const fitted = fitRecipeServingMultipliers(plan, percentages)
+  const portion = fitted.get('Sheet-Pan Chicken')
+  assert.ok(portion !== undefined)
+  assert.ok(
+    portion > 0.45 && portion < 0.55,
+    `expected roughly half the pot, got ${portion}`,
+  )
+})
+
+test('a family portion is never the whole pot as one serving', () => {
+  // Even when the targets ask for more food than the pot holds, the portion
+  // caps at 90% — a family recipe priced as (more than) the entire pot for
+  // one client is never valid.
+  const plan = {
+    macroTargets: { calories: '2000', protein: '150g', carbs: '175g', fats: '78g' },
+    mealPlan: [{
+      day: 'Monday',
+      breakfast: meal(['Custom breakfast (d1-breakfast)']),
+      lunch: meal(['Custom lunch (d1-lunch)']),
+      dinner: meal(['Tiny Pot']),
+      snacks: [],
+    }],
+    recipes: [
+      recipe({ name: 'Custom breakfast (d1-breakfast)', calories: '700', protein: '52g', carbs: '61g', fats: '27g' }),
+      recipe({ name: 'Custom lunch (d1-lunch)', calories: '600', protein: '45g', carbs: '53g', fats: '23g' }),
+      recipe({
+        name: 'Tiny Pot',
+        familyServings: '2',
+        clientServingMultiplier: '0.5',
+        calories: '150', protein: '11g', carbs: '13g', fats: '6g',
+      }),
+    ],
+  }
+  const fitted = fitRecipeServingMultipliers(plan, percentages)
+  const portion = fitted.get('Tiny Pot')
+  assert.ok(portion !== undefined)
+  assert.ok(portion <= 0.9 + 1e-9, `expected at most 0.9 of the pot, got ${portion}`)
 })
 
 test('custom slot foods are never resized', () => {
@@ -162,7 +232,7 @@ test('a plan already on target is a stable fixpoint', () => {
   }
 })
 
-test('individual-style plans scale exact-gram recipes around 1, not family shares', () => {
+test('individual-style plans scale exact-gram recipes to slot targets, not family shares', () => {
   const plan = {
     macroTargets: { calories: '1500', protein: '115g', carbs: '131g', fats: '58g' },
     mealPlan: [{
@@ -182,13 +252,20 @@ test('individual-style plans scale exact-gram recipes around 1, not family share
     ],
   }
   const fitted = fitRecipeServingMultipliers(plan, { ...percentages, mealPlanStyle: 'individual_only' })
-  for (const r of plan.recipes) {
-    const next = fitted.get(r.name)
+  // Four identical 500-cal dishes against 35/30/25/10 slot shares of 1500:
+  // each portion scales straight to its slot target (525/450/375/150 cal),
+  // starting from the exact-gram baseline of 1, not a 1/4 family share.
+  const expected = { A: 1.05, B: 0.9, C: 0.75, D: 0.3 }
+  for (const [name, want] of Object.entries(expected)) {
+    const next = fitted.get(name)
     assert.ok(next !== undefined)
-    assert.ok(next >= 0.5 - 1e-9 && next <= 1.5 + 1e-9, `${r.name}: ${next} outside [0.5, 1.5]`)
+    assert.ok(Math.abs(next - want) < 0.02, `${name}: expected ~${want}, got ${next}`)
   }
-  // 2000 calories entered against a 1500 target: portions must come down.
-  assert.ok(fitted.get('B') < 1)
+  const dayTotal = dayCaloriesAfterFit(plan, fitted)
+  assert.ok(
+    Math.abs(dayTotal - 1500) / 1500 < 0.025,
+    `expected day near 1500 cal, got ${Math.round(dayTotal)}`,
+  )
 })
 
 test('returns nothing without a calorie target', () => {

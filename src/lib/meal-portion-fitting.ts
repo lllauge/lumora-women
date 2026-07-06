@@ -93,10 +93,11 @@ const MAX_INDIVIDUAL_MULTIPLIER = 4
  *
  * This runs both at draft generation and again on every plan save (library
  * edits re-synced into a plan change recipe nutrition, and the portions must
- * be re-carved to keep the client's day on target). Family recipe portions
- * are therefore bounded against the recipe's *declared* equal share — at most
- * 50% smaller or larger — not against the previous fitted value, so repeated
- * refits converge on the target instead of compounding drift save after save.
+ * be re-carved to keep the client's day on target). The declared serving
+ * count describes the recipe, never the client: a light serves-4 pot can be
+ * carved as half the pot when her macros call for it. Because each fit
+ * re-derives the portion straight from the recipe's nutrition and the
+ * targets, repeated refits converge instead of compounding a stale carve.
  */
 export function fitRecipeServingMultipliers(
   plan: CoachingPlanDraft,
@@ -171,23 +172,18 @@ export function fitRecipeServingMultipliers(
         if (!recipe) continue
         const familyCount = firstNumber(recipe.familyServings || recipe.servings)
         const isFamily = !individualPlanStyle && familyCount > 1
-        const declared = declaredServingMultiplier(familyCount, isFamily)
-        const baseline = firstNumber(recipe.clientServingMultiplier) || declared
-        // Keep portions practical: at most 50% smaller or larger than the
-        // anchor, then round to a stable 0.1% share. Family recipes anchor to
-        // the declared equal share so refits after library edits converge on
-        // the target instead of compounding around a stale carve. Recipes
-        // without declared family servings have no such reference — their
-        // multiplier is a deliberate fraction of the whole dish — so they
-        // anchor to the current portion, as fitting always has.
-        const anchor = isFamily ? declared : baseline
-        const minShare = anchor * 0.5
-        const maxShare = Math.min(
-          anchor * 1.5,
-          isFamily ? MAX_FAMILY_SHARE : MAX_INDIVIDUAL_MULTIPLIER,
-        )
+        const baseline = firstNumber(recipe.clientServingMultiplier)
+          || declaredServingMultiplier(familyCount, isFamily)
+        // The portion chases the client's macro targets alone; the declared
+        // serving count never bounds it. Only hard practical caps apply — a
+        // family portion is never the (nearly) whole pot priced as one
+        // serving, and an individual dish never scales past 4x. A stale or
+        // corrupt stored carve still can't survive a refit: the recipe's
+        // card macros scale with the baseline, so `baseline * scale` lands
+        // on the target-driven share regardless of where the carve started.
+        const maxShare = isFamily ? MAX_FAMILY_SHARE : MAX_INDIVIDUAL_MULTIPLIER
         const unbounded = baseline * scale * dayCorrection
-        const desired = Math.round(Math.min(maxShare, Math.max(minShare, unbounded)) * 1000) / 1000
+        const desired = Math.round(Math.min(maxShare, Math.max(0.001, unbounded)) * 1000) / 1000
         const values = candidates.get(name) ?? []
         values.push(desired)
         candidates.set(name, values)

@@ -286,7 +286,7 @@ function scalePasteRecipe({
     ?? resolvedServingMultiplier(undefined, familyServings, isFamily)
 
   const clientServingGrams = Math.round(totalRecipeGrams * multiplier)
-  const sharePct = multiplier >= 1 ? 'the full recipe' : `${Math.round(multiplier * 100)}% of the full recipe`
+  const sharePct = multiplier === 1 ? 'the full recipe' : `${Math.round(multiplier * 100)}% of the full recipe`
   const clientServingMeasure = `Prepare the ingredient weights below, then serve ${sharePct} of the finished recipe. The listed inputs total about ${clientServingGrams}g before cooking or draining.`
 
   const breakdownParts: string[] = []

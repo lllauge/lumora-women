@@ -5,6 +5,7 @@ import {
   cleanIngredientText,
   clientPortionFactor,
   clientPortionLines,
+  estimatedCookedPortionGrams,
   portionFraction,
   portionSummaryLine,
 } from './client-portion.ts'
@@ -125,6 +126,40 @@ test('all-caps USDA descriptions are sentence-cased for client display', () => {
   assert.equal(cleanIngredientText('907g Sweet potatoes'), '907g Sweet potatoes')
   // Short all-caps tokens that are likely intentional stay as-is.
   assert.equal(cleanIngredientText('BBQ rub'), 'BBQ rub')
+})
+
+test('cooked portion estimate converts raw grams and drops discarded brine', () => {
+  // Norma's brined baked chicken: raw chicken shrinks by the poultry yield
+  // (÷1.33), oil and seasonings pass through, and the brine water + salt
+  // marked "(not consumed)" never count toward her plate.
+  const r = recipe({
+    familyServings: '4',
+    clientServingMultiplier: '0.25',
+    ingredients: [
+      '[fdc:1] 996g Chicken breast, boneless skinless',
+      '[fdc:2] 1036g Water (not consumed)',
+      '[fdc:3] 64g kosher salt (not consumed)',
+      '[fdc:4] 28g Olive oil',
+      '[fdc:5] 4g Italian seasoning',
+    ],
+  })
+  // (996 / 1.33 + 28 + 4) * 0.25 ≈ 195.2 → rounded to the nearest 5g.
+  assert.equal(estimatedCookedPortionGrams(r), 195)
+})
+
+test('cooked portion estimate keeps grams already listed as cooked', () => {
+  const r = recipe({
+    familyServings: '2',
+    clientServingMultiplier: '0.5',
+    ingredients: ['[fdc:1] 400g chicken breast, cooked', '[fdc:2] 200g white rice, cooked'],
+  })
+  // Already cooked weights: no yield conversion, just her share of the pot.
+  assert.equal(estimatedCookedPortionGrams(r), 300)
+})
+
+test('cooked portion estimate is null without gram amounts', () => {
+  const r = recipe({ familyServings: '4', ingredients: ['a pinch of salt', ''] })
+  assert.equal(estimatedCookedPortionGrams(r), null)
 })
 
 test('no-scale fraction stays honest to the true multiplier', () => {

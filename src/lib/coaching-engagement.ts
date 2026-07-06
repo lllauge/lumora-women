@@ -10,6 +10,7 @@ export {
   clientPortionFactor,
   clientPortionLines,
   clientRecipeNotes,
+  estimatedCookedPortionGrams,
   ingredientGrams,
   ingredientWeighState,
   portionFraction,

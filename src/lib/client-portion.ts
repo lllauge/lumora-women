@@ -3,6 +3,8 @@
 // nutrition-math — the portal must always show weights that match the saved
 // serving macros.
 import type { CoachingPlanDraft } from './coaching-plan-schema'
+import { rawGramsToCookedEstimate } from './cooked-to-raw.ts'
+import { isExcludedNutritionIngredient } from './nutrition-ingredient.ts'
 
 const FOOD_DATABASE_TOKEN = /\[(?:fdc:\d+|curated:[a-z0-9-]+)\]\s*/gi
 
@@ -117,6 +119,34 @@ export function clientPortionLines(
       }
     })
     .filter((line) => line.name)
+}
+
+/**
+ * Estimated cooked weight of the client's plated portion, in grams. Family
+ * recipes are cooked as one dish and her share is carved from the finished
+ * food, so the portal shows her a cooked target rather than raw ingredient
+ * weights she can't act on. Discarded brine/marinade lines are excluded; raw
+ * ingredient grams are converted with kitchen-average yields, so the number is
+ * a target, not a promise — rounded to 5g to read like the estimate it is.
+ * Returns null when no ingredient carries a gram amount.
+ */
+export function estimatedCookedPortionGrams(
+  recipe: CoachingPlanDraft['recipes'][number],
+  individualPlanStyle = false,
+): number | null {
+  const factor = clientPortionFactor(recipe, individualPlanStyle)
+  let total = 0
+  let hasGrams = false
+  for (const ing of recipe.ingredients) {
+    if (isExcludedNutritionIngredient(ing)) continue
+    const cleaned = cleanIngredientText(ing)
+    const grams = ingredientGrams(ing)
+    if (grams === null) continue
+    hasGrams = true
+    total += rawGramsToCookedEstimate(cleaned, grams)
+  }
+  if (!hasGrams) return null
+  return Math.round((total * factor) / 5) * 5
 }
 
 /** Compact one-line weigh-out summary: "3 large eggs · 50g sweet potato (cooked)". */

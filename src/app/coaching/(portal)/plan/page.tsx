@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { Leaf, ShoppingBasket, CalendarDays, ChevronDown, Check, Dumbbell, PlayCircle } from 'lucide-react'
 import {
   getPortalContext, todayMealDayIndex, withGrams, displayRecipeName,
-  getDailyLogs, coachingToday, cleanIngredientText, clientPortionFactor, clientPortionLines, isClientReadable, portionFraction,
+  getDailyLogs, coachingToday, cleanIngredientText, clientPortionFactor, clientPortionLines, estimatedCookedPortionGrams, isClientReadable, portionFraction,
   clientRecipeNotes, groceryDisplay, shoppingPrepLines,
 } from '@/lib/coaching-engagement'
 import GroceryChecklist from '@/components/coaching/GroceryChecklist'
@@ -625,9 +625,13 @@ function RecipeDetail({
   const fractionHeadline = isFamily && detailFraction && detailFraction.label !== 'the whole recipe'
     ? `${detailFraction.qualifier ? `A ${detailFraction.qualifier} ${detailFraction.label}` : detailFraction.label} of the recipe`
     : ''
-  const totalPortionGrams = portionLines.reduce((sum, line) => sum + (line.grams ?? 0), 0)
-  const portionGramSubtext = fractionHeadline && totalPortionGrams > 0
-    ? `about ${Math.round(totalPortionGrams)}g across the ingredient weights listed below`
+  // Family recipes are cooked as one dish and her share is carved from the
+  // finished food, so the client-facing target is a cooked weight — raw
+  // per-ingredient amounts belong to Shopping & prep, not her plate.
+  const cookedPortionGrams = isFamily ? estimatedCookedPortionGrams(recipe, individualPlanStyle) : null
+  const portionPercent = Math.round(clientPortionFactor(recipe, individualPlanStyle) * 100)
+  const portionGramSubtext = fractionHeadline && cookedPortionGrams
+    ? `about ${cookedPortionGrams}g cooked — weigh your serving once the dish is done`
     : ''
   const headline = fractionHeadline
     ? [] // fraction headline replaces the gram-based headline for family recipes
@@ -639,7 +643,7 @@ function RecipeDetail({
 
   return (
     <div>
-      {(headline.length > 0 || portionLines.length > 0 || fractionHeadline) && (
+      {(headline.length > 0 || portionLines.length > 0 || fractionHeadline || isFamily) && (
         <div style={{ background: 'var(--section-tint)', borderRadius: '0.75rem', padding: '0.75rem 0.875rem', marginTop: '0.5rem' }}>
           <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 700, color: '#3F6936', marginBottom: '0.125rem' }}>
             {isFamily ? 'YOUR PORTION (family recipe)' : 'YOUR PORTION'}
@@ -661,7 +665,21 @@ function RecipeDetail({
               {headline.join(' · ')}
             </p>
           )}
-          {portionLines.length > 0 && (
+          {isFamily ? (
+            <div style={{ marginTop: '0.5rem' }}>
+              <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
+                Weigh out your serving (after cooking):
+              </p>
+              <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
+                {cookedPortionGrams
+                  ? <>Once the dish is done, weigh about <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{cookedPortionGrams}g</span> of the finished food onto your plate.</>
+                  : 'Once the dish is done, weigh out your share of the finished food.'}
+              </p>
+              <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem', fontStyle: 'italic' }}>
+                Tip: ovens and moisture vary, so for an exact split weigh the whole finished dish and take {portionPercent}% of that weight — that keeps your calories and macros on track no matter how it cooks down.
+              </p>
+            </div>
+          ) : portionLines.length > 0 && (
             <div style={{ marginTop: '0.5rem' }}>
               <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
                 Weigh out your serving:
@@ -740,8 +758,9 @@ function RecipeDetail({
           </h3>
           <p style={{ ...bodyText, fontSize: '0.8125rem', fontStyle: 'italic', marginBottom: '0.5rem' }}>
             Amounts to buy and prep — raw, before cooking, unless a line says cooked weight.
-            When you weigh your serving above, use the food as it&apos;s listed there: cooked
-            unless marked otherwise.
+            {isFamily
+              ? ' Your serving above is weighed from the finished dish, after cooking.'
+              : ' When you weigh your serving above, use the food as it’s listed there: cooked unless marked otherwise.'}
           </p>
           <PrepIngredientList lines={shoppingPrepLines(recipe.ingredients)} />
         </>

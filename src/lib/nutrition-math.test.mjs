@@ -295,3 +295,20 @@ test('maps blueberries and lemon juice to complete, ingredient-specific USDA rec
   assert.equal(matchCommonFood('lemon juice')?.fdcId, 167747)
   assert.equal(matchCommonFood('lemon')?.displayName, 'Lemon, raw')
 })
+
+test('maps farro to real records: cooked uses the spelt equivalent, dry the Foundation entry', () => {
+  assert.equal(matchCommonFood('cooked farro')?.fdcId, 169746)
+  assert.equal(matchCommonFood('farro, cooked')?.fdcId, 169746)
+  assert.equal(matchCommonFood('farro')?.fdcId, 2710828)
+  assert.equal(matchCommonFood('dry farro')?.fdcId, 2710828)
+})
+
+test('maps corn lines to the vegetable, never corn oil', () => {
+  assert.equal(matchCommonFood('ears corn')?.fdcId, 169998)
+  assert.equal(matchCommonFood('corn')?.fdcId, 169998)
+  assert.equal(matchCommonFood('corn on the cob')?.fdcId, 169998)
+  assert.equal(matchCommonFood('canned corn')?.displayName, 'Sweet corn, canned, drained')
+  // longer aliases must still win over the bare "corn"
+  assert.equal(matchCommonFood('frozen corn')?.displayName, 'Sweet corn, yellow, frozen')
+  assert.equal(matchCommonFood('corn tortilla')?.displayName, 'Corn tortilla')
+})

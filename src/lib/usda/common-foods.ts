@@ -67,6 +67,13 @@ export const COMMON_FOODS: CommonFood[] = [
   { aliases: ['quinoa cooked', 'cooked quinoa'], displayName: 'Quinoa, cooked', usdaQuery: 'quinoa cooked' },
   { aliases: ['quinoa', 'quinoa raw', 'quinoa dry'], displayName: 'Quinoa, raw', usdaQuery: 'quinoa uncooked' },
 
+  // USDA has no cooked-farro record in any reference database. Farro is
+  // emmer wheat, so cooked farro maps to SR Legacy "Spelt, cooked" — a
+  // sibling wheat species with matching macros (127 cal/100g cooked).
+  // Dry farro has a true Foundation record.
+  { aliases: ['farro cooked', 'cooked farro'], displayName: 'Farro, cooked (USDA spelt record)', usdaQuery: 'spelt cooked', fdcId: 169746 },
+  { aliases: ['farro', 'farro dry', 'dry farro', 'farro raw', 'pearled farro'], displayName: 'Farro, pearled, dry', usdaQuery: 'farro pearled dry raw', fdcId: 2710828 },
+
   { aliases: ['rolled oats', 'old fashioned oats', 'oatmeal dry'], displayName: 'Oats, whole grain, rolled, old fashioned', usdaQuery: 'oats whole grain rolled old fashioned' },
   { aliases: ['oats', 'oatmeal', 'cooked oats', 'cooked oatmeal'], displayName: 'Oatmeal, cooked with water', usdaQuery: 'oats regular quick instant cooked with water' },
 
@@ -117,6 +124,10 @@ export const COMMON_FOODS: CommonFood[] = [
   { aliases: ['brussels sprouts', 'brussel sprouts'], displayName: 'Brussels sprouts, raw', usdaQuery: 'brussels sprouts raw' },
   { aliases: ['cabbage'], displayName: 'Cabbage, raw', usdaQuery: 'cabbage raw' },
   { aliases: ['frozen corn', 'corn kernels'], displayName: 'Sweet corn, yellow, frozen', usdaQuery: 'corn sweet yellow frozen kernels off cob' },
+  // Bare "corn" must pin to the vegetable: the generic scorer once ranked
+  // "Oil, corn" above "Corn, sweet, raw" for an "ears corn" line (9x calories).
+  { aliases: ['corn', 'ears corn', 'ears of corn', 'corn on the cob', 'fresh corn', 'sweet corn'], displayName: 'Sweet corn, yellow, raw', usdaQuery: 'corn sweet yellow raw', fdcId: 169998 },
+  { aliases: ['canned corn', 'corn canned'], displayName: 'Sweet corn, canned, drained', usdaQuery: 'corn sweet yellow canned whole kernel drained solids' },
   { aliases: ['frozen peas', 'peas'], displayName: 'Green peas, frozen', usdaQuery: 'peas green frozen unprepared' },
   { aliases: ['green beans', 'string beans'], displayName: 'Green beans, raw', usdaQuery: 'beans snap green raw' },
   { aliases: ['avocado'], displayName: 'Avocado, raw', usdaQuery: 'avocados raw all commercial varieties' },

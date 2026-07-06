@@ -293,9 +293,13 @@ async function searchFood(query: string, apiKey: string) {
       const dryPenalty = wantsCooked && /\bdry\b/.test(description) ? -20 : 0
       // Penalize processed/concentrated forms that are never what someone means by "cooked chicken" or "cooked rice"
       const processedPenalty = /\b(flour|powder|flakes?|mix|concentrate|instant|freeze.dried)\b/.test(description) ? -20 : 0
+      // A vegetable query must never land on its pressed oil: "ears corn"
+      // scored "Oil, corn" above "Corn, sweet, raw" via the Foundation bonus —
+      // a 9x calorie error. Oil records only qualify when the query says oil.
+      const oilPenalty = !queryTokens.includes('oil') && /\boil\b/.test(description) ? -30 : 0
 
       const dataTypeScore = food.dataType === 'Foundation' ? 3 : food.dataType === 'SR Legacy' ? 2 : 1
-      return { food, score: tokenScore + cookedScore + notCookedPenalty + rawScore + rawPenalty + dryPenalty + processedPenalty + dataTypeScore }
+      return { food, score: tokenScore + cookedScore + notCookedPenalty + rawScore + rawPenalty + dryPenalty + processedPenalty + oilPenalty + dataTypeScore }
     })
     .sort((a, b) => b.score - a.score)[0]?.food ?? foods[0]
 }
@@ -521,6 +525,10 @@ export async function searchFoodsForPicker(query: string, apiKey: string): Promi
       const dryPenalty = wantsCooked && /\bdry\b/.test(description) ? -20 : 0
       const processedPenalty = !wantsProcessed && /\b(flour|powder|flakes?|mix|concentrate|instant|freeze.dried)\b/.test(description) ? -20 : 0
       const groundPenalty = !wantsGround && /\b(ground|minced)\b/.test(description) ? -20 : 0
+      // A vegetable query must never rank its pressed oil first: "ears corn"
+      // scored "Oil, corn" above "Corn, sweet, raw" via the Foundation bonus —
+      // a 9x calorie error. Oil records only qualify when the query says oil.
+      const oilPenalty = !queryTokens.includes('oil') && /\boil\b/.test(description) ? -30 : 0
       // Lab-analyzed generics outrank label-reported branded products in ties.
       const dataTypeScore = food.dataType === 'Foundation' ? 3 : food.dataType === 'SR Legacy' ? 2 : food.dataType === 'Branded' ? 0 : 1
       const brandTokens = `${food.brandName ?? ''} ${food.brandOwner ?? ''}`.toLowerCase()
@@ -535,7 +543,7 @@ export async function searchFoodsForPicker(query: string, apiKey: string): Promi
       // When that leading noun is one of the query tokens, it's almost
       // certainly the core food — promote it above derivatives.
       const corePrefixBonus = queryTokens.some((t) => description.startsWith(`${t},`)) ? 6 : 0
-      const score = tokenScore + brandScore + cookedScore + notCookedPenalty + rawPenalty + dryPenalty + processedPenalty + groundPenalty + tangentialPenalty + corePrefixBonus + dataTypeScore
+      const score = tokenScore + brandScore + cookedScore + notCookedPenalty + rawPenalty + dryPenalty + processedPenalty + groundPenalty + oilPenalty + tangentialPenalty + corePrefixBonus + dataTypeScore
       const macros = macrosPer100g(food)
       return { food, score, macros }
     })

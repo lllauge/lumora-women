@@ -17,20 +17,6 @@ const COOKED_TO_RAW: { match: RegExp; factor: number }[] = [
   { match: /\b(potato|sweet potato|yam)\b/i, factor: 0.9 },
 ]
 
-/**
- * Raw → cooked weight estimate for the client's plated portion (inverse of the
- * shopping table). Labels already carrying a cooked word keep their grams;
- * foods without a yield rule (oils, seasonings) pass through unchanged, which
- * keeps the estimate honest for dishes that are mostly protein or starch.
- */
-export function rawGramsToCookedEstimate(label: string, grams: number): number {
-  if (COOKED_WORDS.test(label) && !RAW_WORDS.test(label)) return grams
-  for (const rule of COOKED_TO_RAW) {
-    if (rule.match.test(label)) return grams / rule.factor
-  }
-  return grams
-}
-
 export function cookedGramsToRaw(label: string, grams: number): { grams: number; label: string } {
   if (!COOKED_WORDS.test(label) || RAW_WORDS.test(label)) return { grams, label }
   for (const rule of COOKED_TO_RAW) {

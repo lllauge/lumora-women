@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { Leaf, ShoppingBasket, CalendarDays, ChevronDown, Check, Dumbbell, PlayCircle } from 'lucide-react'
 import {
   getPortalContext, todayMealDayIndex, withGrams, displayRecipeName,
-  getDailyLogs, coachingToday, cleanIngredientText, clientPortionFactor, clientPortionLines, estimatedCookedPortionGrams, isClientReadable, portionFraction,
+  getDailyLogs, coachingToday, cleanIngredientText, clientPortionFactor, clientPortionLines, isClientReadable, portionFraction,
   clientRecipeNotes, groceryDisplay, shoppingPrepLines,
 } from '@/lib/coaching-engagement'
 import GroceryChecklist from '@/components/coaching/GroceryChecklist'
@@ -626,13 +626,10 @@ function RecipeDetail({
     ? `${detailFraction.qualifier ? `A ${detailFraction.qualifier} ${detailFraction.label}` : detailFraction.label} of the recipe`
     : ''
   // Family recipes are cooked as one dish and her share is carved from the
-  // finished food, so the client-facing target is a cooked weight — raw
-  // per-ingredient amounts belong to Shopping & prep, not her plate.
-  const cookedPortionGrams = isFamily ? estimatedCookedPortionGrams(recipe, individualPlanStyle) : null
+  // finished food, so the client-facing portion is a share of the cooked dish
+  // (fraction + percent, no gram target) — raw per-ingredient amounts belong
+  // to Shopping & prep, not her plate.
   const portionPercent = Math.round(clientPortionFactor(recipe, individualPlanStyle) * 100)
-  const portionGramSubtext = fractionHeadline && cookedPortionGrams
-    ? `about ${cookedPortionGrams}g cooked — weigh your serving once the dish is done`
-    : ''
   const headline = fractionHeadline
     ? [] // fraction headline replaces the gram-based headline for family recipes
     : ([
@@ -649,16 +646,9 @@ function RecipeDetail({
             {isFamily ? 'YOUR PORTION (family recipe)' : 'YOUR PORTION'}
           </p>
           {fractionHeadline && (
-            <>
-              <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)', margin: '0.125rem 0 0.25rem' }}>
-                {fractionHeadline}
-              </p>
-              {portionGramSubtext && (
-                <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
-                  {portionGramSubtext}
-                </p>
-              )}
-            </>
+            <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)', margin: '0.125rem 0 0.25rem' }}>
+              {fractionHeadline}
+            </p>
           )}
           {headline.length > 0 && (
             <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
@@ -671,12 +661,10 @@ function RecipeDetail({
                 Weigh out your serving (after cooking):
               </p>
               <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
-                {cookedPortionGrams
-                  ? <>Once the dish is done, weigh about <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{cookedPortionGrams}g</span> of the finished food onto your plate.</>
-                  : 'Once the dish is done, weigh out your share of the finished food.'}
+                Once the dish is done, weigh the whole finished dish and take <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{portionPercent}%</span> of that weight — that&apos;s your serving.
               </p>
               <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem', fontStyle: 'italic' }}>
-                Tip: ovens and moisture vary, so for an exact split weigh the whole finished dish and take {portionPercent}% of that weight — that keeps your calories and macros on track no matter how it cooks down.
+                The percentage split keeps your calories and macros on track no matter how much the dish cooks down.
               </p>
             </div>
           ) : portionLines.length > 0 && (

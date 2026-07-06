@@ -4,7 +4,12 @@ import { notFound } from 'next/navigation'
 import { ArrowLeft, CheckCircle, CircleAlert } from 'lucide-react'
 import CoachingPlanEditor from '@/components/admin/CoachingPlanEditor'
 import CoachingProgressTracker from '@/components/admin/CoachingProgressTracker'
+import CoachReviewComposer from '@/components/admin/CoachReviewComposer'
 import { parseCoachingPlan } from '@/lib/coaching-plan-schema'
+import {
+  coachingToday, currentStreak, getCoachReviewForWeek, getDailyLogs,
+  getMessages, habitsFromPlan, weekConsistency, weekDates,
+} from '@/lib/coaching-engagement'
 import { createAdminClient } from '@/lib/supabase/server'
 import { formatCurrency, formatShortDate } from '@/utils/format'
 
@@ -213,6 +218,25 @@ export default async function AdminCoachingClientPage({ params }: PageProps) {
   const { client, order, onboarding, plan, progressLogs } = data
   const name = [client.first_name, client.last_name].filter(Boolean).join(' ').trim() || 'Coaching Client'
   const formData = asObject(onboarding?.form_data)
+
+  // The client's week, assembled for the weekly review: habit consistency,
+  // streak, weight trend, and her latest check-in — everything Laura needs
+  // to write "what I saw" without hunting through tabs.
+  const today = coachingToday()
+  const weekOf = weekDates(today)[0]
+  const [dailyLogs, messages, weekReview] = await Promise.all([
+    getDailyLogs(client.id, 30),
+    getMessages(client.id, 200),
+    getCoachReviewForWeek(client.id, weekOf),
+  ])
+  const firstName = client.first_name?.trim() || 'your client'
+  const lastCheckIn = [...messages].reverse().find((m) => m.sender === 'client' && m.is_check_in)
+  const weights = [...progressLogs]
+    .reverse() // stored newest-first; trend math wants oldest-first
+    .map((l) => ({ date: l.logged_at, value: parseFloat((l.weight ?? '').replace(/[^\d.]/g, '')) }))
+    .filter((w) => Number.isFinite(w.value))
+  const latestWeight = weights.length > 0 ? weights[weights.length - 1] : null
+  const weightChange = weights.length >= 2 ? weights[weights.length - 1].value - weights[0].value : null
   const coachingPlan = plan
     ? parseCoachingPlan({
         macroTargets: plan.macro_targets,
@@ -226,6 +250,10 @@ export default async function AdminCoachingClientPage({ params }: PageProps) {
         generatedByAi: plan.generated_by_ai,
       })
     : null
+
+  const habits = coachingPlan ? habitsFromPlan(coachingPlan) : []
+  const week = weekConsistency(dailyLogs, habits, today)
+  const streak = currentStreak(dailyLogs, habits, today)
 
   return (
     <div className="space-y-6">
@@ -316,6 +344,60 @@ export default async function AdminCoachingClientPage({ params }: PageProps) {
             initialPlanningInputs={asObject(plan?.planning_inputs)}
             canGenerateAi={Boolean(process.env.OPENAI_API_KEY)}
           />
+
+          <section className="admin-card p-6">
+            <h2
+              style={{
+                fontFamily: 'var(--font-eb-garamond)',
+                fontSize: '1.5rem',
+                fontWeight: 700,
+                color: 'var(--admin-on-surface)',
+                marginBottom: 4,
+              }}
+            >
+              Weekly Review
+            </h2>
+            <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.875rem', color: 'var(--admin-on-surface-variant)', marginBottom: 20 }}>
+              Her week at a glance — read it, then tell her what you saw. The review pins to the top of her Today page.
+            </p>
+
+            <dl className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-6">
+              <DetailField label="This Week" value={`${week.percent}% on track`} />
+              <DetailField label="Streak" value={`${streak} ${streak === 1 ? 'day' : 'days'}`} />
+              <DetailField
+                label="Weight"
+                value={latestWeight
+                  ? `${latestWeight.value}${weightChange !== null ? ` (${weightChange <= 0 ? '−' : '+'}${Math.abs(weightChange).toFixed(1)} since start)` : ''}`
+                  : '—'}
+              />
+              <DetailField
+                label="Last Check-In"
+                value={lastCheckIn ? formatShortDate(lastCheckIn.created_at) : 'None yet'}
+              />
+            </dl>
+
+            {lastCheckIn && (
+              <div
+                style={{
+                  background: 'var(--admin-surface-low)', borderRadius: 10, padding: '12px 16px', marginBottom: 20,
+                  fontFamily: 'var(--font-hanken)', fontSize: '0.9rem', color: 'var(--admin-on-surface)',
+                  lineHeight: 1.6, whiteSpace: 'pre-wrap',
+                }}
+              >
+                <span style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--admin-on-surface-variant)', marginBottom: 4 }}>
+                  Her latest check-in
+                </span>
+                {lastCheckIn.body}
+              </div>
+            )}
+
+            <CoachReviewComposer
+              clientId={client.id}
+              clientFirstName={firstName}
+              weekLabel={`Week of ${formatShortDate(`${weekOf}T12:00:00`)}`}
+              initialReview={weekReview}
+            />
+          </section>
 
           <CoachingProgressTracker clientId={client.id} initialLogs={progressLogs} />
 

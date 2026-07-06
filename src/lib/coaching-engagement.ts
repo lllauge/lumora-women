@@ -48,6 +48,14 @@ export type CoachingMessage = {
   created_at: string
 }
 
+export type CoachReview = {
+  week_of: string
+  what_i_saw: string
+  what_changed: string
+  focus: string
+  updated_at: string
+}
+
 export type PortalContext = {
   userId: string
   firstName: string
@@ -387,6 +395,35 @@ export async function getCheckInCount(clientId: string): Promise<number> {
     .eq('coaching_client_id', clientId)
     .eq('is_check_in', true)
   return count ?? 0
+}
+
+/**
+ * The most recent coach review for the client, any week. The Today page pins
+ * it until the next one replaces it — coach attention should stay visible
+ * even when a review lands mid-week or a week gets skipped.
+ */
+export async function getLatestCoachReview(clientId: string): Promise<CoachReview | null> {
+  const admin = await createAdminClient()
+  const { data } = await admin
+    .from('coaching_reviews')
+    .select('week_of, what_i_saw, what_changed, focus, updated_at')
+    .eq('coaching_client_id', clientId)
+    .order('week_of', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  return (data as CoachReview | null) ?? null
+}
+
+/** The review for one specific week (Monday date), for the admin composer. */
+export async function getCoachReviewForWeek(clientId: string, weekOf: string): Promise<CoachReview | null> {
+  const admin = await createAdminClient()
+  const { data } = await admin
+    .from('coaching_reviews')
+    .select('week_of, what_i_saw, what_changed, focus, updated_at')
+    .eq('coaching_client_id', clientId)
+    .eq('week_of', weekOf)
+    .maybeSingle()
+  return (data as CoachReview | null) ?? null
 }
 
 /** True when no check-in has been submitted in the last 7 days. */

@@ -7,8 +7,8 @@ import CoachingProgressTracker from '@/components/admin/CoachingProgressTracker'
 import CoachReviewComposer from '@/components/admin/CoachReviewComposer'
 import { parseCoachingPlan } from '@/lib/coaching-plan-schema'
 import {
-  coachingToday, currentStreak, getCoachReviewForWeek, getDailyLogs,
-  getMessages, habitsFromPlan, weekConsistency, weekDates,
+  coachingToday, currentStreak, getCoachReviewCount, getCoachReviewForWeek,
+  getDailyLogs, getMessages, habitsFromPlan, weekConsistency, weekDates,
 } from '@/lib/coaching-engagement'
 import { createAdminClient } from '@/lib/supabase/server'
 import { formatCurrency, formatShortDate } from '@/utils/format'
@@ -224,11 +224,14 @@ export default async function AdminCoachingClientPage({ params }: PageProps) {
   // to write "what I saw" without hunting through tabs.
   const today = coachingToday()
   const weekOf = weekDates(today)[0]
-  const [dailyLogs, messages, weekReview] = await Promise.all([
+  const [dailyLogs, messages, weekReview, reviewCount] = await Promise.all([
     getDailyLogs(client.id, 30),
     getMessages(client.id, 200),
     getCoachReviewForWeek(client.id, weekOf),
+    getCoachReviewCount(client.id),
   ])
+  // No reviews yet: this one is her post-onboarding-call welcome.
+  const isWelcome = reviewCount === 0
   const firstName = client.first_name?.trim() || 'your client'
   const lastCheckIn = [...messages].reverse().find((m) => m.sender === 'client' && m.is_check_in)
   const weights = [...progressLogs]
@@ -355,10 +358,12 @@ export default async function AdminCoachingClientPage({ params }: PageProps) {
                 marginBottom: 4,
               }}
             >
-              Weekly Review
+              {isWelcome ? 'Welcome Review' : 'Weekly Review'}
             </h2>
             <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.875rem', color: 'var(--admin-on-surface-variant)', marginBottom: 20 }}>
-              Her week at a glance — read it, then tell her what you saw. The review pins to the top of her Today page.
+              {isWelcome
+                ? 'Her first review — send it after your onboarding call so her Today page greets her from day one. Next week it becomes your weekly rhythm.'
+                : 'Her week at a glance — read it, then tell her what you saw. The review pins to the top of her Today page.'}
             </p>
 
             <dl className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-6">
@@ -396,6 +401,7 @@ export default async function AdminCoachingClientPage({ params }: PageProps) {
               clientFirstName={firstName}
               weekLabel={`Week of ${formatShortDate(`${weekOf}T12:00:00`)}`}
               initialReview={weekReview}
+              welcome={isWelcome}
             />
           </section>
 

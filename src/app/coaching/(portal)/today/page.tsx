@@ -1,8 +1,9 @@
 import type { Metadata } from 'next'
 import { Flame, Target, Sprout } from 'lucide-react'
 import {
-  getPortalContext, getDailyLogs, getLatestCoachReview, habitsFromPlan,
-  currentStreak, weekConsistency, coachingToday, coachingWeekday, planWeekNumber,
+  getPortalContext, getDailyLogs, getLatestCoachReview, getCoachReviewCount,
+  habitsFromPlan, currentStreak, weekConsistency, coachingToday, coachingWeekday,
+  planWeekNumber,
 } from '@/lib/coaching-engagement'
 import DailyWins from '@/components/coaching/DailyWins'
 
@@ -13,9 +14,10 @@ export const metadata: Metadata = {
 export default async function CoachingTodayPage() {
   const { firstName, client, plan, planPublishedAt, mealPlanStartDate } = await getPortalContext()
   const today = coachingToday()
-  const [logs, review] = await Promise.all([
+  const [logs, review, reviewCount] = await Promise.all([
     getDailyLogs(client.id),
     getLatestCoachReview(client.id),
+    getCoachReviewCount(client.id),
   ])
   const habits = habitsFromPlan(plan)
   const streak = currentStreak(logs, habits, today)
@@ -47,6 +49,11 @@ export default async function CoachingTodayPage() {
         if (sections.length === 0) return null
         const weekLabel = new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric' })
           .format(new Date(`${review.week_of}T12:00:00`))
+        // Her only review so far is the post-onboarding welcome — label it
+        // as one instead of anchoring it to a week she hasn't lived yet.
+        const chipLabel = reviewCount === 1
+          ? 'Welcome from your coach'
+          : `From your coach · Week of ${weekLabel}`
         return (
           <section
             aria-label="Your coach's weekly review"
@@ -61,7 +68,7 @@ export default async function CoachingTodayPage() {
           >
             <p style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', fontWeight: 700, color: '#3F6936', marginBottom: '0.75rem' }}>
               <Sprout style={{ width: '0.9375rem', height: '0.9375rem' }} aria-hidden="true" />
-              From your coach · Week of {weekLabel}
+              {chipLabel}
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {sections.map((section) => (

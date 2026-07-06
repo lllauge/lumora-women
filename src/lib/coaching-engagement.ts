@@ -414,6 +414,20 @@ export async function getLatestCoachReview(clientId: string): Promise<CoachRevie
   return (data as CoachReview | null) ?? null
 }
 
+/**
+ * How many reviews the client has ever received. Zero means the composer
+ * should present as her post-onboarding-call welcome; exactly one means the
+ * pinned card is that welcome and is labeled accordingly.
+ */
+export async function getCoachReviewCount(clientId: string): Promise<number> {
+  const admin = await createAdminClient()
+  const { count } = await admin
+    .from('coaching_reviews')
+    .select('id', { count: 'exact', head: true })
+    .eq('coaching_client_id', clientId)
+  return count ?? 0
+}
+
 /** The review for one specific week (Monday date), for the admin composer. */
 export async function getCoachReviewForWeek(clientId: string, weekOf: string): Promise<CoachReview | null> {
   const admin = await createAdminClient()

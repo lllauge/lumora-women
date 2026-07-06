@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { createAdminClient, createClient } from '@/lib/supabase/server'
 import { coachingToday, findCoachingClientForUser } from '@/lib/coaching-engagement'
 import { sendClientMessageNotification } from '@/lib/coaching-email'
+import { sendAdminSms } from '@/lib/admin-sms'
 
 type ActionResult = { ok: boolean; error?: string }
 
@@ -171,12 +172,19 @@ async function notifyCoach(
   client: { id: string; first_name: string | null; email: string },
   intro: string
 ) {
+  const clientName = [client.first_name].filter(Boolean).join(' ') || client.email
   try {
-    await sendClientMessageNotification({
-      clientName: [client.first_name].filter(Boolean).join(' ') || client.email,
-      clientId: client.id,
-      intro,
-    })
+    const [sms] = await Promise.all([
+      sendAdminSms(`Lumora: ${intro}`, { title: 'Lumora · Messages' }),
+      sendClientMessageNotification({
+        clientName,
+        clientId: client.id,
+        intro,
+      }),
+    ])
+    if (!sms.ok) {
+      console.error('[coaching-engagement] admin ping failed:', sms.reason)
+    }
   } catch {
     // Notification failures must never block the client's action.
   }

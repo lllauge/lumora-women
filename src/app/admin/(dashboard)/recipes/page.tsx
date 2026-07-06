@@ -8,6 +8,7 @@ import {
   isExcludedNutritionIngredient,
   setIngredientNutritionExcluded,
 } from '@/lib/nutrition-ingredient'
+import { shouldReviewEnergyDifference } from '@/lib/nutrition-math'
 
 type LibraryRecipe = {
   id: string
@@ -192,6 +193,154 @@ function parseMacroInput(value: string): number | null {
   if (!trimmed) return null
   const num = Number(trimmed)
   return Number.isFinite(num) && num >= 0 ? num : null
+}
+
+type NutritionPreviewData = {
+  clientServing: { calories: number; protein: number; carbs: number; fats: number; fiber: number }
+  totalRecipe: { calories: number; protein: number; carbs: number; fats: number; fiber: number }
+  ingredients: Array<{
+    input: string
+    matchedFood: string
+    grams: number
+    calories: number
+    protein: number
+    carbs: number
+    fats: number
+    fiber: number
+  }>
+  excludedIngredients: string[]
+  unmatchedIngredients: string[]
+  warnings: string[]
+}
+
+const round1 = (n: number) => Math.round(n * 10) / 10
+
+function macroLine(n: NutritionPreviewData['totalRecipe']) {
+  return `${Math.round(n.calories)} cal · ${round1(n.protein)}g protein · ${round1(n.carbs)}g carbs · ${round1(n.fats)}g fats · ${round1(n.fiber)}g fiber`
+}
+
+// Read-only USDA nutrition breakdown for the library card. USDA-mode recipes
+// keep their stored macro columns null (that null IS the "not paste-mode"
+// signal, so these numbers must never be written onto the draft) — this
+// panel is the only place the coach can see what the matched ingredients
+// add up to, and which line drags the 4/4/9 energy check off.
+function UsdaNutritionPreview({
+  ingredients,
+  familyServings,
+}: {
+  ingredients: string[]
+  familyServings: string
+}) {
+  const [data, setData] = useState<NutritionPreviewData | null>(null)
+  const [error, setError] = useState('')
+  const [pending, setPending] = useState(false)
+
+  // Serialized so the effect refires on content changes, not array identity.
+  const requestKey = JSON.stringify({ ingredients, familyServings })
+  useEffect(() => {
+    // The call site only mounts this panel with a non-empty ingredient list,
+    // and unmounting resets the state — no empty-list handling needed here.
+    const request = JSON.parse(requestKey) as { ingredients: string[]; familyServings: string }
+    if (request.ingredients.length === 0) return
+    const controller = new AbortController()
+    let cancelled = false
+    const timer = window.setTimeout(async () => {
+      setPending(true)
+      try {
+        const response = await fetch('/api/admin/coaching/nutrition', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(request),
+          signal: controller.signal,
+        })
+        const payload = await response.json().catch(() => ({} as { nutrition?: NutritionPreviewData; error?: string }))
+        if (cancelled) return
+        // A 422 still carries the partial calculation — show it alongside the error.
+        setData(payload.nutrition ?? null)
+        setError(response.ok ? '' : payload.error || 'USDA could not calculate this recipe.')
+        setPending(false)
+      } catch {
+        if (cancelled || controller.signal.aborted) return
+        setData(null)
+        setError('USDA nutrition preview failed. Check your connection and try again.')
+        setPending(false)
+      }
+    }, 500)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+      controller.abort()
+    }
+  }, [requestKey])
+
+  if (!data && !error && !pending) return null
+
+  const servings = parseFloat(familyServings)
+  const totalAtwater = data
+    ? data.totalRecipe.protein * 4 + data.totalRecipe.carbs * 4 + data.totalRecipe.fats * 9
+    : 0
+  const reviewEnergy = data ? shouldReviewEnergyDifference(data.totalRecipe.calories, totalAtwater) : false
+  const text: React.CSSProperties = { fontFamily: 'var(--font-hanken)', fontSize: '0.82rem', color: 'var(--admin-on-surface)', margin: 0 }
+  const muted: React.CSSProperties = { ...text, color: 'var(--admin-on-surface-variant)' }
+
+  return (
+    <div className="admin-card" style={{ marginTop: 10, padding: '12px 14px', background: '#FAFAF6', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+        <span style={label}>Calculated nutrition (USDA)</span>
+        {pending && <span style={{ ...muted, fontSize: '0.75rem' }}>Calculating…</span>}
+      </div>
+      {error && (
+        <p role="alert" style={{ ...text, color: '#B42318', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 6, padding: '8px 10px' }}>
+          {error}
+        </p>
+      )}
+      {data && (
+        <>
+          <p style={text}><strong>Whole recipe:</strong> {macroLine(data.totalRecipe)}</p>
+          {Number.isFinite(servings) && servings > 1 && (
+            <p style={text}><strong>Per serving (one of {servings}):</strong> {macroLine(data.clientServing)}</p>
+          )}
+          {reviewEnergy && (
+            <p style={{ ...text, color: '#92400E', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 6, padding: '8px 10px' }}>
+              4/4/9 check: these macros imply ~{Math.round(totalAtwater)} cal vs. {Math.round(data.totalRecipe.calories)} from the database.
+              Lines highlighted below carry most of the difference — check their USDA match.
+            </p>
+          )}
+          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {data.ingredients.map((row, i) => {
+              const rowAtwater = row.protein * 4 + row.carbs * 4 + row.fats * 9
+              const flagged = shouldReviewEnergyDifference(row.calories, rowAtwater, 0.25, 30)
+              return (
+                <li
+                  key={i}
+                  style={{
+                    display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '4px 10px', padding: '5px 10px',
+                    borderRadius: 6, fontFamily: 'var(--font-hanken)', fontSize: '0.8rem',
+                    background: flagged ? '#FFFBEB' : 'var(--admin-surface)',
+                    border: flagged ? '1px solid #FDE68A' : '1px solid transparent',
+                  }}
+                >
+                  <span style={{ color: 'var(--admin-on-surface)', fontWeight: 600 }}>{row.grams}g {row.matchedFood}</span>
+                  <span style={{ color: 'var(--admin-on-surface-variant)' }}>
+                    {Math.round(row.calories)} cal · {round1(row.protein)}P / {round1(row.carbs)}C / {round1(row.fats)}F
+                  </span>
+                  {flagged && (
+                    <span style={{ color: '#92400E' }}>macros imply ~{Math.round(rowAtwater)} cal</span>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+          {data.excludedIngredients.length > 0 && (
+            <p style={muted}>Excluded from nutrition: {data.excludedIngredients.join(', ')}</p>
+          )}
+          {data.warnings.length > 0 && data.warnings.map((warning, i) => (
+            <p key={i} style={{ ...muted, fontStyle: 'italic' }}>{warning}</p>
+          ))}
+        </>
+      )}
+    </div>
+  )
 }
 
 function RecipeIngredientsSection({
@@ -573,6 +722,9 @@ function RecipeIngredientsSection({
             )
           })}
         </ul>
+      )}
+      {mode === 'usda' && draft.ingredients.length > 0 && (
+        <UsdaNutritionPreview ingredients={draft.ingredients} familyServings={draft.family_servings} />
       )}
     </div>
   )

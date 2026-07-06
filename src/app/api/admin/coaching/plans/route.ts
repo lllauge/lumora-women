@@ -10,6 +10,7 @@ import {
   NutritionNormalizationError,
 } from '@/lib/normalize-plan-nutrition'
 import { getUsdaApiKey } from '@/lib/usda/api-key'
+import { sendPlanPublishedEmail } from '@/lib/coaching-email'
 
 const SavePlanSchema = z.object({
   clientId: z.string().uuid(),
@@ -87,6 +88,16 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // The upsert overwrites the stored status, so capture it first: the "plan
+  // ready" email must fire only on the draft→published transition, never on
+  // routine re-saves of an already-published plan.
+  const { data: existingPlan } = await supabase
+    .from('coaching_plans')
+    .select('status')
+    .eq('coaching_client_id', clientId)
+    .maybeSingle()
+  const justPublished = plan.status === 'published' && existingPlan?.status !== 'published'
+
   const { data: savedPlan, error } = await supabase
     .from('coaching_plans')
     .upsert(
@@ -126,8 +137,35 @@ export async function POST(req: NextRequest) {
       .eq('id', clientId)
   }
 
+  // Tell the client her plan is live. Email failure never fails the save —
+  // the plan IS published; the notice tells Laura to follow up manually.
+  let notice: string | undefined
+  if (justPublished) {
+    const { data: clientRow } = await supabase
+      .from('coaching_clients')
+      .select('email, first_name')
+      .eq('id', clientId)
+      .maybeSingle()
+    const clientLabel = clientRow?.first_name?.trim() || 'The client'
+    if (!clientRow?.email) {
+      notice = `No email is on file for this client, so no "plan ready" email was sent.`
+    } else {
+      const emailResult = await sendPlanPublishedEmail({
+        to: clientRow.email,
+        firstName: clientRow.first_name ?? undefined,
+      })
+      notice = emailResult.ok
+        ? `${clientLabel} was emailed that her plan is ready.`
+        : `The "plan ready" email to ${clientRow.email} failed (${emailResult.error}) — let her know another way.`
+      if (!emailResult.ok) {
+        console.error('[plan published email] failed:', emailResult.error)
+      }
+    }
+  }
+
   return NextResponse.json({
     success: true,
+    notice,
     plan: parseCoachingPlan({
       macroTargets: savedPlan?.macro_targets,
       mealPlan: savedPlan?.meal_plan,

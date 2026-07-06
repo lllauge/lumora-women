@@ -136,6 +136,58 @@ export async function sendCoachingCompInviteEmail(input: {
   return { ok: true, error: null }
 }
 
+export async function sendPlanPublishedEmail(input: {
+  to: string
+  firstName?: string
+}) {
+  const resendKey = process.env.RESEND_API_KEY
+  if (!resendKey) {
+    return { ok: false, error: 'RESEND_API_KEY is not configured.' }
+  }
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://lumorawomen.com'
+  const planUrl = `${siteUrl}/coaching/plan`
+  const resend = new Resend(resendKey)
+  const firstName = input.firstName?.trim()
+  const greeting = firstName ? `Hi ${escapeHtml(firstName)},` : 'Hi,'
+
+  const { error } = await resend.emails.send({
+    from: 'Lumora Women <hello@lumorawomen.com>',
+    to: input.to,
+    subject: 'Your personalized plan is ready',
+    html: `
+      <div style="font-family: Arial, sans-serif; background:#F8F6F0; padding:32px;">
+        <div style="max-width:580px; margin:0 auto; background:#FFFFFF; border-radius:16px; padding:36px; border:1px solid #E5E0D6;">
+          <p style="color:#3A4A38; font-size:16px; line-height:1.7; margin:0 0 16px;">${greeting}</p>
+          <h1 style="font-family: Georgia, serif; color:#1A2818; margin:0 0 14px; font-size:32px;">Your personalized plan is ready</h1>
+          <p style="color:#3A4A38; font-size:16px; line-height:1.7; margin:0 0 22px;">
+            I just published your plan. Your meals, portions, grocery list, and weekly targets are all set and waiting in your portal — everything is built around what you told me, so all you have to do is follow it.
+          </p>
+          <a href="${planUrl}" style="display:inline-block; background:#3A4B36; color:#FFFFFF; text-decoration:none; padding:14px 22px; border-radius:999px; font-weight:700;">
+            See My Plan
+          </a>
+          <p style="color:#6B6B64; font-size:13px; line-height:1.6; margin:28px 0 0;">
+            If the button does not work, copy and paste this link into your browser:<br />
+            <span style="word-break:break-all;">${planUrl}</span>
+          </p>
+        </div>
+      </div>
+    `,
+    text: [
+      `Hi ${firstName || 'there'},`,
+      '',
+      'I just published your plan. Your meals, portions, grocery list, and weekly targets are all set and waiting in your portal.',
+      '',
+      `See your plan: ${planUrl}`,
+    ].join('\n'),
+  })
+
+  if (error) {
+    return { ok: false, error: error.message }
+  }
+  return { ok: true, error: null }
+}
+
 export async function sendCoachingCheckoutEmail(input: {
   to: string
   firstName?: string

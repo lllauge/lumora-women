@@ -1319,6 +1319,7 @@ export default function CoachingPlanEditor({
     })
     const result = await response.json().catch(() => ({} as {
       error?: string
+      notice?: string
       plan?: CoachingPlanDraft
       planningInputs?: MacroCalculationInputs
     }))
@@ -1328,9 +1329,11 @@ export default function CoachingPlanEditor({
     } else {
       if (result.plan) setPlan(result.plan)
       if (result.planningInputs) setPlanningInputs(result.planningInputs)
-      setMessage(skippedRecipes.length
+      const savedMessage = skippedRecipes.length
         ? `Plan saved, but USDA macros were skipped for: ${skippedRecipes.join(', ')}. Use gram-based ingredient lines (e.g. "150g cooked chicken breast") so macros calculate.`
-        : 'Plan saved.')
+        : 'Plan saved.'
+      // e.g. "Jane was emailed that her plan is ready." on first publish.
+      setMessage(result.notice ? `${savedMessage} ${result.notice}` : savedMessage)
       router.refresh()
     }
 

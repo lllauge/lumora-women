@@ -55,10 +55,26 @@ export default function PlanCardPreview() {
       clientServingMultiplier: '1',
       ingredients: ['170g Greek yogurt, plain, nonfat', '30g Granola', '80g Blueberries'],
     }),
+    RecipeSchema.parse({
+      name: 'Berry Protein Smoothie',
+      clientServingMultiplier: '1',
+      clientServingGrams: '425',
+      prepTime: '5 min',
+      calories: '310',
+      protein: '32',
+      carbs: '38',
+      fats: '5',
+      ingredients: ['[fdc:1] 30g Whey protein powder, vanilla', '[fdc:2] 150g Blueberries, frozen', '[fdc:3] 240g Unsweetened almond milk'],
+      instructions: ['Blend everything until smooth.'],
+    }),
   ]
 
   const day = MealDaySchema.parse({
     day: 'Monday',
+    breakfast: {
+      name: 'Berry Protein Smoothie',
+      recipeNames: ['Berry Protein Smoothie'],
+    },
     dinner: {
       name: 'Baked Chicken Breast + Roasted Sweet Potato + Custom lunch (d1-lunch)',
       recipeNames: ['Baked Chicken Breast', 'Roasted Sweet Potato', 'Custom lunch (d1-lunch)'],

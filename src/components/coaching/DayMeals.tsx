@@ -77,7 +77,7 @@ export default function DayMeals({
               const fraction = portionFraction(factor)
               const portion = fraction && fraction.label !== 'the whole recipe'
                 ? `${fraction.label} of recipe`
-                : 'One full recipe serving'
+                : 'The whole recipe is your portion'
               const customIngredients = isAutoCustom
                 ? recipe.ingredients.map((ingredient) => {
                     const cleaned = cleanIngredientText(ingredient)
@@ -161,6 +161,10 @@ function RecipeDetail({
   // and the portion math (clientPortionFactor) parses it the same way — the
   // family label and the carved factor must never disagree.
   const isFamily = !individualPlanStyle && parseFloat(recipe.familyServings) > 1
+  // A recipe built as exactly the client's serving (custom/individual, no
+  // carve): no gram target and no weigh-out list — the whole recipe is hers,
+  // and the amounts to make it already live under Shopping & prep.
+  const wholeRecipePortion = !isFamily && clientPortionFactor(recipe, individualPlanStyle) === 1
   const portionLines = clientPortionLines(recipe, individualPlanStyle).filter((line) => line.grams !== null)
   const detailFraction = portionFraction(clientPortionFactor(recipe, individualPlanStyle))
   // For family recipes the headline is "¼ of the recipe" (human-friendly),
@@ -169,8 +173,8 @@ function RecipeDetail({
   const fractionHeadline = isFamily && detailFraction && detailFraction.label !== 'the whole recipe'
     ? `${detailFraction.qualifier ? `A ${detailFraction.qualifier} ${detailFraction.label}` : detailFraction.label} of the recipe`
     : ''
-  const headline = fractionHeadline
-    ? [] // fraction headline replaces the gram-based headline for family recipes
+  const headline = fractionHeadline || wholeRecipePortion
+    ? [] // fraction/whole-recipe headline replaces the gram-based headline
     : ([
         recipe.clientServingGrams.trim() && withGrams(recipe.clientServingGrams),
         isClientReadable(recipe.clientServingMeasure) && recipe.clientServingMeasure.trim(),
@@ -179,7 +183,7 @@ function RecipeDetail({
 
   return (
     <div>
-      {(headline.length > 0 || portionLines.length > 0 || fractionHeadline || isFamily) && (
+      {(headline.length > 0 || portionLines.length > 0 || fractionHeadline || isFamily || wholeRecipePortion) && (
         <div style={{ background: 'var(--section-tint)', borderRadius: '0.75rem', padding: '0.75rem 0.875rem', marginTop: '0.5rem' }}>
           <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 700, color: '#3F6936', marginBottom: '0.125rem' }}>
             {isFamily ? 'YOUR PORTION (family recipe)' : 'YOUR PORTION'}
@@ -189,12 +193,22 @@ function RecipeDetail({
               {fractionHeadline}
             </p>
           )}
+          {wholeRecipePortion && (
+            <>
+              <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)', margin: '0.125rem 0 0.25rem' }}>
+                The whole recipe is your portion
+              </p>
+              <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
+                Make it as written and enjoy all of it.
+              </p>
+            </>
+          )}
           {headline.length > 0 && (
             <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
               {headline.join(' · ')}
             </p>
           )}
-          {!isFamily && portionLines.length > 0 && (
+          {!isFamily && !wholeRecipePortion && portionLines.length > 0 && (
             <div style={{ marginTop: '0.5rem' }}>
               <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
                 Weigh out your serving:
@@ -230,7 +244,8 @@ function RecipeDetail({
           )}
           {(() => {
             const fraction = portionFraction(clientPortionFactor(recipe, individualPlanStyle))
-            if (!fraction) return null
+            // The whole-recipe headline above already says it all.
+            if (!fraction || wholeRecipePortion) return null
             return (
               <p style={{
                 fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-secondary)',
@@ -275,7 +290,9 @@ function RecipeDetail({
             Amounts to buy and prep — raw, before cooking, unless a line says cooked weight.
             {isFamily
               ? ' Your serving is portioned from the finished dish, after cooking.'
-              : ' When you weigh your serving above, use the food as it’s listed there: cooked unless marked otherwise.'}
+              : wholeRecipePortion
+                ? ' Make the full amounts below — the whole recipe is your serving.'
+                : ' When you weigh your serving above, use the food as it’s listed there: cooked unless marked otherwise.'}
           </p>
           <PrepIngredientList lines={shoppingPrepLines(recipe.ingredients)} />
         </>

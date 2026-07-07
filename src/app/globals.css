@@ -1424,13 +1424,14 @@ blockquote, .pull-quote {
   top: 0;
   height: 100vh;
 }
+/* Explicit width on portal-main: the auto side-margins (centering) disable
+   flex stretch in the mobile column layout, letting any nowrap line (e.g. a
+   long meal title) size the whole column past the viewport — which body
+   overflow-x: clip then cuts off. A definite width keeps the column at the
+   viewport. */
 .portal-main {
   flex: 1;
   min-width: 0;
-  /* Explicit width: the auto side-margins (centering) disable flex stretch in
-     the mobile column layout, letting any nowrap line (e.g. a long meal title)
-     size the whole column past the viewport — which body overflow-x: clip
-     then cuts off. A definite width keeps the column at the viewport. */
   width: 100%;
   padding: 3rem 2.5rem;
   max-width: 960px;

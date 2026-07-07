@@ -135,6 +135,26 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
+    // A login is only good for the absolute session window, no matter how the
+    // session was kept alive. Without this, a session from before the
+    // activity-cookie system shipped (or one whose cookies were lost) walks in
+    // on a months-old password login with only an email code. Token refreshes
+    // don't update last_sign_in_at, so this measures the real login.
+    const lastSignInSeconds = user.last_sign_in_at
+      ? Math.floor(new Date(user.last_sign_in_at).getTime() / 1000)
+      : 0
+    const nowSeconds = Math.floor(Date.now() / 1000)
+    if (
+      !lastSignInSeconds
+      || isSessionAbsoluteExpired(lastSignInSeconds, nowSeconds, sessionAbsoluteSeconds.client)
+    ) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/api/auth/idle-signout'
+      url.search = ''
+      url.searchParams.set('area', 'client')
+      return NextResponse.redirect(url)
+    }
+
     const sessionId = getSessionId(session.data.session?.access_token)
     const emailMfaVerified = sessionId
       ? await readClientEmailMfaCookie(

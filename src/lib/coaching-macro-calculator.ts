@@ -42,11 +42,22 @@ export type CalculatedMacroTargets = {
   workoutTarget: string
 }
 
-const activityMultipliers: Record<string, number> = {
-  mostly_sedentary: 1.2,
-  light_daily_movement: 1.3,
-  moderate_daily_movement: 1.45,
-  very_active_lifestyle: 1.6,
+// TDEE model follows the RSN certification template: BMR × (lifestyle + exercise).
+// Lifestyle covers daily non-exercise movement (0.6 desk-bound → 0.9 rarely sits);
+// exercise covers structured training (0.55 none → 0.85 five-plus days).
+const lifestyleFactors: Record<string, number> = {
+  mostly_sedentary: 0.6,
+  light_daily_movement: 0.7,
+  moderate_daily_movement: 0.8,
+  very_active_lifestyle: 0.9,
+}
+
+const exerciseFactors: Record<string, number> = {
+  none: 0.55,
+  not_sure: 0.55,
+  '1_2_days': 0.65,
+  '3_4_days': 0.75,
+  '5_plus_days': 0.85,
 }
 
 const goalCalorieAdjustments: Record<string, number> = {
@@ -115,18 +126,17 @@ function inferWorkoutTarget(inputs: MacroCalculationInputs) {
 }
 
 function inferActivityMultiplier(inputs: MacroCalculationInputs) {
-  let multiplier = activityMultipliers[inputs.activityLevel] ?? activityMultipliers.light_daily_movement
+  let lifestyle = lifestyleFactors[inputs.activityLevel] ?? lifestyleFactors.light_daily_movement
   const steps = parseStepCount(inputs.steps)
 
-  if (steps && steps >= 10000) multiplier = Math.max(multiplier, 1.5)
-  else if (steps && steps >= 8000) multiplier = Math.max(multiplier, 1.42)
-  else if (steps && steps >= 6000) multiplier = Math.max(multiplier, 1.35)
+  // High step counts describe daily movement, so they floor the lifestyle factor.
+  if (steps && steps >= 10000) lifestyle = Math.max(lifestyle, 0.8)
+  else if (steps && steps >= 8000) lifestyle = Math.max(lifestyle, 0.75)
+  else if (steps && steps >= 6000) lifestyle = Math.max(lifestyle, 0.7)
 
-  if (inputs.strengthTraining === '1_2_days') multiplier = Math.max(multiplier, 1.35)
-  if (inputs.strengthTraining === '3_4_days') multiplier = Math.max(multiplier, 1.45)
-  if (inputs.strengthTraining === '5_plus_days') multiplier = Math.max(multiplier, 1.55)
+  const exercise = exerciseFactors[inputs.strengthTraining] ?? exerciseFactors.none
 
-  return multiplier
+  return lifestyle + exercise
 }
 
 export function calculateMacroTargets(inputs: MacroCalculationInputs): CalculatedMacroTargets | null {

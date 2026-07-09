@@ -1,6 +1,9 @@
 import { notFound } from 'next/navigation'
 import DayMeals from '@/components/coaching/DayMeals'
-import { MealDaySchema, RecipeSchema } from '@/lib/coaching-plan-schema'
+import GroceryChecklist from '@/components/coaching/GroceryChecklist'
+import { buildGroceryList } from '@/lib/grocery-list'
+import { groceryDisplay } from '@/lib/coaching-engagement'
+import { CoachingPlanSchema, MealDaySchema, RecipeSchema } from '@/lib/coaching-plan-schema'
 
 // Dev-only harness: renders the client plan meal card with fixture data so
 // portion display and mobile layout can be checked without a client login.
@@ -114,6 +117,51 @@ export default function PlanCardPreview() {
               />
             </div>
           </details>
+        </div>
+
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)', margin: '2rem 0 0.75rem' }}>
+          Grocery list (merge fixture)
+        </h2>
+        <div className="portal-card">
+          <div className="portal-gold-line" aria-hidden="true" />
+          <div style={{ padding: '1rem 1.25rem' }}>
+            <GroceryChecklist
+              items={buildGroceryList(CoachingPlanSchema.parse({
+                mealPlan: [MealDaySchema.parse({
+                  day: 'Monday',
+                  dinner: { name: 'All', recipeNames: ['G1', 'G2', 'G3'] },
+                })],
+                recipes: [
+                  RecipeSchema.parse({ name: 'G1', ingredients: [
+                    '[fdc:1] 400g Egg, whole, raw (8 large)',
+                    '[fdc:2] 14g Oil, olive, extra virgin',
+                    '12 cloves garlic',
+                    '2 tbsp salt',
+                    '1¼ tbsp black pepper',
+                    '[fdc:3] 170g Almond milk, unsweetened (6 fl oz)',
+                  ] }),
+                  RecipeSchema.parse({ name: 'G2', ingredients: [
+                    '[fdc:4] 500g Egg, whole, raw (10 large)',
+                    '[fdc:5] 28g Olive oil',
+                    '8 cloves garlic',
+                    '1 tbsp Sea salt',
+                    '3 tsp ground pepper',
+                    '[fdc:6] 90g Almond milk, unsweetened (3 fl oz)',
+                    '[fdc:7] 100g green bell pepper',
+                  ] }),
+                  RecipeSchema.parse({ name: 'G3', ingredients: [
+                    '9 large eggs',
+                    '½ tbsp Extra virgin olive oil (California olive ranch)',
+                    '[fdc:8] 64g kosher salt (not consumed)',
+                    '[fdc:9] 15g Pepper',
+                    '[fdc:10] 100g red bell pepper',
+                    '[fdc:11] 4990g Chicken breast, boneless skinless, raw',
+                  ] }),
+                ],
+              })).map((item) => groceryDisplay(item))}
+              storageKey="dev-grocery-fixture"
+            />
+          </div>
         </div>
       </main>
     </div>

@@ -125,6 +125,47 @@ export function householdMeasure(label: string, grams: number): string | null {
   return null
 }
 
+const FRACTION_VALUES: Record<string, number> = {
+  '¼': 0.25, '½': 0.5, '¾': 0.75, '⅓': 1 / 3, '⅔': 2 / 3, '⅛': 0.125,
+}
+const TSP_PER_UNIT: Record<string, number> = {
+  tsp: 1, teaspoon: 1, teaspoons: 1,
+  tbsp: 3, tablespoon: 3, tablespoons: 3,
+  cup: 48, cups: 48,
+}
+
+/**
+ * Coach-typed household amounts back into grams ("2 tbsp salt" → 36g salt,
+ * "12 cloves garlic" → 36g, "9 large eggs" → 450g), using the same densities
+ * the display side uses — so typed lines and USDA gram lines can merge into
+ * one grocery entry instead of shadowing each other. Null when the amount or
+ * the food's density is unknown; callers keep the line as typed.
+ */
+export function typedMeasureToGrams(line: string): { grams: number; label: string } | null {
+  const eggs = line.match(/^(\d+)\s*(?:extra-?large|large|medium|small)?\s*eggs?$/i)
+  if (eggs) return { grams: Number(eggs[1]) * 50, label: 'eggs' }
+
+  const match = line.match(/^(\d+(?:\.\d+)?)?\s*([¼½¾⅓⅔⅛])?\s*(tsp|teaspoons?|tbsp|tablespoons?|cups?|cloves?)\s+(?:of\s+)?(.+)$/i)
+  if (!match) return null
+  const count = (match[1] ? parseFloat(match[1]) : 0) + (match[2] ? FRACTION_VALUES[match[2]] : 0)
+  if (!count || !Number.isFinite(count)) return null
+  const unit = match[3].toLowerCase()
+  const label = match[4].trim()
+
+  if (unit.startsWith('clove')) return { grams: count * 3, label }
+
+  const teaspoons = count * (TSP_PER_UNIT[unit] ?? 0)
+  if (!teaspoons) return null
+  const lower = label.toLowerCase()
+  for (const entry of HOUSEHOLD_UNITS) {
+    if (entry.label !== 'tsp' && entry.label !== 'tbsp') continue
+    if (!entry.match.test(lower)) continue
+    const gramsPerTsp = entry.label === 'tsp' ? entry.gramsPer : entry.gramsPer / 3
+    return { grams: teaspoons * gramsPerTsp, label }
+  }
+  return null
+}
+
 export type PrepLine = {
   /** Precise text, e.g. "200g chicken breast, raw" */
   grams: string

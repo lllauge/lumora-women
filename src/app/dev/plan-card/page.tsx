@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import ClientPlanView from '@/components/coaching/ClientPlanView'
 import DayMeals from '@/components/coaching/DayMeals'
 import GroceryChecklist from '@/components/coaching/GroceryChecklist'
 import { buildGroceryList } from '@/lib/grocery-list'
@@ -163,6 +164,33 @@ export default function PlanCardPreview() {
             />
           </div>
         </div>
+
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)', margin: '2rem 0 0.75rem' }}>
+          Full plan view (shared with admin preview)
+        </h2>
+        <ClientPlanView
+          client={{ id: '00000000-0000-0000-0000-000000000000' }}
+          plan={CoachingPlanSchema.parse({
+            macroTargets: {
+              calories: '1775', protein: '150g', carbs: '149g', fats: '69g', fiber: '25g',
+              water: '80-100 oz/day', steps: '8,000/day', workoutTarget: '3 strength sessions per week',
+            },
+            clientNotes: 'This menu is built around your family dinners — carve your portion and enjoy the table.',
+            mealPlan: [day],
+            recipes,
+            workoutPlan: [{
+              day: 'Monday',
+              warmup: '5 min brisk walk',
+              cardio: '',
+              cooldown: '',
+              notes: '',
+              exercises: [{ name: 'Goblet squat', sets: '3', reps: '10', rest: '60s', videoUrl: '', notes: '' }],
+            }],
+          })}
+          individualPlanStyle={false}
+          mealPlanStartDate=""
+          previewMode
+        />
       </main>
     </div>
   )

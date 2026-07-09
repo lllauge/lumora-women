@@ -308,6 +308,51 @@ export async function findCoachingClientForUser(
 }
 
 /**
+ * Portal-shaped data for a specific client, for the admin "view as client"
+ * preview. Unlike getPortalContext (which authenticates the client herself),
+ * this loads by client id via the service role — callers must already sit
+ * behind the admin guard. Null when the client doesn't exist; `plan` is null
+ * until she has a published plan.
+ */
+export async function getClientPortalPreview(clientId: string) {
+  const admin = await createAdminClient()
+  const { data: client } = await admin
+    .from('coaching_clients')
+    .select('id, first_name, last_name, status')
+    .eq('id', clientId)
+    .maybeSingle()
+  if (!client) return null
+
+  const { data: planRow } = await admin
+    .from('coaching_plans')
+    .select('macro_targets, meal_plan, recipes, workout_plan, grocery_list, client_notes, status, updated_at, planning_inputs')
+    .eq('coaching_client_id', client.id)
+    .eq('status', 'published')
+    .maybeSingle()
+  if (!planRow) {
+    return { client, plan: null, individualPlanStyle: false, mealPlanStartDate: '', planPublishedAt: '' }
+  }
+
+  const planningInputs = (planRow.planning_inputs ?? {}) as Record<string, unknown>
+  const plan = parseCoachingPlan({
+    macroTargets: planRow.macro_targets,
+    mealPlan: planRow.meal_plan,
+    recipes: planRow.recipes,
+    workoutPlan: planRow.workout_plan,
+    groceryList: planRow.grocery_list,
+    clientNotes: planRow.client_notes ?? '',
+    status: planRow.status,
+  })
+  return {
+    client,
+    plan,
+    individualPlanStyle: planningInputs.mealPlanStyle === 'individual_only',
+    mealPlanStartDate: typeof planningInputs.mealPlanStartDate === 'string' ? planningInputs.mealPlanStartDate : '',
+    planPublishedAt: planRow.updated_at as string,
+  }
+}
+
+/**
  * Loads the signed-in user's coaching portal context, redirecting away when
  * the user has no published plan. Every portal page calls this.
  */

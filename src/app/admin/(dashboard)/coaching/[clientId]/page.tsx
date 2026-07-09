@@ -289,16 +289,28 @@ export default async function AdminCoachingClientPage({ params }: PageProps) {
           <p style={{ fontFamily: 'var(--font-hanken)', color: 'var(--admin-on-surface-variant)' }}>
             {client.email}
           </p>
-          <Link
-            href={`/admin/messages?client=${client.id}`}
-            className="inline-flex items-center gap-2 mt-2"
-            style={{
-              fontFamily: 'var(--font-hanken)', fontSize: '0.875rem', fontWeight: 600,
-              color: 'var(--botanical-green)', textDecoration: 'none',
-            }}
-          >
-            Open messages →
-          </Link>
+          <span className="inline-flex items-center gap-4 mt-2">
+            <Link
+              href={`/admin/messages?client=${client.id}`}
+              className="inline-flex items-center gap-2"
+              style={{
+                fontFamily: 'var(--font-hanken)', fontSize: '0.875rem', fontWeight: 600,
+                color: 'var(--botanical-green)', textDecoration: 'none',
+              }}
+            >
+              Open messages →
+            </Link>
+            <Link
+              href={`/admin/coaching/${client.id}/preview`}
+              className="inline-flex items-center gap-2"
+              style={{
+                fontFamily: 'var(--font-hanken)', fontSize: '0.875rem', fontWeight: 600,
+                color: 'var(--botanical-green)', textDecoration: 'none',
+              }}
+            >
+              See her portal →
+            </Link>
+          </span>
         </div>
 
         <div className="flex flex-wrap gap-2">

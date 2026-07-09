@@ -140,6 +140,32 @@ test('coach-typed staples dedupe against the generated list by food identity', (
   assert.deepEqual(merged, ['56g olive oil', '72g salt', 'paper towels'])
 })
 
+test('macro-neutral descriptors (brand, organic, size, boneless) merge; macro-relevant ones do not', () => {
+  // Same food, same macros → one line.
+  assert.equal(canonicalGroceryKey('Organic large eggs (Vital Farms)'), 'eggs')
+  assert.equal(
+    canonicalGroceryKey('Chicken breast, boneless skinless, raw'),
+    canonicalGroceryKey('chicken breast'),
+  )
+  assert.equal(
+    canonicalGroceryKey('wild-caught salmon fillet'),
+    canonicalGroceryKey('Salmon fillet'),
+  )
+  // Different macros → separate lines.
+  assert.notEqual(
+    canonicalGroceryKey('Turkey, ground, 93% lean/7% fat'),
+    canonicalGroceryKey('Turkey, ground, 80% lean/20% fat'),
+  )
+  assert.notEqual(
+    canonicalGroceryKey('Almond milk, unsweetened'),
+    canonicalGroceryKey('Almond milk, vanilla'),
+  )
+  assert.notEqual(
+    canonicalGroceryKey('chicken thighs, skin-on'),
+    canonicalGroceryKey('chicken thighs'),
+  )
+})
+
 test('canonical keys ignore word order, plurals, and parentheticals', () => {
   assert.equal(canonicalGroceryKey('Oil, olive, extra virgin'), canonicalGroceryKey('extra virgin olive oil (Brand)'))
   assert.equal(canonicalGroceryKey('Egg, whole, raw (8 large)'), 'eggs')

@@ -12,8 +12,17 @@ export function cleanIngredientLine(line: string) {
   return line.replace(/^\[(?:fdc:\d+|curated:[a-z0-9-]+)\]\s*/i, '').trim()
 }
 
-// Descriptors that never distinguish one grocery item from another.
-const NOISE_TOKENS = new Set(['raw', 'uncooked', 'of', 'a', 'the'])
+// Descriptors that never change what lands in the cart or its macros —
+// marketing/husbandry words, sizes, and prep states. Macro-relevant words
+// (unsweetened, lean percentages, skin-on) are deliberately NOT here: those
+// are different foods and must keep their own lines.
+const NOISE_TOKENS = new Set([
+  'raw', 'uncooked', 'of', 'a', 'the',
+  'organic', 'natural', 'fresh', 'premium',
+  'large', 'medium', 'small', 'extra-large', 'jumbo',
+  'boneless', 'skinless',
+  'cage-free', 'free-range', 'pastured', 'grass-fed', 'wild-caught',
+])
 
 // One food, one line: each rule collapses every phrasing of the same shelf
 // item ("Oil, olive, extra virgin" / "Olive oil" / "extra virgin olive oil")

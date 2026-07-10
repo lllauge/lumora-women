@@ -13,10 +13,12 @@ import { lookupCupGrams } from './recipes/paste-parser.ts'
 // a shopper actually reaches for. Wider tolerances than the recipe parser —
 // household displays round generously ("about 1 tsp", "2 cloves").
 const HOUSEHOLD_UNITS: Array<{ match: RegExp; label: string; gramsPer: number; template?: (n: number) => string }> = [
-  // Cloves of garlic — count-based, no oz/g needed.
-  { match: /\bgarlic\b|\bcloves?\b/, label: 'clove', gramsPer: 3, template: (n) => `${n} clove${n === 1 ? '' : 's'} garlic` },
-  // Whole eggs.
-  { match: /\begg(s|\b)/, label: 'egg', gramsPer: 50, template: (n) => `${n} large egg${n === 1 ? '' : 's'}` },
+  // Cloves of garlic — count-based, no oz/g needed. Garlic powder/salt are
+  // spices (rules below), and bare "cloves" is the ground spice, not garlic.
+  { match: /\bgarlic\b(?!\s*(?:powder|salt|bread))/, label: 'clove', gramsPer: 3, template: (n) => `${n} clove${n === 1 ? '' : 's'} garlic` },
+  // Whole eggs — but not egg whites, which are bought by the carton and must
+  // never display as "N large eggs" next to a real whole-egg line.
+  { match: /\beggs?\b(?!\s*whites?)/, label: 'egg', gramsPer: 50, template: (n) => `${n} large egg${n === 1 ? '' : 's'}` },
   // Dried leafy herbs (~1g/tsp).
   { match: /\b(oregano|basil|thyme|rosemary|parsley|sage|dill|tarragon|marjoram|italian seasoning|bay leaf|bay leaves)\b/, label: 'tsp', gramsPer: 1 },
   // Medium ground spices (~2g/tsp).

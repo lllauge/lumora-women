@@ -13,16 +13,46 @@ export function cleanIngredientLine(line: string) {
 }
 
 // Descriptors that never change what lands in the cart or its macros —
-// marketing/husbandry words, sizes, and prep states. Macro-relevant words
-// (unsweetened, lean percentages, skin-on) are deliberately NOT here: those
-// are different foods and must keep their own lines.
+// marketing/husbandry words, sizes, and prep states. Cooking methods are
+// noise too: they describe what happens at home, not what gets bought
+// (weights are normalized to raw by cookedGramsToRaw before keying).
+// Macro-relevant words (unsweetened, lean percentages, skin-on) are
+// deliberately NOT here: those are different foods and must keep their own
+// lines. Product forms (canned, frozen, dried, smoked, cured) also stay —
+// those are different shelf items.
 const NOISE_TOKENS = new Set([
-  'raw', 'uncooked', 'of', 'a', 'the',
+  'raw', 'uncooked', 'dry', 'of', 'a', 'the', 'or', 'and',
   'organic', 'natural', 'fresh', 'premium',
   'large', 'medium', 'small', 'extra-large', 'jumbo',
   'boneless', 'skinless',
   'cage-free', 'free-range', 'pastured', 'grass-fed', 'wild-caught',
+  'cooked', 'baked', 'roasted', 'broiled', 'grilled', 'braised', 'stewed',
+  'simmered', 'poached', 'boiled', 'hard-boiled', 'soft-boiled', 'steamed',
+  'blanched', 'microwaved', 'toasted', 'sauteed', 'sauted', 'fried',
+  'pan-fried', 'stir-fried', 'pan-broiled', 'scrambled', 'rotisserie',
+  'heated', 'unheated', 'prepared', 'unprepared', 'drained',
 ])
+
+// Phrases stripped before tokenizing: USDA suffix clauses that change sodium
+// or packing water but not what the shopper buys.
+const PHRASE_NOISE = [
+  /\b(?:with|without)\s+(?:added\s+)?salt(?:\s+added)?\b/gi,
+  /\b(?:dry|moist)\s+heat\b/gi,
+  /\bdry[- ]roasted\b/gi,
+  /\bsolids\s+and\s+liquids?\b/gi,
+  /\byear\s+round\s+average\b/gi,
+]
+
+// Products whose NAME contains a cooking word — fuse them into one token so
+// the cook-word noise filter can't dissolve them into the base food.
+const COMPOUND_PRODUCTS: Array<[RegExp, string]> = [
+  [/\bbaked\s+beans\b/g, 'bakedbeans'],
+  [/\bfried\s+rice\b/g, 'friedrice'],
+  [/\brefried\s+beans\b/g, 'refriedbeans'],
+  // "dry" is the raw state for grains/pasta ("Bulgur, dry") and gets dropped
+  // as noise — but powdered milk is a different product from fluid milk.
+  [/\bdry\s+milk\b|\bmilk,\s*dry\b/g, 'drymilk'],
+]
 
 // One food, one line: each rule collapses every phrasing of the same shelf
 // item ("Oil, olive, extra virgin" / "Olive oil" / "extra virgin olive oil")
@@ -47,9 +77,10 @@ const ALIAS_RULES: Array<
  * "10 large eggs" both key to "eggs".
  */
 export function canonicalGroceryKey(label: string): string {
-  const tokens = label
-    .toLowerCase()
-    .replace(/\([^)]*\)/g, ' ')
+  let text = label.toLowerCase().replace(/\([^)]*\)/g, ' ')
+  for (const [pattern, fused] of COMPOUND_PRODUCTS) text = text.replace(pattern, fused)
+  for (const pattern of PHRASE_NOISE) text = text.replace(pattern, ' ')
+  const tokens = text
     .split(/[\s,/]+/)
     .map((token) => token.replace(/[^a-z%0-9-]/g, ''))
     .map((token) => {

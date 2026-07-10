@@ -3,14 +3,41 @@ import ClientPlanView from '@/components/coaching/ClientPlanView'
 import DayMeals from '@/components/coaching/DayMeals'
 import GroceryChecklist from '@/components/coaching/GroceryChecklist'
 import { buildGroceryList } from '@/lib/grocery-list'
-import { groceryDisplay } from '@/lib/coaching-engagement'
+import { getClientPortalPreview, groceryDisplay } from '@/lib/coaching-engagement'
 import { CoachingPlanSchema, MealDaySchema, RecipeSchema } from '@/lib/coaching-plan-schema'
 
 // Dev-only harness: renders the client plan meal card with fixture data so
 // portion display and mobile layout can be checked without a client login.
-// 404s in production.
-export default function PlanCardPreview() {
+// Pass ?client=<coaching_clients.id> to render a real client's published plan
+// through the same components the portal uses. 404s in production.
+export default async function PlanCardPreview({
+  searchParams,
+}: {
+  searchParams: Promise<{ client?: string }>
+}) {
   if (process.env.NODE_ENV === 'production') notFound()
+
+  const { client: clientId } = await searchParams
+  if (clientId) {
+    const preview = await getClientPortalPreview(clientId)
+    if (!preview?.plan) notFound()
+    return (
+      <div className="portal-layout">
+        <main id="main-content" className="portal-main">
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '1.5rem' }}>
+            My Plan (dev view of {preview.client.first_name}&apos;s live data)
+          </h1>
+          <ClientPlanView
+            client={{ id: preview.client.id }}
+            plan={preview.plan}
+            individualPlanStyle={preview.individualPlanStyle}
+            mealPlanStartDate={preview.mealPlanStartDate}
+            previewMode
+          />
+        </main>
+      </div>
+    )
+  }
 
   const recipes = [
     RecipeSchema.parse({

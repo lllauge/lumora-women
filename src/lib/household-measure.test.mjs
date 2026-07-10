@@ -32,6 +32,23 @@ test('counts eggs and garlic instead of weighing them', () => {
   assert.equal(householdMeasure('garlic', 9), '3 cloves garlic')
 })
 
+test('garlic powder and ground cloves never display as garlic cloves', () => {
+  // 24g of garlic powder is 8 tsp of spice, not "8 cloves garlic".
+  assert.equal(householdMeasure('Garlic powder', 24), '3 tbsp Garlic powder')
+  assert.equal(groceryDisplay('[fdc:1] 24g Garlic powder'), '3 tbsp Garlic powder')
+  assert.doesNotMatch(householdMeasure('Spices, cloves, ground', 6) ?? '', /garlic/)
+  // Real garlic still counts in cloves.
+  assert.equal(groceryDisplay('[fdc:2] 36g garlic'), '12 cloves garlic')
+  assert.equal(householdMeasure('garlic, minced', 9), '3 cloves garlic')
+})
+
+test('egg whites never display as whole eggs', () => {
+  // 520g of egg whites is not "10 large eggs" — it falls back to weight.
+  assert.equal(householdMeasure('Egg white, raw', 520), null)
+  assert.equal(householdMeasure('egg whites', 260), null)
+  assert.equal(groceryDisplay('[fdc:1] 520g Egg white, raw'), 'Egg white, raw, 1.25 lb')
+})
+
 test('falls back to ounces and pounds for foods without a cup density', () => {
   assert.equal(householdMeasure('chicken breast', 200), null)
   assert.equal(approxWeightMeasure(200), '7 oz')

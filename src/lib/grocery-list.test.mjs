@@ -55,6 +55,18 @@ test('egg lines with different counts in the label sum into one entry', () => {
   assert.equal(eggs[0], '1350g eggs')
 })
 
+test('boiled/poached whole eggs merge with raw whole eggs; egg whites stay separate', () => {
+  const list = buildGroceryList(plan({
+    recipes: [
+      { name: 'A', ingredients: ['[fdc:171287] 100g Egg, whole, raw, large (2 large)', '[fdc:172183] 130g Egg white, raw'] },
+      { name: 'B', ingredients: ['[fdc:2707154] 150g Egg, whole, boiled or poached (3 egg)'] },
+    ],
+    days: [['A', 'B']],
+  }))
+  const eggs = list.filter((line) => /egg/i.test(line))
+  assert.deepEqual(eggs.sort(), ['130g Egg white, raw', '250g eggs'])
+})
+
 test('typed household spice amounts convert and merge with gram lines', () => {
   const list = buildGroceryList(plan({
     recipes: [
@@ -164,6 +176,33 @@ test('macro-neutral descriptors (brand, organic, size, boneless) merge; macro-re
     canonicalGroceryKey('chicken thighs, skin-on'),
     canonicalGroceryKey('chicken thighs'),
   )
+})
+
+test('cooking methods never split a food into separate lines', () => {
+  // USDA cook-state clauses in every phrasing key to the raw food.
+  assert.equal(
+    canonicalGroceryKey('Chicken, broilers or fryers, breast, meat only, cooked, roasted'),
+    canonicalGroceryKey('Chicken, broilers or fryers, breast, meat only, raw'),
+  )
+  assert.equal(
+    canonicalGroceryKey('Fish, salmon, Atlantic, farmed, cooked, dry heat'),
+    canonicalGroceryKey('Fish, salmon, Atlantic, farmed, raw'),
+  )
+  assert.equal(
+    canonicalGroceryKey('Beef, brisket, whole, separable lean only, cooked, braised'),
+    canonicalGroceryKey('Beef, brisket, whole, separable lean only, raw'),
+  )
+  assert.equal(
+    canonicalGroceryKey('Broccoli, cooked, boiled, drained, without salt'),
+    canonicalGroceryKey('Broccoli, raw'),
+  )
+  assert.equal(canonicalGroceryKey('Egg, whole, boiled or poached'), 'eggs')
+  // Product forms are NOT cooking methods — they stay separate…
+  assert.notEqual(canonicalGroceryKey('Salmon, smoked'), canonicalGroceryKey('Salmon, raw'))
+  assert.notEqual(canonicalGroceryKey('Apricots, dried'), canonicalGroceryKey('Apricots, raw'))
+  // …and so do products whose name contains a cooking word.
+  assert.notEqual(canonicalGroceryKey('baked beans'), canonicalGroceryKey('beans'))
+  assert.notEqual(canonicalGroceryKey('fried rice'), canonicalGroceryKey('rice'))
 })
 
 test('canonical keys ignore word order, plurals, and parentheticals', () => {

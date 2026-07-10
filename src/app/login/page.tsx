@@ -28,6 +28,11 @@ function LoginForm() {
   const [error, setError] = useState('')
   const [failedAttempts, setFailedAttempts] = useState(0)
   const [lockedUntil, setLockedUntil] = useState<Date | null>(null)
+  const [codeSent, setCodeSent] = useState(false)
+  const [code, setCode] = useState('')
+  const [codeLoading, setCodeLoading] = useState(false)
+  const [codeError, setCodeError] = useState('')
+  const [codeNotice, setCodeNotice] = useState('')
 
   const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [field]: e.target.value }))
@@ -92,6 +97,68 @@ function LoginForm() {
     } else {
       router.push(`/mfa?area=client&mode=${result.mfaMode ?? 'challenge'}&redirectTo=${encodeURIComponent(redirectTo)}`)
     }
+    router.refresh()
+  }
+
+  async function handleSendCode() {
+    if (!form.email) {
+      setCodeError('Enter your email address above first.')
+      return
+    }
+
+    setCodeLoading(true)
+    setCodeError('')
+    setCodeNotice('')
+
+    let captchaToken: string | null
+    try {
+      captchaToken = await executeRecaptcha('login_code_send')
+    } catch {
+      setCodeError('Security verification could not load. Please refresh and try again.')
+      setCodeLoading(false)
+      return
+    }
+
+    const response = await fetch('/api/auth/login-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ action: 'send', email: form.email, captchaToken }),
+    })
+    const result = await response.json().catch(() => ({})) as { error?: string }
+
+    if (!response.ok) {
+      setCodeError(result.error || 'Could not send a login code. Please try again.')
+      setCodeLoading(false)
+      return
+    }
+
+    setCodeSent(true)
+    setCode('')
+    setCodeNotice('If that email has an account, a login code is on its way. Check your inbox.')
+    setCodeLoading(false)
+  }
+
+  async function handleVerifyCode(e: React.FormEvent) {
+    e.preventDefault()
+    setCodeLoading(true)
+    setCodeError('')
+
+    const response = await fetch('/api/auth/login-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ action: 'verify', email: form.email, code }),
+    })
+    const result = await response.json().catch(() => ({})) as { error?: string }
+
+    if (!response.ok) {
+      setCodeError(result.error || 'That code is incorrect or expired.')
+      setCodeLoading(false)
+      return
+    }
+
+    router.push(redirectTo)
     router.refresh()
   }
 
@@ -199,6 +266,127 @@ function LoginForm() {
           {loading ? 'Logging in…' : isLocked ? 'Temporarily Locked' : 'Log In'}
         </button>
       </form>
+
+      {failedAttempts >= 2 && (
+        <div
+          className="mt-5 px-4 py-4 rounded-lg"
+          style={{ background: '#F8F6F0', border: '1px solid var(--outline-variant)' }}
+        >
+          <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', color: 'var(--deep-earth)', fontWeight: 600, marginBottom: 6 }}>
+            Having trouble with your password?
+          </p>
+          <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.85rem', color: 'var(--on-surface-variant)', marginBottom: 12 }}>
+            We can email you a one-time code to log in without it.
+          </p>
+
+          {codeNotice && (
+            <div
+              className="px-3 py-2 rounded-lg text-sm mb-3"
+              style={{ background: '#ECFDF3', color: '#166534', fontFamily: 'var(--font-sans)', border: '1px solid #BBF7D0' }}
+            >
+              {codeNotice}
+            </div>
+          )}
+          {codeError && (
+            <div
+              className="px-3 py-2 rounded-lg text-sm mb-3"
+              style={{ background: '#FEF2F2', color: '#B91C1C', fontFamily: 'var(--font-sans)', border: '1px solid #FECACA' }}
+            >
+              {codeError}
+            </div>
+          )}
+
+          {codeSent ? (
+            <form onSubmit={handleVerifyCode} className="space-y-3">
+              <label
+                htmlFor="login-code"
+                style={{
+                  fontFamily: 'var(--font-sans)',
+                  fontSize: '0.8125rem',
+                  fontWeight: 600,
+                  color: 'var(--deep-earth)',
+                  letterSpacing: '0.02em',
+                  display: 'block',
+                }}
+              >
+                6-Digit Login Code
+              </label>
+              <input
+                id="login-code"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                pattern="\d{6}"
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                placeholder="123456"
+                required
+                aria-required="true"
+                style={{
+                  width: '100%',
+                  padding: '0.75rem 1rem',
+                  borderRadius: '0.5rem',
+                  border: '1.5px solid var(--outline-variant)',
+                  background: '#FFFFFF',
+                  fontFamily: 'var(--font-sans)',
+                  fontSize: '1.15rem',
+                  letterSpacing: '0.35em',
+                  color: 'var(--deep-earth)',
+                  minHeight: '44px',
+                }}
+                onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--sage-green-deep)')}
+                onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--outline-variant)')}
+              />
+              <button
+                type="submit"
+                disabled={codeLoading || code.length !== 6}
+                className="btn-primary w-full"
+                style={{ borderRadius: '0.5rem', padding: '0.75rem' }}
+              >
+                {codeLoading ? 'Verifying…' : 'Log In With Code'}
+              </button>
+              <button
+                type="button"
+                onClick={handleSendCode}
+                disabled={codeLoading}
+                style={{
+                  fontFamily: 'var(--font-sans)',
+                  fontSize: '0.8rem',
+                  color: 'var(--warm-terracotta)',
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
+                }}
+              >
+                Send a new code
+              </button>
+            </form>
+          ) : (
+            <button
+              type="button"
+              onClick={handleSendCode}
+              disabled={codeLoading}
+              className="w-full"
+              style={{
+                fontFamily: 'var(--font-sans)',
+                fontSize: '0.9rem',
+                fontWeight: 600,
+                color: 'var(--sage-green-deep)',
+                background: '#FFFFFF',
+                border: '1.5px solid var(--sage-green-deep)',
+                borderRadius: '0.5rem',
+                padding: '0.75rem',
+                minHeight: '44px',
+                cursor: 'pointer',
+              }}
+            >
+              {codeLoading ? 'Sending…' : 'Email Me a Login Code'}
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="flex items-center gap-3 my-6">
         <div className="flex-1 h-px" style={{ background: 'var(--outline-variant)' }} />

@@ -11,7 +11,7 @@ import {
 
 test('uses a shorter inactivity window for administrators', () => {
   assert.equal(sessionIdleSeconds.admin, 15 * 60)
-  assert.equal(sessionIdleSeconds.client, 30 * 60)
+  assert.equal(sessionIdleSeconds.client, 12 * 60 * 60)
 })
 
 test('enforces absolute session lifetimes even while the user stays active', () => {

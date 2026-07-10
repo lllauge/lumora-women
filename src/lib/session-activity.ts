@@ -7,7 +7,7 @@ export const sessionActivityCookies = {
 
 export const sessionIdleSeconds = {
   admin: 15 * 60,
-  client: 30 * 60,
+  client: 12 * 60 * 60,
 } as const
 
 export const sessionAbsoluteSeconds = {

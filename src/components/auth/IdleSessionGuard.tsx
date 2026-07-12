@@ -4,12 +4,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import {
   initializeBrowserActivity,
+  sessionIdleSeconds,
   type SessionArea,
 } from '@/lib/session-activity'
 
 const IDLE_MS: Record<SessionArea, number> = {
-  admin: 15 * 60 * 1000,
-  client: 30 * 60 * 1000,
+  admin: sessionIdleSeconds.admin * 1000,
+  client: sessionIdleSeconds.client * 1000,
 }
 const WARNING_MS = 2 * 60 * 1000
 const HEARTBEAT_THROTTLE_MS = 30 * 1000

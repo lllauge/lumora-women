@@ -164,12 +164,24 @@ export async function proxy(request: NextRequest) {
         )
       : false
     if (!emailMfaVerified) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/mfa'
-      url.search = ''
-      url.searchParams.set('area', 'client')
-      url.searchParams.set('redirectTo', path)
-      return NextResponse.redirect(url)
+      // An authenticator-verified session is a stronger factor than the email
+      // code, so it satisfies this gate (admins previewing course content).
+      const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+      if (assurance?.currentLevel !== 'aal2') {
+        const url = request.nextUrl.clone()
+        url.pathname = '/mfa'
+        url.search = ''
+        if (assurance?.nextLevel === 'aal2') {
+          // TOTP is enrolled (admin account) — the email-code endpoint rejects
+          // admins, so route to the authenticator challenge instead.
+          url.searchParams.set('area', 'admin')
+          url.searchParams.set('mode', 'challenge')
+        } else {
+          url.searchParams.set('area', 'client')
+        }
+        url.searchParams.set('redirectTo', path)
+        return NextResponse.redirect(url)
+      }
     }
 
     const idleRedirect = await enforceActivity('client')
@@ -205,6 +217,24 @@ export async function proxy(request: NextRequest) {
         return NextResponse.redirect(new URL(safeDestination, request.url))
       }
     } else {
+      const redirectTo = request.nextUrl.searchParams.get('redirectTo')
+      const safeDestination = redirectTo?.startsWith('/') && !redirectTo.startsWith('//')
+        ? redirectTo
+        : '/dashboard'
+      const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+      if (assurance?.currentLevel === 'aal2') {
+        return NextResponse.redirect(new URL(safeDestination, request.url))
+      }
+      if (assurance?.nextLevel === 'aal2') {
+        // TOTP is enrolled (admin account) — the email-code endpoint rejects
+        // admins, so route to the authenticator challenge instead.
+        const url = request.nextUrl.clone()
+        url.search = ''
+        url.searchParams.set('area', 'admin')
+        url.searchParams.set('mode', 'challenge')
+        url.searchParams.set('redirectTo', safeDestination)
+        return NextResponse.redirect(url)
+      }
       const session = await supabase.auth.getSession()
       const sessionId = getSessionId(session.data.session?.access_token)
       const emailMfaVerified = sessionId
@@ -215,10 +245,6 @@ export async function proxy(request: NextRequest) {
           )
         : false
       if (emailMfaVerified) {
-        const redirectTo = request.nextUrl.searchParams.get('redirectTo')
-        const safeDestination = redirectTo?.startsWith('/') && !redirectTo.startsWith('//')
-          ? redirectTo
-          : '/dashboard'
         return NextResponse.redirect(new URL(safeDestination, request.url))
       }
     }

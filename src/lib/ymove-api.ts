@@ -1,4 +1,8 @@
-import { mapYMoveExerciseToLumoraDraft, type YMoveExercise } from '@/lib/ymove-exercises'
+import {
+  bestYMoveVideoUrl,
+  mapYMoveExerciseToLumoraDraft,
+  type YMoveExercise,
+} from '@/lib/ymove-exercises'
 
 const YMOVE_BASE_URL = 'https://exercise-api.ymove.app/api/v2'
 
@@ -68,6 +72,8 @@ export async function searchYMoveExercises(params: {
     ...params,
     page: params.page ?? 1,
     pageSize: params.pageSize ?? 12,
+    hasVideoWhite: true,
+    videoTag: 'white-background',
     includeVideos: false,
   })
 
@@ -87,7 +93,4 @@ export async function getYMoveExercise(idOrSlug: string) {
   return payload.data
 }
 
-export function bestYMoveVideoUrl(exercise: YMoveExercise) {
-  const primary = exercise.videos?.find((video) => video.isPrimary) ?? exercise.videos?.[0]
-  return primary?.videoHlsUrl || primary?.videoUrl || exercise.videoHlsUrl || exercise.videoUrl || ''
-}
+export { bestYMoveVideoUrl }

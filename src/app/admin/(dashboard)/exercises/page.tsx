@@ -376,7 +376,7 @@ export default function ExerciseLibraryPage() {
               Search YMove
             </p>
             <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.8rem', color: 'var(--admin-on-surface-variant)', margin: '2px 0 0' }}>
-              Import professional exercise videos, then keep Laura&apos;s cues and defaults in Lumora.
+              Import premium white-background exercise videos, then keep Laura&apos;s cues and defaults in Lumora.
             </p>
           </div>
           <Video size={18} style={{ color: '#C9A84C', flexShrink: 0 }} />
@@ -445,7 +445,7 @@ export default function ExerciseLibraryPage() {
                       exercise.muscleGroup && patternLabel(exercise.muscleGroup),
                       exercise.equipment && patternLabel(exercise.equipment),
                       exercise.difficulty && patternLabel(exercise.difficulty),
-                      exercise.hasVideo ? 'Video available' : 'No video flag',
+                      exercise.hasVideoWhite ? 'White-background HD' : 'Video available',
                     ].filter(Boolean).join(' · ')}
                   </p>
                 </div>

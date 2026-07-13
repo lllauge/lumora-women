@@ -14,6 +14,8 @@ export type YMoveExercise = {
   difficulty?: string | null
   exerciseType?: string[] | null
   hasVideo?: boolean
+  hasVideoWhite?: boolean
+  hasVideoGym?: boolean
   videoUrl?: string | null
   videoHlsUrl?: string | null
   thumbnailUrl?: string | null
@@ -64,6 +66,14 @@ export function parseYMoveVideoRef(value: string) {
 export function ymoveVideoHref(value: string) {
   const slug = parseYMoveVideoRef(value)
   return slug ? `/api/ymove/exercises/${encodeURIComponent(slug)}/video` : ''
+}
+
+export function bestYMoveVideoUrl(exercise: YMoveExercise) {
+  const primary = exercise.videos?.find((video) => video.tag === 'white-background' && video.isPrimary)
+    ?? exercise.videos?.find((video) => video.tag === 'white-background')
+    ?? exercise.videos?.find((video) => video.isPrimary)
+    ?? exercise.videos?.[0]
+  return primary?.videoHlsUrl || primary?.videoUrl || exercise.videoHlsUrl || exercise.videoUrl || ''
 }
 
 function normalizedWords(exercise: YMoveExercise) {

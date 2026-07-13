@@ -14,6 +14,7 @@ import { familyPrepBadges, mealPrepBadges } from '@/lib/cooking-style'
 import { mealPlanBlocks, mealPlanSchedule, friendlyBlockDate } from '@/lib/meal-plan-schedule'
 import DayMeals from '@/components/coaching/DayMeals'
 import { type CoachingPlanDraft } from '@/lib/coaching-plan-schema'
+import { ymoveVideoHref } from '@/lib/ymove-exercises'
 
 function SectionHeader({ icon, title, subtitle }: { icon: React.ReactNode; title: string; subtitle?: string }) {
   return (
@@ -36,6 +37,8 @@ const headerIcon: React.CSSProperties = { width: '1rem', height: '1rem', color: 
 function exerciseDemoHref(exercise: CoachingPlanDraft['workoutPlan'][number]['exercises'][number]) {
   const savedUrl = exercise.videoUrl.trim()
   if (savedUrl) {
+    const ymoveHref = ymoveVideoHref(savedUrl)
+    if (ymoveHref) return ymoveHref
     if (/^https?:\/\//i.test(savedUrl)) return savedUrl
     // Saved links are pasted by hand and often arrive without a protocol
     // ("vimeo.com/123"). Rendered as-is they'd become relative links under

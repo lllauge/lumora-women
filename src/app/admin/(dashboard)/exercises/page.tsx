@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState, useCallback, useMemo } from 'react'
-import { Trash2, ChevronDown, Plus, Star } from 'lucide-react'
+import { Trash2, ChevronDown, Plus, Star, Search, Video } from 'lucide-react'
+import type { LumoraExerciseDraft, YMoveExercise } from '@/lib/ymove-exercises'
 
 type LibraryExercise = {
   id: string
@@ -33,6 +34,10 @@ const EMPTY_EXERCISE = {
   video_url: '',
   female_recomp_priority: 0,
   archived: false,
+}
+
+type YMoveSearchResult = YMoveExercise & {
+  lumoraDraft: LumoraExerciseDraft
 }
 
 const MOVEMENT_PATTERNS = [
@@ -191,12 +196,18 @@ export default function ExerciseLibraryPage() {
   const [saving, setSaving] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [error, setError] = useState('')
+  const [message, setMessage] = useState('')
   const [drafts, setDrafts] = useState<Record<string, typeof EMPTY_EXERCISE>>({})
   const [newExercise, setNewExercise] = useState({ ...EMPTY_EXERCISE })
   const [addingNew, setAddingNew] = useState(false)
   const [newSaving, setNewSaving] = useState(false)
   const [patternFilter, setPatternFilter] = useState<string>('all')
   const [equipFilter, setEquipFilter] = useState<string>('all')
+  const [ymoveQuery, setYmoveQuery] = useState('')
+  const [ymoveMuscle, setYmoveMuscle] = useState('')
+  const [ymoveResults, setYmoveResults] = useState<YMoveSearchResult[]>([])
+  const [ymoveLoading, setYmoveLoading] = useState(false)
+  const [ymoveError, setYmoveError] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -311,6 +322,32 @@ export default function ExerciseLibraryPage() {
     }
   }
 
+  async function searchYMove() {
+    setYmoveLoading(true)
+    setYmoveError('')
+    try {
+      const params = new URLSearchParams()
+      if (ymoveQuery.trim()) params.set('search', ymoveQuery.trim())
+      if (ymoveMuscle) params.set('muscleGroup', ymoveMuscle)
+      const res = await fetch(`/api/admin/ymove/exercises?${params.toString()}`)
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'YMove search failed.')
+      setYmoveResults((data.exercises ?? []) as YMoveSearchResult[])
+    } catch (error) {
+      setYmoveError(error instanceof Error ? error.message : 'YMove search failed.')
+      setYmoveResults([])
+    } finally {
+      setYmoveLoading(false)
+    }
+  }
+
+  function importYMoveExercise(exercise: YMoveSearchResult) {
+    setNewExercise({ ...exercise.lumoraDraft })
+    setAddingNew(true)
+    setYmoveError('')
+    setMessage(`Imported ${exercise.title} from YMove. Review Laura's cues and save it to the Lumora library.`)
+  }
+
   return (
     <div style={{ maxWidth: 900, margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
@@ -330,6 +367,100 @@ export default function ExerciseLibraryPage() {
         >
           <Plus size={15} /> New Exercise
         </button>
+      </div>
+
+      <div className="admin-card" style={{ padding: '16px 18px', marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
+          <div>
+            <p style={{ fontFamily: 'var(--font-hanken)', fontWeight: 700, fontSize: '0.95rem', color: 'var(--admin-on-surface)', margin: 0 }}>
+              Search YMove
+            </p>
+            <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.8rem', color: 'var(--admin-on-surface-variant)', margin: '2px 0 0' }}>
+              Import professional exercise videos, then keep Laura&apos;s cues and defaults in Lumora.
+            </p>
+          </div>
+          <Video size={18} style={{ color: '#C9A84C', flexShrink: 0 }} />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10, alignItems: 'end' }}>
+          <label>
+            <span style={label}>Exercise Search</span>
+            <input
+              className="admin-input"
+              value={ymoveQuery}
+              onChange={e => setYmoveQuery(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  searchYMove()
+                }
+              }}
+              placeholder="hip thrust, dumbbell row..."
+            />
+          </label>
+          <label>
+            <span style={label}>Muscle</span>
+            <select className="admin-input" value={ymoveMuscle} onChange={e => setYmoveMuscle(e.target.value)}>
+              <option value="">Any</option>
+              {['glutes', 'hamstrings', 'quads', 'core', 'back', 'chest', 'shoulders', 'biceps', 'triceps', 'cardio'].map(m => (
+                <option key={m} value={m}>{patternLabel(m)}</option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            className="admin-btn-primary"
+            disabled={ymoveLoading || (!ymoveQuery.trim() && !ymoveMuscle)}
+            onClick={searchYMove}
+            style={{ background: '#162814', color: '#fff', border: 'none', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center', width: '100%' }}
+          >
+            <Search size={14} /> {ymoveLoading ? 'Searching...' : 'Search'}
+          </button>
+        </div>
+        {ymoveError && (
+          <p role="alert" style={{ fontFamily: 'var(--font-hanken)', color: '#b91c1c', fontSize: '0.82rem', margin: '10px 0 0' }}>
+            {ymoveError}
+          </p>
+        )}
+        {ymoveResults.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 14 }}>
+            {ymoveResults.map((exercise) => (
+              <div
+                key={exercise.id}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr auto',
+                  gap: 12,
+                  padding: '10px 12px',
+                  border: '1px solid var(--admin-outline-variant)',
+                  borderRadius: 8,
+                  background: 'var(--admin-surface-low)',
+                }}
+              >
+                <div>
+                  <p style={{ fontFamily: 'var(--font-hanken)', fontWeight: 700, fontSize: '0.9rem', color: 'var(--admin-on-surface)', margin: 0 }}>
+                    {exercise.title}
+                  </p>
+                  <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.75rem', color: 'var(--admin-on-surface-variant)', margin: '3px 0 0' }}>
+                    {[
+                      exercise.muscleGroup && patternLabel(exercise.muscleGroup),
+                      exercise.equipment && patternLabel(exercise.equipment),
+                      exercise.difficulty && patternLabel(exercise.difficulty),
+                      exercise.hasVideo ? 'Video available' : 'No video flag',
+                    ].filter(Boolean).join(' · ')}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="admin-btn-ghost"
+                  onClick={() => importYMoveExercise(exercise)}
+                  style={{ fontSize: '0.78rem', fontWeight: 700, color: '#3F6936' }}
+                >
+                  Import
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Filters */}
@@ -356,6 +487,11 @@ export default function ExerciseLibraryPage() {
       {error && (
         <div className="admin-card" style={{ padding: '12px 16px', marginBottom: 16, background: '#fef2f2', border: '1px solid #fca5a5' }}>
           <p style={{ fontFamily: 'var(--font-hanken)', color: '#b91c1c', fontSize: '0.88rem', margin: 0 }}>{error}</p>
+        </div>
+      )}
+      {message && (
+        <div className="admin-card" style={{ padding: '12px 16px', marginBottom: 16, background: '#F0F7ED', border: '1px solid rgba(63,105,54,0.2)' }}>
+          <p style={{ fontFamily: 'var(--font-hanken)', color: '#2F5A28', fontSize: '0.88rem', margin: 0 }}>{message}</p>
         </div>
       )}
 

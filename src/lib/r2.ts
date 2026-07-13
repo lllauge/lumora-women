@@ -159,18 +159,22 @@ export async function getR2Object(key: string, range?: string | null) {
     Range: range || undefined,
   })
 
-  try {
-    return await client.send(command(config.privateBucket))
-  } catch (error) {
-    if (config.privateBucket === config.publicBucket) {
-      throw error
-    }
+  const buckets = [config.privateBucket, config.publicBucket, config.bucket]
+    .filter((bucket, index, all) => all.indexOf(bucket) === index)
 
-    // Course assets uploaded before the public/private bucket split may still
-    // live in the public bucket. Access is already checked before this helper
-    // is called, so this fallback preserves old courses without exposing files.
-    return client.send(command(config.publicBucket))
+  let lastError: unknown
+  for (const bucket of buckets) {
+    try {
+      return await client.send(command(bucket))
+    } catch (error) {
+      lastError = error
+    }
   }
+
+  // Course assets uploaded before the public/private bucket split may still
+  // live in the original base bucket. Access is already checked before this
+  // helper is called, so trying configured legacy buckets does not expose files.
+  throw lastError
 }
 
 /** Returns the file extension (without dot), inferred from filename + MIME. */

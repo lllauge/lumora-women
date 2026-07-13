@@ -15,8 +15,8 @@ function plan({ recipes, days }) {
     })),
     recipes: recipes.map((r) => ({
       name: r.name,
-      mealType: '', servings: '', familyServings: '', clientServing: '',
-      clientServingMultiplier: '', clientServingGrams: '', clientServingMeasure: '',
+      mealType: '', servings: r.servings ?? '', familyServings: '', clientServing: '',
+      clientServingMultiplier: r.clientServingMultiplier ?? '', clientServingGrams: '', clientServingMeasure: '',
       clientServingBreakdown: '', prepTime: '', cookTime: '', calories: '',
       protein: '', carbs: '', fats: '', fiber: '',
       ingredients: r.ingredients, instructions: [], swaps: [], notes: '',
@@ -142,6 +142,120 @@ test('list comes back alphabetized by food name', () => {
     days: [['A']],
   }))
   assert.deepEqual(list, ['100g asparagus', '100g capers', '100g mushrooms'])
+})
+
+test('solo client: repeats of a multi-serving recipe are leftovers from one batch', () => {
+  // 4-serving pot (client portion 0.25) eaten 4 times in the week = 1 cook.
+  const fourServingPot = {
+    name: 'Chicken Bowl',
+    servings: '4',
+    clientServingMultiplier: '0.25',
+    ingredients: ['[fdc:1] 996g Chicken breast, boneless skinless, raw'],
+  }
+  const days = [['Chicken Bowl'], ['Chicken Bowl'], ['Chicken Bowl'], ['Chicken Bowl']]
+  assert.deepEqual(
+    buildGroceryList(plan({ recipes: [fourServingPot], days }), { soloClient: true }),
+    ['996g Chicken breast, boneless skinless, raw'],
+  )
+  // Family plans still cook the pot every time — the family eats the rest.
+  assert.deepEqual(
+    buildGroceryList(plan({ recipes: [fourServingPot], days })),
+    ['3984g Chicken breast, boneless skinless, raw'],
+  )
+})
+
+test('solo client: a fifth use of a 4-serving pot needs a second batch', () => {
+  const pot = {
+    name: 'Chili',
+    clientServingMultiplier: '0.25',
+    ingredients: ['[fdc:1] 800g Beef, ground, 93% lean, raw'],
+  }
+  const days = [['Chili'], ['Chili'], ['Chili'], ['Chili'], ['Chili']]
+  assert.deepEqual(
+    buildGroceryList(plan({ recipes: [pot], days }), { soloClient: true }),
+    ['1600g Beef, ground, 93% lean, raw'],
+  )
+})
+
+test('solo client: macro-fitted portion jitter does not buy a second batch', () => {
+  // Fitted portion 0.27 × 4 uses = 1.08 pots — she portions one pot slightly
+  // smaller instead of buying a whole second pot.
+  const pot = {
+    name: 'Bake',
+    clientServingMultiplier: '0.27',
+    ingredients: ['[fdc:1] 996g Chicken breast, boneless skinless, raw'],
+  }
+  const days = [['Bake'], ['Bake'], ['Bake'], ['Bake']]
+  assert.deepEqual(
+    buildGroceryList(plan({ recipes: [pot], days }), { soloClient: true }),
+    ['996g Chicken breast, boneless skinless, raw'],
+  )
+})
+
+test('solo client: single-serving recipes still buy one batch per use', () => {
+  const smoothie = {
+    name: 'Smoothie',
+    clientServingMultiplier: '1',
+    ingredients: ['[fdc:1] 150g Blueberries, frozen'],
+  }
+  const days = [['Smoothie'], ['Smoothie'], ['Smoothie']]
+  assert.deepEqual(
+    buildGroceryList(plan({ recipes: [smoothie], days }), { soloClient: true }),
+    ['450g Blueberries, frozen'],
+  )
+})
+
+test('solo client: blank multiplier falls back to whole-recipe-per-use', () => {
+  const unknown = {
+    name: 'Mystery',
+    ingredients: ['[fdc:1] 100g Oats, dry'],
+  }
+  const days = [['Mystery'], ['Mystery']]
+  assert.deepEqual(
+    buildGroceryList(plan({ recipes: [unknown], days }), { soloClient: true }),
+    ['200g Oats, dry'],
+  )
+})
+
+test('fresh cook: quantities scale to exactly what she eats, no leftovers bought', () => {
+  // 4-serving pot, portion 0.25, eaten 3× fresh = buy 0.75 of the recipe.
+  const pot = {
+    name: 'Chicken Bowl',
+    clientServingMultiplier: '0.25',
+    ingredients: ['[fdc:1] 996g Chicken breast, boneless skinless, raw'],
+  }
+  const days = [['Chicken Bowl'], ['Chicken Bowl'], ['Chicken Bowl']]
+  assert.deepEqual(
+    buildGroceryList(plan({ recipes: [pot], days }), { soloClient: true, freshCook: true }),
+    ['747g Chicken breast, boneless skinless, raw'],
+  )
+})
+
+test('fresh cook: unweighable lines round up to whole purchases', () => {
+  const pot = {
+    name: 'Stir Fry',
+    clientServingMultiplier: '0.25',
+    ingredients: ['frozen cauliflower rice bag'],
+  }
+  const days = [['Stir Fry'], ['Stir Fry']]
+  // 2 uses × 0.25 = 0.5 of a bag — you still buy one bag.
+  assert.deepEqual(
+    buildGroceryList(plan({ recipes: [pot], days }), { soloClient: true, freshCook: true }),
+    ['frozen cauliflower rice bag'],
+  )
+})
+
+test('fresh cook: single-serving recipes are unchanged', () => {
+  const smoothie = {
+    name: 'Smoothie',
+    clientServingMultiplier: '1',
+    ingredients: ['[fdc:1] 150g Blueberries, frozen'],
+  }
+  const days = [['Smoothie'], ['Smoothie']]
+  assert.deepEqual(
+    buildGroceryList(plan({ recipes: [smoothie], days }), { soloClient: true, freshCook: true }),
+    ['300g Blueberries, frozen'],
+  )
 })
 
 test('coach-typed staples dedupe against the generated list by food identity', () => {

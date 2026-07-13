@@ -6,12 +6,15 @@ import {
 import InstructionSteps from '@/components/coaching/InstructionSteps'
 import PrepIngredientList from '@/components/coaching/PrepIngredientList'
 import { mealRecipeNames, type CoachingPlanDraft } from '@/lib/coaching-plan-schema'
+import type { MealPrepBadge } from '@/lib/cooking-style'
 
 export default function DayMeals({
   day,
   dayIndex,
   recipes,
   individualPlanStyle,
+  freshCook = false,
+  prepBadges,
   selectedMealIndex,
   selectedRecipeIndex,
 }: {
@@ -19,6 +22,10 @@ export default function DayMeals({
   dayIndex: number
   recipes: CoachingPlanDraft['recipes']
   individualPlanStyle: boolean
+  /** Solo client who cooks her portion fresh each time (no leftovers). */
+  freshCook?: boolean
+  /** Cook-day / leftover badges keyed `${dayIndex}:${recipeName}` (solo meal-prep menus). */
+  prepBadges?: Map<string, MealPrepBadge>
   selectedMealIndex: number
   selectedRecipeIndex: number
 }) {
@@ -78,6 +85,7 @@ export default function DayMeals({
               const portion = fraction && fraction.label !== 'the whole recipe'
                 ? `${fraction.label} of recipe`
                 : 'The whole recipe is your portion'
+              const badge = prepBadges?.get(`${dayIndex}:${name}`)
               const customIngredients = isAutoCustom
                 ? recipe.ingredients.map((ingredient) => {
                     const cleaned = cleanIngredientText(ingredient)
@@ -116,6 +124,14 @@ export default function DayMeals({
                         <div>
                           <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 700, color: '#3F6936', margin: 0 }}>{recipeLabel}</p>
                           <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>{portion}</p>
+                          {badge && (
+                            <p style={{
+                              fontFamily: 'var(--font-sans)', fontSize: '0.72rem', fontWeight: 700, marginTop: '0.25rem',
+                              color: badge.kind === 'cook' ? '#7A5505' : 'var(--text-muted)',
+                            }}>
+                              {badge.label}
+                            </p>
+                          )}
                         </div>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontFamily: 'var(--font-sans)', fontSize: '0.78rem', fontWeight: 700, color: '#3F6936', whiteSpace: 'nowrap' }}>
                           View recipe
@@ -123,7 +139,7 @@ export default function DayMeals({
                         </span>
                       </summary>
                       <div style={{ borderTop: '1px solid rgba(200,220,192,0.6)', padding: '0 0.875rem 0.875rem' }}>
-                        <RecipeDetail recipe={recipe} individualPlanStyle={individualPlanStyle} />
+                        <RecipeDetail recipe={recipe} individualPlanStyle={individualPlanStyle} freshCook={freshCook} />
                       </div>
                     </details>
                   )}
@@ -146,9 +162,11 @@ export default function DayMeals({
 function RecipeDetail({
   recipe,
   individualPlanStyle,
+  freshCook = false,
 }: {
   recipe: CoachingPlanDraft['recipes'][number]
   individualPlanStyle: boolean
+  freshCook?: boolean
 }) {
   const sectionTitle: React.CSSProperties = {
     fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', fontWeight: 700,
@@ -159,8 +177,9 @@ function RecipeDetail({
   }
   // parseFloat, not Number: the stored value can carry text ("4 servings"),
   // and the portion math (clientPortionFactor) parses it the same way — the
-  // family label and the carved factor must never disagree.
-  const isFamily = !individualPlanStyle && parseFloat(recipe.familyServings) > 1
+  // family label and the carved factor must never disagree. A pinned card is
+  // never presented as a family carve: the whole recipe is her portion.
+  const isFamily = !individualPlanStyle && parseFloat(recipe.familyServings) > 1 && !recipe.portionPinned
   // A recipe built as exactly the client's serving (custom/individual, no
   // carve): no gram target and no weigh-out list — the whole recipe is hers,
   // and the amounts to make it already live under Shopping & prep.
@@ -211,7 +230,7 @@ function RecipeDetail({
           {!isFamily && !wholeRecipePortion && portionLines.length > 0 && (
             <div style={{ marginTop: '0.5rem' }}>
               <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
-                Weigh out your serving:
+                {freshCook ? 'Cook with just these amounts — they make one portion, yours:' : 'Weigh out your serving:'}
               </p>
               <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
                 {portionLines.map((line, i) => {
@@ -246,6 +265,19 @@ function RecipeDetail({
             const fraction = portionFraction(clientPortionFactor(recipe, individualPlanStyle))
             // The whole-recipe headline above already says it all.
             if (!fraction || wholeRecipePortion) return null
+            if (freshCook) {
+              // Fresh cooks never make the full recipe, so the divide-the-pot
+              // tip would send her the wrong way.
+              return (
+                <p style={{
+                  fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-secondary)',
+                  marginTop: '0.625rem', paddingTop: '0.625rem', borderTop: '1px solid rgba(200,220,192,0.6)',
+                }}>
+                  <span style={{ fontWeight: 700, color: '#3F6936' }}>Cooking fresh: </span>
+                  {`Make just the amounts above (about ${fraction.label} of the written recipe) — it comes out to a single serving, so there's nothing to divide or store.`}
+                </p>
+              )
+            }
             return (
               <p style={{
                 fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-secondary)',
@@ -287,12 +319,16 @@ function RecipeDetail({
             {isFamily ? 'Shopping & prep (full family recipe)' : 'Shopping & prep'}
           </h3>
           <p style={{ ...bodyText, fontSize: '0.8125rem', fontStyle: 'italic', marginBottom: '0.5rem' }}>
-            Amounts to buy and prep — raw, before cooking, unless a line says cooked weight.
-            {isFamily
-              ? ' Your serving is portioned from the finished dish, after cooking.'
-              : wholeRecipePortion
-                ? ' Make the full amounts below — the whole recipe is your serving.'
-                : ' When you weigh your serving above, use the food as it’s listed there: cooked unless marked otherwise.'}
+            {freshCook && !wholeRecipePortion
+              ? 'The full written recipe, for reference — cook with your single-portion amounts above instead. Your grocery list is already scaled to them.'
+              : 'Amounts to buy and prep — raw, before cooking, unless a line says cooked weight.'}
+            {freshCook && !wholeRecipePortion
+              ? ''
+              : isFamily
+                ? ' Your serving is portioned from the finished dish, after cooking.'
+                : wholeRecipePortion
+                  ? ' Make the full amounts below — the whole recipe is your serving.'
+                  : ' When you weigh your serving above, use the food as it’s listed there: cooked unless marked otherwise.'}
           </p>
           <PrepIngredientList lines={shoppingPrepLines(recipe.ingredients)} />
         </>

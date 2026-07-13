@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:nutrition": "node --test --experimental-strip-types src/lib/nutrition-math.test.mjs src/lib/coaching-plan-schema.test.mjs src/lib/client-portion.test.mjs src/lib/grocery-list.test.mjs src/lib/household-measure.test.mjs src/lib/meal-plan-schedule.test.mjs src/lib/meal-portion-fitting.test.mjs src/lib/plan-library-sync.test.mjs",
+    "test:nutrition": "node --test --experimental-strip-types src/lib/nutrition-math.test.mjs src/lib/coaching-plan-schema.test.mjs src/lib/client-portion.test.mjs src/lib/grocery-list.test.mjs src/lib/cooking-style.test.mjs src/lib/household-measure.test.mjs src/lib/meal-plan-schedule.test.mjs src/lib/meal-portion-fitting.test.mjs src/lib/plan-library-sync.test.mjs",
     "test:security": "node --test --experimental-strip-types src/lib/session-activity.test.mjs src/lib/client-email-mfa.test.mjs src/lib/recaptcha.test.mjs"
   },
   "dependencies": {

@@ -24,6 +24,7 @@ import {
   type LibraryExercise,
 } from '@/lib/workout-generator'
 import { buildGroceryList, cleanIngredientLine, mergeGroceryList } from '@/lib/grocery-list'
+import { groceryListOptions, isIndividualPlanStyle } from '@/lib/cooking-style'
 import { blockWeeksLabel, mealPlanBlocks, startDateWeekdayWarning, BLOCK_MENU_DAYS } from '@/lib/meal-plan-schedule'
 import { isExcludedNutritionIngredient } from '@/lib/nutrition-ingredient'
 import { resolvedServingMultiplier } from '@/lib/nutrition-math'
@@ -230,6 +231,7 @@ function libraryRecipeToPlanRecipe(libRecipe: LibraryRecipe): CoachingPlanDraft[
     familyServings: libRecipe.family_servings,
     clientServing: '',
     clientServingMultiplier: '',
+    portionPinned: false,
     clientServingGrams: '',
     clientServingMeasure: '',
     clientServingBreakdown: '',
@@ -560,11 +562,11 @@ export default function CoachingPlanEditor({
 
       setLiveNutritionPending(true)
       setLiveNutritionError('')
-      const individualPlanStyle = planningInputs.mealPlanStyle === 'individual_only'
+      const individualPlanStyle = isIndividualPlanStyle(planningInputs.mealPlanStyle)
 
       const results = await Promise.all(activeRecipes.map(async (recipe) => {
         const familyCount = firstNumber(recipe.familyServings || recipe.servings)
-        const isFamily = !individualPlanStyle && familyCount > 1
+        const isFamily = !individualPlanStyle && familyCount > 1 && !recipe.portionPinned
         const isCustomSlot = /\(d\d+-(?:breakfast|lunch|dinner|snack\d+)\)$/.test(recipe.name)
         const libraryRecipe = isCustomSlot
           ? undefined
@@ -593,7 +595,7 @@ export default function CoachingPlanEditor({
               ingredients: recipe.ingredients,
               isFamily,
               familyServings: familyCount,
-              servingMultiplier: resolvedServingMultiplier(
+              servingMultiplier: recipe.portionPinned ? 1 : resolvedServingMultiplier(
                 recipe.clientServingMultiplier,
                 familyCount,
                 isFamily,
@@ -613,7 +615,7 @@ export default function CoachingPlanEditor({
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               ingredients: recipe.ingredients,
-              clientServingMultiplier: `${resolvedServingMultiplier(
+              clientServingMultiplier: `${recipe.portionPinned ? 1 : resolvedServingMultiplier(
                 recipe.clientServingMultiplier,
                 familyCount,
                 isFamily,
@@ -808,6 +810,18 @@ export default function CoachingPlanEditor({
     })
   }
 
+  // Pin a recipe card: as-written is her portion. The macro fitter skips it
+  // and every pricing path uses multiplier 1. Applies everywhere the recipe
+  // appears in the plan (it's one card).
+  function toggleRecipePin(recipeName: string) {
+    setPlan((current) => ({
+      ...current,
+      recipes: current.recipes.map((recipe) =>
+        recipe.name === recipeName ? { ...recipe, portionPinned: !recipe.portionPinned } : recipe,
+      ),
+    }))
+  }
+
   function removeRecipeFromMeal(dayIndex: number, mealKey: 'breakfast' | 'lunch' | 'dinner', recipeName: string) {
     setPlan((current) => {
       const mealPlan = [...current.mealPlan]
@@ -858,7 +872,7 @@ export default function CoachingPlanEditor({
       if (!newRecipes.some((recipe) => recipe.name === slotRecipeName)) {
         newRecipes.push({
           name: slotRecipeName, mealType: mealKey, servings: '1', familyServings: '1',
-          clientServing: '', clientServingMultiplier: '', clientServingGrams: '',
+          clientServing: '', clientServingMultiplier: '', portionPinned: false, clientServingGrams: '',
           clientServingMeasure: '', clientServingBreakdown: '',
           prepTime: '', cookTime: '', calories: '', protein: '', carbs: '', fats: '', fiber: '',
           ingredients: [], instructions: [], swaps: [], notes: '',
@@ -937,7 +951,7 @@ export default function CoachingPlanEditor({
       if (!newRecipes.some(r => r.name === slotRecipeName)) {
         newRecipes.push({
           name: slotRecipeName, mealType: 'snack', servings: '1', familyServings: '1',
-          clientServing: '', clientServingMultiplier: '', clientServingGrams: '',
+          clientServing: '', clientServingMultiplier: '', portionPinned: false, clientServingGrams: '',
           clientServingMeasure: '', clientServingBreakdown: '',
           prepTime: '', cookTime: '', calories: '', protein: '', carbs: '', fats: '', fiber: '',
           ingredients: [], instructions: [], swaps: [], notes: '',
@@ -1110,7 +1124,7 @@ export default function CoachingPlanEditor({
     }
 
     // Auto-calculate USDA macros for any recipe that has ingredients
-    const individualPlanStyle = planningInputs.mealPlanStyle === 'individual_only'
+    const individualPlanStyle = isIndividualPlanStyle(planningInputs.mealPlanStyle)
     const referencedRecipeNames = new Set(
       nextPlan.mealPlan.flatMap((day) => [
         ...mealRecipeNames(day.breakfast),
@@ -1139,9 +1153,11 @@ export default function CoachingPlanEditor({
         explicitMultiplier?: number,
       ) => {
         const familyCount = firstNumber(recipe.familyServings || recipe.servings)
-        const isFamily = !individualPlanStyle && familyCount > 1
-        const multiplier = explicitMultiplier
-          ?? resolvedServingMultiplier(recipe.clientServingMultiplier, familyCount, isFamily)
+        const isFamily = !individualPlanStyle && familyCount > 1 && !recipe.portionPinned
+        const multiplier = recipe.portionPinned
+          ? 1
+          : explicitMultiplier
+            ?? resolvedServingMultiplier(recipe.clientServingMultiplier, familyCount, isFamily)
 
         const isCustomSlot = /\(d\d+-(?:breakfast|lunch|dinner|snack\d+)\)$/.test(recipe.name)
         const libraryRecipe = isCustomSlot
@@ -1306,7 +1322,7 @@ export default function CoachingPlanEditor({
     // Rebuild the grocery list from the meal plan on every save so recipe
     // additions and swaps always reach the client's master list. Coach-typed
     // staples are carried over by mergeGroceryList.
-    const generatedGroceries = buildGroceryList(nextPlan)
+    const generatedGroceries = buildGroceryList(nextPlan, groceryListOptions(planningInputs.mealPlanStyle))
     if (generatedGroceries.length > 0) {
       nextPlan = { ...nextPlan, groceryList: mergeGroceryList(nextPlan.groceryList, generatedGroceries) }
     }
@@ -1490,7 +1506,8 @@ export default function CoachingPlanEditor({
               <span className="admin-label">Meal Plan Style</span>
               <select className="admin-input" value={planningInputs.mealPlanStyle} onChange={(e) => updatePlanningInput('mealPlanStyle', e.target.value)}>
                 <option value="family_dinners">Family Dinners + Her Servings</option>
-                <option value="individual_only">Individual Plan Only</option>
+                <option value="individual_only">Individual — Meal Prep (batch + leftovers)</option>
+                <option value="individual_fresh">Individual — Cooks Fresh (scaled portions)</option>
               </select>
             </label>
             <label className="space-y-1">
@@ -1890,6 +1907,15 @@ export default function CoachingPlanEditor({
                                       <span title="This recipe lives only inside this plan. Library edits won't reach it — remove it and re-add the recipe from your library to link them." style={{ color: '#B45309', fontWeight: 700 }}> · not in your library</span>
                                     )}
                                   </span>
+                                  {!SLOT_NAME_SUFFIX.test(name) && (
+                                    <button type="button" aria-pressed={!!selectedRecipe?.portionPinned}
+                                      aria-label={`${selectedRecipe?.portionPinned ? 'Unpin' : 'Pin'} portion for ${stripSlotRecipeSuffixes(name)}`}
+                                      title={selectedRecipe?.portionPinned
+                                        ? 'Pinned: the recipe as written is her whole portion — macro fitting skips it. Click to unpin.'
+                                        : 'Pin so the recipe as written is her whole portion (macro fitting will skip it).'}
+                                      onClick={() => toggleRecipePin(name)}
+                                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '0.85rem', opacity: selectedRecipe?.portionPinned ? 1 : 0.35 }}>📌</button>
+                                  )}
                                   <button type="button" aria-label={`Remove ${stripSlotRecipeSuffixes(name)}`} onClick={() => removeRecipeFromMeal(dayIndex, mealKey, name)}
                                     style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--admin-error)', padding: 0, fontSize: '0.9rem' }}>×</button>
                                 </li>
@@ -1984,6 +2010,15 @@ export default function CoachingPlanEditor({
                                         <span title="This recipe lives only inside this plan. Library edits won't reach it — remove it and re-add the recipe from your library to link them." style={{ color: '#B45309', fontWeight: 700 }}> · not in your library</span>
                                       )}
                                     </span>
+                                    {!SLOT_NAME_SUFFIX.test(name) && (
+                                      <button type="button" aria-pressed={!!selectedRecipe?.portionPinned}
+                                        aria-label={`${selectedRecipe?.portionPinned ? 'Unpin' : 'Pin'} portion for ${stripSlotRecipeSuffixes(name)}`}
+                                        title={selectedRecipe?.portionPinned
+                                          ? 'Pinned: the recipe as written is her whole portion — macro fitting skips it. Click to unpin.'
+                                          : 'Pin so the recipe as written is her whole portion (macro fitting will skip it).'}
+                                        onClick={() => toggleRecipePin(name)}
+                                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '0.85rem', opacity: selectedRecipe?.portionPinned ? 1 : 0.35 }}>📌</button>
+                                    )}
                                     <button type="button" aria-label={`Remove ${stripSlotRecipeSuffixes(name)}`} onClick={() => removeRecipeFromSnack(dayIndex, snackIndex, name)}
                                       style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--admin-error)', padding: 0, fontSize: '0.9rem' }}>×</button>
                                   </li>

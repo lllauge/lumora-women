@@ -70,6 +70,7 @@ export default async function AdminClientPortalPreviewPage({
             client={{ id: preview.client.id }}
             plan={preview.plan}
             individualPlanStyle={preview.individualPlanStyle}
+            freshCookStyle={preview.freshCookStyle}
             mealPlanStartDate={preview.mealPlanStartDate}
             previewMode
           />

@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createAdminClient, createClient } from '@/lib/supabase/server'
 import { mealRecipeNames, parseCoachingPlan, type CoachingPlanDraft } from '@/lib/coaching-plan-schema'
+import { isFreshCookStyle, isIndividualPlanStyle } from '@/lib/cooking-style'
 
 // Portion and measurement math lives in client-portion.ts and
 // household-measure.ts (pure, unit-tested); re-exported so portal pages keep
@@ -63,11 +64,16 @@ export type PortalContext = {
   plan: CoachingPlanDraft
   planPublishedAt: string
   /**
-   * True when the plan was built in individual-only style: recipe gram amounts
+   * True when the plan was built in an individual style: recipe gram amounts
    * are exactly what the client eats, so portion display must not carve
    * declared family servings out of them.
    */
   individualPlanStyle: boolean
+  /**
+   * Individual style where the client cooks her portion fresh each time
+   * (individual_fresh) instead of batching leftovers (individual_only).
+   */
+  freshCookStyle: boolean
   /** ISO date the plan's Day 1 begins; '' when the coach hasn't set one. */
   mealPlanStartDate: string
 }
@@ -330,7 +336,7 @@ export async function getClientPortalPreview(clientId: string) {
     .eq('status', 'published')
     .maybeSingle()
   if (!planRow) {
-    return { client, plan: null, individualPlanStyle: false, mealPlanStartDate: '', planPublishedAt: '' }
+    return { client, plan: null, individualPlanStyle: false, freshCookStyle: false, mealPlanStartDate: '', planPublishedAt: '' }
   }
 
   const planningInputs = (planRow.planning_inputs ?? {}) as Record<string, unknown>
@@ -346,7 +352,8 @@ export async function getClientPortalPreview(clientId: string) {
   return {
     client,
     plan,
-    individualPlanStyle: planningInputs.mealPlanStyle === 'individual_only',
+    individualPlanStyle: isIndividualPlanStyle(planningInputs.mealPlanStyle),
+    freshCookStyle: isFreshCookStyle(planningInputs.mealPlanStyle),
     mealPlanStartDate: typeof planningInputs.mealPlanStartDate === 'string' ? planningInputs.mealPlanStartDate : '',
     planPublishedAt: planRow.updated_at as string,
   }
@@ -393,7 +400,8 @@ export async function getPortalContext(): Promise<PortalContext> {
     client: { id: client.id, first_name: client.first_name, status: client.status },
     plan,
     planPublishedAt: planRow.updated_at,
-    individualPlanStyle: planningInputs.mealPlanStyle === 'individual_only',
+    individualPlanStyle: isIndividualPlanStyle(planningInputs.mealPlanStyle),
+    freshCookStyle: isFreshCookStyle(planningInputs.mealPlanStyle),
     mealPlanStartDate: typeof planningInputs.mealPlanStartDate === 'string' ? planningInputs.mealPlanStartDate : '',
   }
 }

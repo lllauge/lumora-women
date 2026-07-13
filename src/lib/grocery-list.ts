@@ -5,6 +5,7 @@
 // --experimental-strip-types`, which resolves relative imports literally.
 import { cookedGramsToRaw } from './cooked-to-raw.ts'
 import { typedMeasureToGrams } from './household-measure.ts'
+import { resolvedServingMultiplier } from './nutrition-math.ts'
 import { mealRecipeNames, type CoachingPlanDraft } from './coaching-plan-schema.ts'
 
 /** Strip the leading USDA/curated match tag from a stored ingredient line. */
@@ -127,9 +128,54 @@ function shoppableLabel(label: string): string | null {
   return cleaned
 }
 
-// Every meal-slot usage of a recipe means the full dish gets cooked once,
-// so the grocery list aggregates full-recipe ingredients per usage.
-export function buildGroceryList(plan: CoachingPlanDraft): string[] {
+export type GroceryListOptions = {
+  /**
+   * Individual-plan client cooking only for herself: repeats of the same
+   * recipe are leftovers from one batch, not fresh cooks, so the list buys
+   * batches instead of meal slots.
+   */
+  soloClient?: boolean
+  /**
+   * Solo client who cooks her portion fresh every time instead of batching:
+   * quantities scale to exactly what she eats (slot uses × her portion of
+   * the recipe), so nothing is bought for leftovers. Only meaningful with
+   * soloClient.
+   */
+  freshCook?: boolean
+}
+
+/** Fraction of the full recipe a solo client eats per meal slot. Solo plans
+ * are never family-carved, so isFamily is false and a blank/invalid stored
+ * multiplier falls back to 1 (whole recipe per slot). */
+export function soloPortion(
+  recipe: Pick<CoachingPlanDraft['recipes'][number], 'clientServingMultiplier' | 'portionPinned'>,
+): number {
+  if (recipe.portionPinned) return 1
+  return resolvedServingMultiplier(recipe.clientServingMultiplier, 0, false)
+}
+
+// One batch stretches slightly: a macro-fitted portion like 0.27 of a
+// 4-serving pot eaten 4 times (1.08 pots) still means one cook — she portions
+// the pot a touch smaller rather than buying a whole second pot for the
+// shortfall. Exact whole-pot totals (4 × 0.25) are unaffected.
+const BATCH_SLACK = 0.1
+
+/** Batches a solo meal-prep client cooks to cover this many meal slots. */
+export function soloBatchCount(
+  recipe: Pick<CoachingPlanDraft['recipes'][number], 'clientServingMultiplier' | 'portionPinned'>,
+  slotUses: number,
+): number {
+  return Math.max(1, Math.ceil(slotUses * soloPortion(recipe) - BATCH_SLACK))
+}
+
+/**
+ * How much of each dish actually gets cooked this plan, in whole or
+ * fractional recipes. Family plans cook the full dish for every meal-slot
+ * usage (the family eats the rest of the pot); a solo meal-prep client cooks
+ * whole batches and eats the repeats as leftovers; a solo fresh cook makes
+ * exactly her portion each time (fractional recipes).
+ */
+export function recipeCookCounts(plan: CoachingPlanDraft, options: GroceryListOptions = {}): Map<string, number> {
   const cookCounts = new Map<string, number>()
   for (const day of plan.mealPlan) {
     for (const meal of [day.breakfast, day.lunch, day.dinner, ...day.snacks]) {
@@ -138,6 +184,20 @@ export function buildGroceryList(plan: CoachingPlanDraft): string[] {
       }
     }
   }
+  if (options.soloClient) {
+    for (const [name, slotUses] of cookCounts) {
+      const recipe = plan.recipes.find((r) => r.name === name)
+      if (!recipe) continue
+      cookCounts.set(name, options.freshCook
+        ? slotUses * soloPortion(recipe)
+        : soloBatchCount(recipe, slotUses))
+    }
+  }
+  return cookCounts
+}
+
+export function buildGroceryList(plan: CoachingPlanDraft, options: GroceryListOptions = {}): string[] {
+  const cookCounts = recipeCookCounts(plan, options)
 
   const gramTotals = new Map<string, { label: string; grams: number }>()
   const otherCounts = new Map<string, { label: string; count: number }>()
@@ -183,10 +243,14 @@ export function buildGroceryList(plan: CoachingPlanDraft): string[] {
   }
 
   // Alphabetical by food name so same-aisle items ("green bell pepper",
-  // "red bell pepper") sit next to each other.
+  // "red bell pepper") sit next to each other. Fresh-cook plans accumulate
+  // fractional cook counts; lines that can't scale by weight round up — you
+  // can't buy 0.6 of an unweighed item.
   return [
     ...[...gramTotals.values()].map(({ label, grams }) => ({ label, line: `${Math.round(grams)}g ${label}` })),
-    ...[...otherCounts.values()].map(({ label, count }) => ({ label, line: count > 1 ? `${label} (×${count})` : label })),
+    ...[...otherCounts.values()]
+      .map(({ label, count }) => ({ label, count: Math.ceil(count - 1e-9) }))
+      .map(({ label, count }) => ({ label, line: count > 1 ? `${label} (×${count})` : label })),
   ]
     .sort((a, b) => a.label.localeCompare(b.label, 'en', { sensitivity: 'base' }))
     .map(({ line }) => line)
@@ -219,7 +283,7 @@ export function mergeGroceryList(current: string[], generated: string[]): string
  * meal plan's recipes, with the coach's hand-typed staples appended. Falls
  * back to the stored list when the plan has no recipe-backed meals.
  */
-export function clientGroceryList(plan: CoachingPlanDraft): string[] {
-  const generated = buildGroceryList(plan)
+export function clientGroceryList(plan: CoachingPlanDraft, options: GroceryListOptions = {}): string[] {
+  const generated = buildGroceryList(plan, options)
   return generated.length > 0 ? mergeGroceryList(plan.groceryList, generated) : plan.groceryList
 }

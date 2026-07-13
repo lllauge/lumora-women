@@ -18,6 +18,7 @@ import {
   normalizeReferencedPlanNutrition,
 } from './normalize-plan-nutrition'
 import { buildGroceryList, mergeGroceryList } from './grocery-list'
+import { groceryListOptions } from './cooking-style'
 
 type AdminClient = Awaited<ReturnType<typeof createAdminClient>>
 
@@ -146,7 +147,13 @@ export async function resyncPlansForRecipes({
           apiKey,
         })
       }
-      next = { ...next, groceryList: mergeGroceryList(next.groceryList, buildGroceryList(next)) }
+      next = {
+        ...next,
+        groceryList: mergeGroceryList(
+          next.groceryList,
+          buildGroceryList(next, groceryListOptions(planningInputs.mealPlanStyle)),
+        ),
+      }
 
       const { error: saveError } = await supabase
         .from('coaching_plans')

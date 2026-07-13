@@ -3,6 +3,7 @@ import type {
   PlanMeal,
 } from './coaching-plan-schema'
 import { declaredServingMultiplier } from './nutrition-math.ts'
+import { isIndividualPlanStyle } from './cooking-style.ts'
 
 type Nutrients = {
   calories: number
@@ -46,10 +47,12 @@ function nutrientsForNames(names: string[], recipes: CoachingPlanDraft['recipes'
   }, { calories: 0, protein: 0, carbs: 0, fats: 0 })
 }
 
-function isAdjustableRecipe(name: string) {
+function isAdjustableRecipe(name: string, recipes: CoachingPlanDraft['recipes']) {
   // Custom slot foods represent exact coach-entered quantities and must never
-  // be silently resized. Only actual recipe portions are fitted.
-  return !/\(d\d+-(?:breakfast|lunch|dinner|snack\d+)\)$/.test(name)
+  // be silently resized. Pinned cards are the coach's explicit "as-written is
+  // her portion" — they contribute fixed macros the rest of the slot absorbs.
+  if (/\(d\d+-(?:breakfast|lunch|dinner|snack\d+)\)$/.test(name)) return false
+  return !recipes.find((recipe) => recipe.name === name)?.portionPinned
 }
 
 function macroAwareScale(current: Nutrients, target: Nutrients) {
@@ -133,8 +136,8 @@ export function fitRecipeServingMultipliers(
 
     const fitted = slots.map(({ meal, share }) => {
       const names = mealRecipeNames(meal)
-      const adjustableNames = names.filter(isAdjustableRecipe)
-      const fixedNames = names.filter((name) => !isAdjustableRecipe(name))
+      const adjustableNames = names.filter((name) => isAdjustableRecipe(name, plan.recipes))
+      const fixedNames = names.filter((name) => !isAdjustableRecipe(name, plan.recipes))
       const adjustable = nutrientsForNames(adjustableNames, plan.recipes)
       const fixed = nutrientsForNames(fixedNames, plan.recipes)
       const slotTarget = {
@@ -165,7 +168,7 @@ export function fitRecipeServingMultipliers(
       ? Math.max(0, dailyTarget.calories - fixedCalories) / predictedAdjustableCalories
       : 1
 
-    const individualPlanStyle = percentages.mealPlanStyle === 'individual_only'
+    const individualPlanStyle = isIndividualPlanStyle(percentages.mealPlanStyle)
     for (const { adjustableNames, scale } of fitted) {
       for (const name of adjustableNames) {
         const recipe = plan.recipes.find((candidate) => candidate.name === name)

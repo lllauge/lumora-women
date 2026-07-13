@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient, createClient } from '@/lib/supabase/server'
 import { getR2Object, getR2ObjectKeyFromUrl } from '@/lib/r2'
 
+export const runtime = 'nodejs'
+
 function toWebStream(body: unknown): ReadableStream | null {
   if (!body) return null
   if (body instanceof ReadableStream) return body
@@ -12,6 +14,20 @@ function toWebStream(body: unknown): ReadableStream | null {
   }
 
   return null
+}
+
+async function toByteArray(body: unknown): Promise<Uint8Array | null> {
+  if (!body) return null
+
+  const maybeByteBody = body as { transformToByteArray?: () => Promise<Uint8Array> }
+  if (typeof maybeByteBody.transformToByteArray === 'function') {
+    return maybeByteBody.transformToByteArray()
+  }
+
+  const stream = toWebStream(body)
+  if (!stream) return null
+
+  return new Uint8Array(await new Response(stream).arrayBuffer())
 }
 
 function contentDisposition(filename: string | null, inline: boolean) {
@@ -179,25 +195,22 @@ export async function GET(req: NextRequest) {
   if (!assetUrl) {
     return NextResponse.json({ error: 'Missing url parameter.' }, { status: 400 })
   }
+  const forceDownload = req.nextUrl.searchParams.get('download') === '1'
 
   const access = await canAccessAsset(req, assetUrl)
   if (!access.allowed) {
     return NextResponse.json({ error: access.status === 401 ? 'Not authenticated.' : 'Asset not found.' }, { status: access.status })
   }
+  const disposition = { ...access, inline: forceDownload ? false : access.inline }
 
   const key = getR2ObjectKeyFromUrl(assetUrl)
   if (!key) {
-    return serveExternalAsset(assetUrl, access)
+    return serveExternalAsset(assetUrl, disposition)
   }
 
   try {
     const range = req.headers.get('range')
     const object = await getR2Object(key, range)
-    const stream = toWebStream(object.Body)
-
-    if (!stream) {
-      return NextResponse.json({ error: 'Could not stream asset.' }, { status: 502 })
-    }
 
     const headers = new Headers()
     const contentType = object.ContentType ?? 'application/octet-stream'
@@ -206,7 +219,7 @@ export async function GET(req: NextRequest) {
     headers.set('Accept-Ranges', 'bytes')
     headers.set('Cache-Control', 'private, no-store')
     headers.set('Content-Type', contentType)
-    headers.set('Content-Disposition', contentDisposition(access.filename, access.inline))
+    headers.set('Content-Disposition', contentDisposition(disposition.filename, disposition.inline))
     headers.set('X-Content-Type-Options', 'nosniff')
 
     if (isHtml) {
@@ -225,6 +238,26 @@ export async function GET(req: NextRequest) {
           "frame-ancestors 'self'",
         ].join('; ')
       )
+    }
+
+    if (isHtml && !object.ContentRange) {
+      const bytes = await toByteArray(object.Body)
+      if (!bytes) {
+        return NextResponse.json({ error: 'Could not load asset.' }, { status: 502 })
+      }
+      const body = new ArrayBuffer(bytes.byteLength)
+      new Uint8Array(body).set(bytes)
+      headers.set('Content-Length', String(bytes.byteLength))
+
+      return new NextResponse(body, {
+        status: 200,
+        headers,
+      })
+    }
+
+    const stream = toWebStream(object.Body)
+    if (!stream) {
+      return NextResponse.json({ error: 'Could not stream asset.' }, { status: 502 })
     }
 
     if (object.ContentLength !== undefined) {

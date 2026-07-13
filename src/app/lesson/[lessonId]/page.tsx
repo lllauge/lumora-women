@@ -47,8 +47,10 @@ type SidebarModule = {
 
 const GOLD = 'linear-gradient(to right, #F0D060 0%, #C8980A 25%, #E8C040 50%, #A87808 75%, #D4AC30 100%)'
 
-function protectedAssetUrl(url: string) {
-  return `/api/course-assets?url=${encodeURIComponent(url)}`
+function protectedAssetUrl(url: string, options: { download?: boolean } = {}) {
+  const params = new URLSearchParams({ url })
+  if (options.download) params.set('download', '1')
+  return `/api/course-assets?${params.toString()}`
 }
 
 // Match the stored MIME (which may carry a charset like "text/html; charset=utf-8")
@@ -330,7 +332,6 @@ export default function LessonPage({
   const prevLesson = currentIdx > 0 ? allLessons[currentIdx - 1] : null
   const nextLesson = currentIdx < allLessons.length - 1 ? allLessons[currentIdx + 1] : null
 
-  const courseId = lesson ? (lesson.modules as LessonData['modules']).course_id : null
   const courseTitle = lesson ? (lesson.modules as LessonData['modules']).courses.title : null
 
   const progressPct = allLessons.length > 0
@@ -560,7 +561,7 @@ export default function LessonPage({
             <section key={dl.id} aria-label={dl.file_name} style={{ marginBottom: '2rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '1rem', marginBottom: '0.75rem', flexWrap: 'wrap' as const }}>
                 <a
-                  href={protectedAssetUrl(dl.file_url)}
+                  href={protectedAssetUrl(dl.file_url, { download: true })}
                   download={dl.file_name}
                   aria-label={`Download ${dl.file_name}`}
                   style={{

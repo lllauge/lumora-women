@@ -449,14 +449,27 @@ export default function ExerciseLibraryPage() {
                     ].filter(Boolean).join(' · ')}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  className="admin-btn-ghost"
-                  onClick={() => importYMoveExercise(exercise)}
-                  style={{ fontSize: '0.78rem', fontWeight: 700, color: '#3F6936' }}
-                >
-                  Import
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {exercise.slug && (
+                    <a
+                      href={`/api/ymove/exercises/${encodeURIComponent(exercise.slug)}/video`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="admin-btn-ghost"
+                      style={{ fontSize: '0.78rem', fontWeight: 700, color: '#6B5B16', textDecoration: 'none' }}
+                    >
+                      Preview
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    className="admin-btn-ghost"
+                    onClick={() => importYMoveExercise(exercise)}
+                    style={{ fontSize: '0.78rem', fontWeight: 700, color: '#3F6936' }}
+                  >
+                    Import
+                  </button>
+                </div>
               </div>
             ))}
           </div>

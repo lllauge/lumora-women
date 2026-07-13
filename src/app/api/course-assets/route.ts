@@ -70,22 +70,23 @@ async function canAccessAsset(req: NextRequest, assetUrl: string) {
     }
   }
 
-  // Admins need to preview any course asset while editing. Students use their
-  // session-scoped client so Supabase RLS keeps the enrollment check in place.
-  const downloadQueryClient = isAdmin ? db : supabase
-  const { data: download } = await downloadQueryClient
+  const { data: download } = await db
     .from('downloads')
-    .select('id, file_name, file_type')
+    .select('id, file_name, file_type, lessons(modules(course_id))')
     .eq('file_url', assetUrl)
     .maybeSingle()
 
   if (download) {
+    const courseId = ((download.lessons as { modules?: { course_id?: string } | null } | null)?.modules?.course_id) ?? null
+    const enrolled = isAdmin || (courseId
+      ? await userIsEnrolled(db, user.id, courseId)
+      : false)
     const isHtml =
       (typeof download.file_type === 'string' && /text\/html\b/i.test(download.file_type)) ||
       (typeof download.file_name === 'string' && /\.html?$/i.test(download.file_name))
     return {
-      allowed: true,
-      status: 200,
+      allowed: enrolled,
+      status: enrolled ? 200 : 404,
       filename: download.file_name ?? null,
       inline: isHtml,
       isHtml,

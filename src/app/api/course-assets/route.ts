@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient, createClient } from '@/lib/supabase/server'
-import { getR2Config, getR2Object, getR2ObjectKeyFromUrl, getR2PublicObjectUrl } from '@/lib/r2'
+import { getR2Object, getR2ObjectKeyFromUrl } from '@/lib/r2'
 
 export const runtime = 'nodejs'
 
@@ -52,7 +52,7 @@ async function canAccessAsset(req: NextRequest, assetUrl: string) {
   }
 
   if (!user) {
-    return { allowed: false, status: 401, filename: null, inline: true, isHtml: false, isAdmin: false }
+    return { allowed: false, status: 401, filename: null, inline: true, isHtml: false }
   }
 
   const db = await createAdminClient()
@@ -83,7 +83,6 @@ async function canAccessAsset(req: NextRequest, assetUrl: string) {
       filename: videoLesson.title ? `${videoLesson.title}.mp4` : null,
       inline: true,
       isHtml: false,
-      isAdmin,
     }
   }
 
@@ -107,12 +106,11 @@ async function canAccessAsset(req: NextRequest, assetUrl: string) {
       filename: download.file_name ?? null,
       inline: isHtml,
       isHtml,
-      isAdmin,
     }
   }
 
   console.error('[course-assets] asset not found or access denied:', { assetUrl, userId: user.id })
-  return { allowed: false, status: 404, filename: null, inline: true, isHtml: false, isAdmin }
+  return { allowed: false, status: 404, filename: null, inline: true, isHtml: false }
 }
 
 function isHttpUrl(value: string): boolean {
@@ -198,7 +196,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Missing url parameter.' }, { status: 400 })
   }
   const forceDownload = req.nextUrl.searchParams.get('download') === '1'
-  const debug = req.nextUrl.searchParams.get('debug') === '1'
 
   const access = await canAccessAsset(req, assetUrl)
   if (!access.allowed) {
@@ -276,37 +273,6 @@ export async function GET(req: NextRequest) {
     })
   } catch (err) {
     console.error('[course-assets] failed to serve asset:', err)
-    if (debug && access.isAdmin) {
-      const publicUrl = getR2PublicObjectUrl(key)
-      let publicProbe: { status: number; contentType: string | null; contentLength: string | null } | null = null
-      if (publicUrl) {
-        const response = await fetch(publicUrl, { cache: 'no-store', redirect: 'manual' }).catch(() => null)
-        if (response) {
-          publicProbe = {
-            status: response.status,
-            contentType: response.headers.get('content-type'),
-            contentLength: response.headers.get('content-length'),
-          }
-        }
-      }
-      const publicOrigin = publicUrl ? new URL(publicUrl).origin : null
-      const config = getR2Config()
-      return NextResponse.json({
-        error: 'Could not load asset.',
-        debug: {
-          key,
-          publicOrigin,
-          publicProbe,
-          r2Configured: !!config,
-          bucketCount: config
-            ? new Set([config.privateBucket, config.publicBucket, config.bucket]).size
-            : 0,
-          cause: err instanceof Error
-            ? { name: err.name, message: err.message }
-            : { name: typeof err, message: String(err) },
-        },
-      }, { status: 502 })
-    }
     return NextResponse.json({ error: 'Could not load asset.' }, { status: 502 })
   }
 }

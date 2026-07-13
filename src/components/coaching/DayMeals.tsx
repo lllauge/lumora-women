@@ -3,6 +3,7 @@ import {
   cleanIngredientText, clientPortionFactor, clientPortionLines, isClientReadable, portionFraction,
   clientRecipeNotes, shoppingPrepLines, displayRecipeName, withGrams,
 } from '@/lib/coaching-engagement'
+import { seasoningSpoonAmount } from '@/lib/household-measure'
 import InstructionSteps from '@/components/coaching/InstructionSteps'
 import PrepIngredientList from '@/components/coaching/PrepIngredientList'
 import { mealRecipeNames, type CoachingPlanDraft } from '@/lib/coaching-plan-schema'
@@ -91,7 +92,10 @@ export default function DayMeals({
                     const cleaned = cleanIngredientText(ingredient)
                     const match = cleaned.match(/^(\d+(?:\.\d+)?)\s*g\s+(.+)$/i)
                     return match
-                      ? { amount: `${match[1]}g`, name: match[2].trim() }
+                      ? {
+                          amount: seasoningSpoonAmount(match[2].trim(), Number(match[1])) ?? `${match[1]}g`,
+                          name: match[2].trim(),
+                        }
                       : { amount: '', name: cleaned }
                   }).filter((ingredient) => ingredient.name)
                 : []
@@ -184,6 +188,10 @@ function RecipeDetail({
   // carve): no gram target and no weigh-out list — the whole recipe is hers,
   // and the amounts to make it already live under Cooking & prep.
   const wholeRecipePortion = !isFamily && clientPortionFactor(recipe, individualPlanStyle) === 1
+  // Solo meal-prep recipe: the written recipe is a batch covering several
+  // meals, while the portion block holds the single-meal amounts — the same
+  // amounts she'd cook if making it fresh that day instead of batching.
+  const soloBatch = !isFamily && !wholeRecipePortion && !freshCook
   const portionLines = clientPortionLines(recipe, individualPlanStyle).filter((line) => line.grams !== null)
   const detailFraction = portionFraction(clientPortionFactor(recipe, individualPlanStyle))
   // For family recipes the headline is "¼ of the recipe" (human-friendly),
@@ -205,7 +213,7 @@ function RecipeDetail({
       {(headline.length > 0 || portionLines.length > 0 || fractionHeadline || isFamily || wholeRecipePortion) && (
         <div style={{ background: 'var(--section-tint)', borderRadius: '0.75rem', padding: '0.75rem 0.875rem', marginTop: '0.5rem' }}>
           <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 700, color: '#3F6936', marginBottom: '0.125rem' }}>
-            {isFamily ? 'YOUR PORTION (family recipe)' : 'YOUR PORTION'}
+            {isFamily ? 'YOUR PORTION (family recipe)' : soloBatch ? 'YOUR PORTION (if cooking fresh daily)' : 'YOUR PORTION'}
           </p>
           {fractionHeadline && (
             <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)', margin: '0.125rem 0 0.25rem' }}>
@@ -230,11 +238,15 @@ function RecipeDetail({
           {!isFamily && !wholeRecipePortion && portionLines.length > 0 && (
             <div style={{ marginTop: '0.5rem' }}>
               <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
-                {freshCook ? 'Cook with just these amounts — they make one portion, yours:' : 'Weigh out your serving:'}
+                {freshCook ? 'Cook with just these amounts — they make one portion, yours:' : 'Cook with these exact amounts — they make one serving:'}
               </p>
               <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
                 {portionLines.map((line, i) => {
-                  const amount = line.count ? line.count : line.grams !== null ? `${line.grams}g` : ''
+                  const amount = line.count
+                    ? line.count
+                    : line.grams !== null
+                      ? seasoningSpoonAmount(line.name, line.grams) ?? `${line.grams}g`
+                      : ''
                   return (
                     <li key={i} style={{ display: 'flex', gap: '0.625rem', alignItems: 'baseline', padding: '0.1875rem 0' }}>
                       <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-primary)', minWidth: '3.5rem', textAlign: 'right' }}>
@@ -283,7 +295,7 @@ function RecipeDetail({
                 fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-secondary)',
                 marginTop: '0.625rem', paddingTop: '0.625rem', borderTop: '1px solid rgba(200,220,192,0.6)',
               }}>
-                <span style={{ fontWeight: 700, color: '#3F6936' }}>{isFamily ? 'How to portion it: ' : 'No scale? '}</span>
+                <span style={{ fontWeight: 700, color: '#3F6936' }}>{isFamily ? 'How to portion it: ' : 'Meal prepping instead? '}</span>
                 {fraction.label === 'the whole recipe'
                   ? 'This whole recipe is your portion, enjoy all of it.'
                   : `Cook the full recipe and divide it into ${fraction.parts} equal portions — ${
@@ -316,7 +328,11 @@ function RecipeDetail({
       {recipe.ingredients.length > 0 && (
         <>
           <h3 style={sectionTitle}>
-            {isFamily ? 'Cooking & prep (full family recipe)' : 'Cooking & prep'}
+            {isFamily
+              ? 'Cooking & prep (full family recipe)'
+              : soloBatch
+                ? 'Cooking & prep (to prep multiple meals for the week)'
+                : 'Cooking & prep'}
           </h3>
           <p style={{ ...bodyText, fontSize: '0.8125rem', fontStyle: 'italic', marginBottom: '0.5rem' }}>
             {freshCook && !wholeRecipePortion

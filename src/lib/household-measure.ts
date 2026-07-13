@@ -127,6 +127,23 @@ export function householdMeasure(label: string, grams: number): string | null {
   return null
 }
 
+/**
+ * Spoon amount ("¼ tsp", "2 tbsp") for macro-trivial seasonings — dried
+ * herbs, ground spices, salts, extracts. Null for everything else, including
+ * oils and other calorie-dense tbsp foods: those stay as exact grams because
+ * a spoon's worth of error actually moves the macros.
+ */
+export function seasoningSpoonAmount(label: string, grams: number): string | null {
+  const lower = label.toLowerCase()
+  for (const unit of HOUSEHOLD_UNITS) {
+    if (unit.label !== 'tsp' || unit.template) continue
+    if (unit.match.test(lower)) {
+      return spoonMeasure(grams / unit.gramsPer, 'tsp', '').trim()
+    }
+  }
+  return null
+}
+
 const FRACTION_VALUES: Record<string, number> = {
   '¼': 0.25, '½': 0.5, '¾': 0.75, '⅓': 1 / 3, '⅔': 2 / 3, '⅛': 0.125,
 }
@@ -194,8 +211,11 @@ export function shoppingPrepLines(ingredients: string[]): PrepLine[] {
       continue
     }
     const { grams, label } = cookedGramsToRaw(match[2].trim(), Number(match[1]))
+    // Seasonings show as spoons even in exact mode — nobody weighs 2g of
+    // paprika, and the macro impact of the rounding is nil.
+    const spoon = seasoningSpoonAmount(label, grams)
     lines.push({
-      grams: `${Math.round(grams)}g ${label}`,
+      grams: spoon ? `${spoon} ${label}` : `${Math.round(grams)}g ${label}`,
       easy: householdMeasure(label, grams) ?? `${approxWeightMeasure(grams)} ${label}`,
       state: ingredientWeighState(label),
     })

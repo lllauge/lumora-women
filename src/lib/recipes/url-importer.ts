@@ -3,6 +3,7 @@ import {
   inferredDiscardedBrineIndexes,
   setIngredientNutritionExcluded,
 } from '@/lib/nutrition-ingredient'
+import { requestOpenAiJson } from '@/lib/openai-responses'
 
 export type ImportedIngredient = {
   /** The original ingredient string from the recipe (e.g. "1.5 lbs chicken breast"). */
@@ -104,6 +105,15 @@ type JsonLdRecipe = {
   totalTime?: string
 }
 
+type ExtractedRecipe = {
+  title: string
+  servings: number
+  prepTime: string
+  cookTime: string
+  ingredients: string[]
+  instructions: string[]
+}
+
 function extractJsonLdRecipe(html: string): JsonLdRecipe | null {
   // Recipe sites embed schema.org/Recipe as JSON-LD in <script type="application/ld+json">.
   // Some sites nest the Recipe under @graph or list multiple types — handle both.
@@ -187,8 +197,21 @@ Return ONLY valid JSON with this exact shape: { "title": string, "servings": num
 - prepTime / cookTime: short human strings like "15 min" or "1 hr 30 min". Empty string if unknown.
 - servings: integer. Default to 4 if unclear.`
 
-async function extractRecipeWithOpenAI(html: string, openAiKey: string): Promise<JsonLdRecipe> {
-  const model = process.env.OPENAI_MODEL || 'gpt-4o-mini'
+const ExtractedRecipeSchema = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['title', 'servings', 'prepTime', 'cookTime', 'ingredients', 'instructions'],
+  properties: {
+    title: { type: 'string' },
+    servings: { type: 'number' },
+    prepTime: { type: 'string' },
+    cookTime: { type: 'string' },
+    ingredients: { type: 'array', items: { type: 'string' } },
+    instructions: { type: 'array', items: { type: 'string' } },
+  },
+} as const
+
+async function extractRecipeWithOpenAI(html: string, openAiKey: string): Promise<ExtractedRecipe> {
   // Strip scripts and trim to keep prompt size sane.
   const cleaned = html
     .replace(/<script[\s\S]*?<\/script>/gi, ' ')
@@ -200,26 +223,18 @@ async function extractRecipeWithOpenAI(html: string, openAiKey: string): Promise
     // ingredient list, for example, begins around character 16,000.
     .slice(0, 32_000)
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${openAiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: EXTRACT_INSTRUCTIONS },
-        { role: 'user', content: cleaned },
-      ],
-    }),
+  return requestOpenAiJson<ExtractedRecipe>({
+    apiKey: openAiKey,
+    instructions: EXTRACT_INSTRUCTIONS,
+    schemaName: 'recipe_url_extract',
+    schema: ExtractedRecipeSchema,
+    input: [
+      {
+        role: 'user',
+        content: [{ type: 'input_text', text: cleaned }],
+      },
+    ],
   })
-
-  if (!response.ok) throw new Error(`OpenAI recipe extract failed: ${response.status}`)
-  const data = await response.json() as { choices?: { message?: { content?: string } }[] }
-  const content = data.choices?.[0]?.message?.content ?? '{}'
-  return JSON.parse(content) as JsonLdRecipe
 }
 
 /**
@@ -261,12 +276,12 @@ export async function importRecipeFromUrl(
   // Fall back to an LLM extraction when the page has no structured data.
   if (ingredientStrings.length === 0) {
     const llm = await extractRecipeWithOpenAI(html, openAiKey)
-    title = title || String(llm.name ?? '').trim() || 'Imported recipe'
-    if (!servings || servings <= 0) servings = parseServings(llm.recipeYield)
-    if (!prepTime) prepTime = String(llm.prepTime ?? '').trim()
-    if (!cookTime) cookTime = String(llm.cookTime ?? '').trim()
-    ingredientStrings = (llm.recipeIngredient ?? llm.ingredients ?? []).map((s) => String(s).trim()).filter(Boolean)
-    if (instructions.length === 0) instructions = parseInstructions(llm.recipeInstructions)
+    title = title || llm.title.trim() || 'Imported recipe'
+    if (!servings || servings <= 0) servings = llm.servings > 0 ? llm.servings : 4
+    if (!prepTime) prepTime = llm.prepTime.trim()
+    if (!cookTime) cookTime = llm.cookTime.trim()
+    ingredientStrings = llm.ingredients.map((s) => s.trim()).filter(Boolean)
+    if (instructions.length === 0) instructions = llm.instructions.map((s) => s.trim()).filter(Boolean)
   }
 
   if (ingredientStrings.length === 0) {

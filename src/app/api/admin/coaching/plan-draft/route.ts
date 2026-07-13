@@ -15,6 +15,7 @@ import { calculateRecipeNutritionFromUsda } from '@/lib/usda/food-data'
 import { declaredServingMultiplier } from '@/lib/nutrition-math'
 import { isIndividualPlanStyle } from '@/lib/cooking-style'
 import { fitRecipeServingMultipliers } from '@/lib/meal-portion-fitting'
+import { OpenAiResponsesError, requestOpenAiJson } from '@/lib/openai-responses'
 
 const LibraryRecipeSchema = z.object({
   name: z.string(),
@@ -35,25 +36,6 @@ const DraftRequestSchema = z.object({
   planningInputs: z.record(z.string(), z.string()).optional(),
   libraryRecipes: z.array(LibraryRecipeSchema).optional(),
 })
-
-function extractOutputText(response: unknown) {
-  const output = (response as { output?: Array<{ content?: Array<{ type?: string; text?: string }> }> }).output
-  return output
-    ?.flatMap((item) => item.content ?? [])
-    .find((content) => content.type === 'output_text' && typeof content.text === 'string')
-    ?.text
-}
-
-function openAiErrorMessage(errorText: string) {
-  try {
-    const parsed = JSON.parse(errorText) as { error?: { message?: string; type?: string; code?: string } }
-    const message = parsed.error?.message
-    const code = parsed.error?.code || parsed.error?.type
-    return [message, code ? `(${code})` : ''].filter(Boolean).join(' ')
-  } catch {
-    return errorText.slice(0, 400)
-  }
-}
 
 function firstNumber(value: string | undefined) {
   const match = String(value ?? '').match(/-?\d+(\.\d+)?/)
@@ -325,14 +307,10 @@ export async function POST(req: NextRequest) {
     'For every recipe, write ingredient lines with measurable weights whenever practical, such as "150g cooked chicken breast", "200g cooked rice", "2 oz cheddar cheese", or "100g avocado". Avoid vague amounts like "1 bowl" or "to taste".',
   ]
 
-  const response = await fetch('https://api.openai.com/v1/responses', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${openAiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+  let draft: unknown
+  try {
+    draft = await requestOpenAiJson<unknown>({
+      apiKey: openAiKey,
       instructions: [
         'You are assisting Laura from Lumora Women with drafting a 1:1 coaching macro and meal plan.',
         'Create a practical, non-clinical, non-medical draft that Laura will manually review before sending to the client.',
@@ -351,6 +329,9 @@ export async function POST(req: NextRequest) {
         'Default to high-protein, high-fiber meals with moderate healthy fats and mostly minimally processed carbohydrates.',
         'Return only valid structured JSON matching the schema.',
       ].join('\n'),
+      schemaName: 'coaching_plan_draft',
+      schema: CoachingPlanAiJsonSchema,
+      maxOutputTokens: 9000,
       input: [
         {
           role: 'user',
@@ -387,35 +368,13 @@ export async function POST(req: NextRequest) {
           ],
         },
       ],
-      text: {
-        format: {
-          type: 'json_schema',
-          name: 'coaching_plan_draft',
-          strict: true,
-          schema: CoachingPlanAiJsonSchema,
-        },
-      },
-      max_output_tokens: 9000,
-    }),
-  })
-
-  if (!response.ok) {
-    const errorText = await response.text()
-    console.error('[coaching plan ai] OpenAI error:', errorText)
-    return NextResponse.json({ error: `AI draft failed: ${openAiErrorMessage(errorText)}` }, { status: 502 })
-  }
-
-  const data = await response.json()
-  const text = extractOutputText(data)
-  if (!text) {
-    return NextResponse.json({ error: 'AI draft returned no text.' }, { status: 502 })
-  }
-
-  let draft: unknown
-  try {
-    draft = JSON.parse(text)
-  } catch {
-    return NextResponse.json({ error: 'AI draft returned invalid JSON.' }, { status: 502 })
+    })
+  } catch (error) {
+    if (error instanceof OpenAiResponsesError) {
+      console.error('[coaching plan ai] OpenAI error:', error.message)
+      return NextResponse.json({ error: `AI draft failed: ${error.message}` }, { status: 502 })
+    }
+    throw error
   }
 
   if (!draft || typeof draft !== 'object' || Array.isArray(draft)) {

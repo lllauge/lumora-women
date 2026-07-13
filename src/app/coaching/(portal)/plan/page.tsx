@@ -11,7 +11,7 @@ export default async function CoachingPlanPage({
 }: {
   searchParams: Promise<{ day?: string; meal?: string; recipe?: string }>
 }) {
-  const { client, plan, individualPlanStyle, freshCookStyle, mealPlanStartDate } = await getPortalContext()
+  const { client, plan, individualPlanStyle, freshCookStyle, familyPrepStyle, mealPlanStartDate } = await getPortalContext()
   const selected = await searchParams
   return (
     <ClientPlanView
@@ -19,6 +19,7 @@ export default async function CoachingPlanPage({
       plan={plan}
       individualPlanStyle={individualPlanStyle}
       freshCookStyle={freshCookStyle}
+      familyPrepStyle={familyPrepStyle}
       mealPlanStartDate={mealPlanStartDate}
       selectedDayIndex={Number(selected.day)}
       selectedMealIndex={Number(selected.meal)}

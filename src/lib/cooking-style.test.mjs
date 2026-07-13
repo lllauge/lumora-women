@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { groceryListOptions, isIndividualPlanStyle, mealPrepBadges } from './cooking-style.ts'
+import { familyPrepBadges, groceryListOptions, isIndividualPlanStyle, mealPrepBadges } from './cooking-style.ts'
 
 function meal(names) {
   return { name: names.join(' + '), description: '', macros: '', recipeName: '', recipeNames: names }
@@ -107,4 +107,27 @@ test('pinned recipes cook per use: no leftover badges, no batch math', () => {
   ]
   const pinned = { ...recipe('Oats', '0.25'), portionPinned: true }
   assert.equal(mealPrepBadges(days, [pinned]).size, 0)
+})
+
+test('family meal prep keeps family math: not individual, family grocery quantities', () => {
+  assert.equal(isIndividualPlanStyle('family_meal_prep'), false)
+  assert.deepEqual(groceryListOptions('family_meal_prep'), { soloClient: false, freshCook: false })
+})
+
+test('family meal prep: repeated dinner gets double-batch and reheat badges', () => {
+  const days = [
+    { day: day('Monday', ['Chicken Bake']), index: 0 },
+    { day: day('Thursday', ['Chicken Bake']), index: 3 },
+  ]
+  const badges = familyPrepBadges(days)
+  assert.equal(badges.get('0:Chicken Bake').kind, 'cook')
+  assert.match(badges.get('0:Chicken Bake').label, /double batch/)
+  assert.match(badges.get('0:Chicken Bake').label, /Thursday/)
+  assert.equal(badges.get('3:Chicken Bake').kind, 'leftover')
+  assert.match(badges.get('3:Chicken Bake').label, /reheat/)
+})
+
+test('family meal prep: single-use dinners get no badge', () => {
+  const days = [{ day: day('Monday', ['Chicken Bake']), index: 0 }]
+  assert.equal(familyPrepBadges(days).size, 0)
 })

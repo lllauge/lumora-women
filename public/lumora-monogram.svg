@@ -1,0 +1,76 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Lumora Women monogram</title>
+  <desc id="desc">A botanical LW monogram in burnished gold on deep forest green.</desc>
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="42%" r="64%">
+      <stop offset="0%" stop-color="#1E3220"/>
+      <stop offset="100%" stop-color="#10230F"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="238" y1="178" x2="786" y2="846" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#F0D060"/>
+      <stop offset="34%" stop-color="#C8980A"/>
+      <stop offset="68%" stop-color="#E8C040"/>
+      <stop offset="100%" stop-color="#A87808"/>
+    </linearGradient>
+    <linearGradient id="softGold" x1="326" y1="310" x2="716" y2="736" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFF2B8"/>
+      <stop offset="45%" stop-color="#E8C040"/>
+      <stop offset="100%" stop-color="#C8980A"/>
+    </linearGradient>
+  </defs>
+
+  <circle cx="512" cy="512" r="512" fill="url(#bg)"/>
+  <circle cx="512" cy="512" r="372" stroke="url(#gold)" stroke-width="24"/>
+  <circle cx="512" cy="512" r="330" stroke="#C8DCC0" stroke-opacity="0.14" stroke-width="2"/>
+
+  <text
+    x="512"
+    y="650"
+    text-anchor="middle"
+    font-family="Georgia, 'Times New Roman', serif"
+    font-size="382"
+    font-weight="700"
+    letter-spacing="-34"
+    fill="url(#gold)"
+  >LW</text>
+
+  <path
+    d="M512 712C512 629 512 574 512 502"
+    stroke="#F7DEA0"
+    stroke-width="14"
+    stroke-linecap="round"
+  />
+  <path
+    d="M512 486C458 432 461 366 512 306C563 366 566 432 512 486Z"
+    fill="url(#gold)"
+  />
+  <path
+    d="M510 488C463 482 426 449 410 398C468 397 506 426 510 488Z"
+    fill="url(#gold)"
+  />
+  <path
+    d="M514 488C561 482 598 449 614 398C556 397 518 426 514 488Z"
+    fill="url(#gold)"
+  />
+  <path
+    d="M512 496C503 435 506 382 512 334"
+    stroke="#10230F"
+    stroke-opacity="0.72"
+    stroke-width="12"
+    stroke-linecap="round"
+  />
+  <path
+    d="M455 433C478 446 495 465 506 493"
+    stroke="#10230F"
+    stroke-opacity="0.6"
+    stroke-width="10"
+    stroke-linecap="round"
+  />
+  <path
+    d="M569 433C546 446 529 465 518 493"
+    stroke="#10230F"
+    stroke-opacity="0.6"
+    stroke-width="10"
+    stroke-linecap="round"
+  />
+</svg>

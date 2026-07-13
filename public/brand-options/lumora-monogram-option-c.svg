@@ -1,0 +1,15 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Lumora Women monogram option C</title>
+  <desc id="desc">A feminine botanical emblem where leaves form an abstract LW.</desc>
+  <rect width="1024" height="1024" fill="#EAF2E4"/>
+  <path d="M246 690C373 637 430 527 423 340C309 409 242 520 246 690Z" fill="#162814"/>
+  <path d="M414 690C503 612 548 500 512 313C453 420 408 540 414 690Z" fill="#4A7A40"/>
+  <path d="M610 690C521 612 476 500 512 313C571 420 616 540 610 690Z" fill="#4A7A40"/>
+  <path d="M778 690C651 637 594 527 601 340C715 409 782 520 778 690Z" fill="#162814"/>
+  <path d="M246 690C335 634 392 540 423 340" stroke="#C8980A" stroke-width="11" stroke-linecap="round"/>
+  <path d="M414 690C468 599 499 474 512 313" stroke="#C8980A" stroke-width="11" stroke-linecap="round"/>
+  <path d="M610 690C556 599 525 474 512 313" stroke="#C8980A" stroke-width="11" stroke-linecap="round"/>
+  <path d="M778 690C689 634 632 540 601 340" stroke="#C8980A" stroke-width="11" stroke-linecap="round"/>
+  <path d="M238 746H786" stroke="#162814" stroke-width="20" stroke-linecap="round"/>
+  <text x="512" y="870" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="58" letter-spacing="14" fill="#162814">LUMORA</text>
+</svg>

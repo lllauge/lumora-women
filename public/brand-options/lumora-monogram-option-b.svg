@@ -1,0 +1,11 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Lumora Women monogram option B</title>
+  <desc id="desc">A minimal luxury LW monogram in burnished gold.</desc>
+  <rect width="1024" height="1024" rx="96" fill="#162814"/>
+  <path d="M250 724V298H308V672H481V724H250Z" fill="#E8C040"/>
+  <path d="M421 298H476L548 619L632 390H682L766 619L838 298H894L796 724H735L656 489L576 724H516L421 298Z" fill="#E8C040"/>
+  <path d="M205 230H819" stroke="#C8DCC0" stroke-opacity=".32" stroke-width="2"/>
+  <path d="M205 794H819" stroke="#C8DCC0" stroke-opacity=".32" stroke-width="2"/>
+  <path d="M512 222C544 260 544 299 512 337C480 299 480 260 512 222Z" fill="#C8DCC0"/>
+  <path d="M512 345V418" stroke="#C8DCC0" stroke-width="8" stroke-linecap="round"/>
+</svg>

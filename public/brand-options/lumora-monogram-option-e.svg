@@ -1,0 +1,12 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Lumora Women monogram option E</title>
+  <desc id="desc">A quiet wordmark-style LW monogram with a sunrise motif.</desc>
+  <rect width="1024" height="1024" fill="#FFFFFF"/>
+  <path d="M195 688V324H250V638H409V688H195Z" fill="#1A2818"/>
+  <path d="M375 324H430L493 590L566 396H616L689 590L752 324H807L716 688H661L591 478L519 688H465L375 324Z" fill="#1A2818"/>
+  <path d="M304 274C365 223 435 198 512 198C589 198 659 223 720 274" stroke="#C8980A" stroke-width="13" stroke-linecap="round"/>
+  <path d="M512 164V227" stroke="#C8980A" stroke-width="10" stroke-linecap="round"/>
+  <path d="M468 178L486 230" stroke="#C8980A" stroke-width="8" stroke-linecap="round"/>
+  <path d="M556 178L538 230" stroke="#C8980A" stroke-width="8" stroke-linecap="round"/>
+  <text x="512" y="794" text-anchor="middle" font-family="'DM Sans', Arial, sans-serif" font-size="42" letter-spacing="9" fill="#4A7A40">LUMORA WOMEN</text>
+</svg>

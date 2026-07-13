@@ -1,0 +1,12 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Lumora Women monogram option D</title>
+  <desc id="desc">A clean modern LW ligature with warm botanical colors.</desc>
+  <rect width="1024" height="1024" fill="#F0E8D8"/>
+  <path d="M250 716V308" stroke="#162814" stroke-width="46" stroke-linecap="round"/>
+  <path d="M250 716H480" stroke="#162814" stroke-width="46" stroke-linecap="round"/>
+  <path d="M436 308L535 716L640 436L745 716L844 308" stroke="#162814" stroke-width="46" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M230 251C304 189 409 159 512 160C615 159 720 189 794 251" stroke="#C8980A" stroke-width="18" stroke-linecap="round"/>
+  <path d="M230 773C304 835 409 865 512 864C615 865 720 835 794 773" stroke="#C8980A" stroke-width="18" stroke-linecap="round"/>
+  <circle cx="512" cy="512" r="36" fill="#4A7A40"/>
+  <path d="M512 472C486 442 487 407 512 375C537 407 538 442 512 472Z" fill="#4A7A40"/>
+</svg>

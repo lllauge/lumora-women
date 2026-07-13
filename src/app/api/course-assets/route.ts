@@ -48,9 +48,6 @@ async function canAccessAsset(req: NextRequest, assetUrl: string) {
     .maybeSingle()
 
   const isAdmin = profile?.role === 'admin'
-  if (isAdmin) {
-    return { allowed: true, status: 200, filename: null, inline: true, isHtml: false }
-  }
 
   const { data: videoLesson } = await db
     .from('lessons')
@@ -60,9 +57,9 @@ async function canAccessAsset(req: NextRequest, assetUrl: string) {
 
   if (videoLesson) {
     const courseId = ((videoLesson.modules as { course_id?: string } | null)?.course_id) ?? null
-    const enrolled = courseId
+    const enrolled = isAdmin || (courseId
       ? await userIsEnrolled(db, user.id, courseId)
-      : false
+      : false)
 
     return {
       allowed: enrolled,
@@ -73,10 +70,10 @@ async function canAccessAsset(req: NextRequest, assetUrl: string) {
     }
   }
 
-  // Use the user's own session for the download lookup so Supabase RLS
-  // handles the enrollment check — the "Enrolled users can view downloads"
-  // policy already ensures only enrolled students can see a download row.
-  const { data: download } = await supabase
+  // Admins need to preview any course asset while editing. Students use their
+  // session-scoped client so Supabase RLS keeps the enrollment check in place.
+  const downloadQueryClient = isAdmin ? db : supabase
+  const { data: download } = await downloadQueryClient
     .from('downloads')
     .select('id, file_name, file_type')
     .eq('file_url', assetUrl)
@@ -97,6 +94,68 @@ async function canAccessAsset(req: NextRequest, assetUrl: string) {
 
   console.error('[course-assets] asset not found or access denied:', { assetUrl, userId: user.id })
   return { allowed: false, status: 404, filename: null, inline: true, isHtml: false }
+}
+
+function isHttpUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+async function serveExternalAsset(assetUrl: string, access: { filename: string | null; inline: boolean; isHtml: boolean }) {
+  if (!isHttpUrl(assetUrl)) {
+    return NextResponse.json(
+      { error: 'Only HTTP(S) download URLs can be served through this route.' },
+      { status: 400 }
+    )
+  }
+
+  if (!access.isHtml) {
+    return NextResponse.redirect(assetUrl)
+  }
+
+  try {
+    const response = await fetch(assetUrl, {
+      cache: 'no-store',
+      redirect: 'follow',
+    })
+
+    if (!response.ok || !response.body) {
+      return NextResponse.json({ error: 'Could not load asset.' }, { status: 502 })
+    }
+
+    const headers = new Headers()
+    headers.set('Cache-Control', 'private, no-store')
+    headers.set('Content-Type', response.headers.get('content-type') ?? 'text/html; charset=utf-8')
+    headers.set('Content-Disposition', contentDisposition(access.filename, access.inline))
+    headers.set('X-Content-Type-Options', 'nosniff')
+    headers.set(
+      'Content-Security-Policy',
+      [
+        "default-src 'none'",
+        "script-src 'none'",
+        "object-src 'none'",
+        "img-src https: data:",
+        "style-src 'unsafe-inline' https://fonts.googleapis.com",
+        "font-src https://fonts.gstatic.com data:",
+        "connect-src 'none'",
+        "base-uri 'none'",
+        "form-action 'none'",
+        "frame-ancestors 'self'",
+      ].join('; ')
+    )
+
+    return new NextResponse(response.body, {
+      status: 200,
+      headers,
+    })
+  } catch (err) {
+    console.error('[course-assets] failed to serve external asset:', err)
+    return NextResponse.json({ error: 'Could not load asset.' }, { status: 502 })
+  }
 }
 
 async function userIsEnrolled(
@@ -120,17 +179,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Missing url parameter.' }, { status: 400 })
   }
 
-  const key = getR2ObjectKeyFromUrl(assetUrl)
-  if (!key) {
-    return NextResponse.json(
-      { error: 'Only Lumora-hosted R2 course assets can be served through this protected route.' },
-      { status: 400 }
-    )
-  }
-
   const access = await canAccessAsset(req, assetUrl)
   if (!access.allowed) {
     return NextResponse.json({ error: access.status === 401 ? 'Not authenticated.' : 'Asset not found.' }, { status: access.status })
+  }
+
+  const key = getR2ObjectKeyFromUrl(assetUrl)
+  if (!key) {
+    return serveExternalAsset(assetUrl, access)
   }
 
   try {

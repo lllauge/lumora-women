@@ -182,7 +182,7 @@ function RecipeDetail({
   const isFamily = !individualPlanStyle && parseFloat(recipe.familyServings) > 1 && !recipe.portionPinned
   // A recipe built as exactly the client's serving (custom/individual, no
   // carve): no gram target and no weigh-out list — the whole recipe is hers,
-  // and the amounts to make it already live under Shopping & prep.
+  // and the amounts to make it already live under Cooking & prep.
   const wholeRecipePortion = !isFamily && clientPortionFactor(recipe, individualPlanStyle) === 1
   const portionLines = clientPortionLines(recipe, individualPlanStyle).filter((line) => line.grams !== null)
   const detailFraction = portionFraction(clientPortionFactor(recipe, individualPlanStyle))
@@ -316,7 +316,7 @@ function RecipeDetail({
       {recipe.ingredients.length > 0 && (
         <>
           <h3 style={sectionTitle}>
-            {isFamily ? 'Shopping & prep (full family recipe)' : 'Shopping & prep'}
+            {isFamily ? 'Cooking & prep (full family recipe)' : 'Cooking & prep'}
           </h3>
           <p style={{ ...bodyText, fontSize: '0.8125rem', fontStyle: 'italic', marginBottom: '0.5rem' }}>
             {freshCook && !wholeRecipePortion

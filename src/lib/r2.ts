@@ -146,6 +146,17 @@ export function getR2ObjectKeyFromUrl(value: string): string | null {
   }
 }
 
+export function getR2PublicObjectUrl(key: string): string | null {
+  const config = getR2Config()
+  if (!config) return null
+
+  const encodedKey = key
+    .split('/')
+    .map((part) => encodeURIComponent(part))
+    .join('/')
+  return `${config.publicUrl}/${encodedKey}`
+}
+
 export async function getR2Object(key: string, range?: string | null) {
   const config = getR2Config()
   if (!config) {
@@ -174,6 +185,24 @@ export async function getR2Object(key: string, range?: string | null) {
   // Course assets uploaded before the public/private bucket split may still
   // live in the original base bucket. Access is already checked before this
   // helper is called, so trying configured legacy buckets does not expose files.
+  const publicUrl = getR2PublicObjectUrl(key)
+  if (publicUrl) {
+    const response = await fetch(publicUrl, {
+      cache: 'no-store',
+      headers: range ? { Range: range } : undefined,
+    })
+
+    if (response.ok && response.body) {
+      const contentLength = response.headers.get('content-length')
+      return {
+        Body: response.body,
+        ContentType: response.headers.get('content-type') ?? undefined,
+        ContentLength: contentLength ? Number(contentLength) : undefined,
+        ContentRange: response.headers.get('content-range') ?? undefined,
+      }
+    }
+  }
+
   throw lastError
 }
 

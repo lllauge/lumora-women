@@ -275,3 +275,38 @@ test('returns nothing without a calorie target', () => {
   plan.macroTargets = { calories: '' }
   assert.equal(fitRecipeServingMultipliers(plan, percentages).size, 0)
 })
+
+test('pinned recipes are never fitted; the rest of the slot absorbs them', () => {
+  const plan = {
+    macroTargets: { calories: '1575', protein: '120g', carbs: '139g', fats: '60g' },
+    mealPlan: [{
+      day: 'Monday',
+      breakfast: meal(['Overnight Oats', 'Greek Yogurt Bowl']),
+      lunch: meal(['Custom lunch (d1-lunch)']),
+      dinner: meal(['Custom dinner (d1-dinner)']),
+      snacks: [meal(['Custom Snack (d1-snack0)'])],
+    }],
+    recipes: [
+      recipe({
+        name: 'Overnight Oats', portionPinned: true,
+        calories: '293', protein: '9.6g', carbs: '42.5g', fats: '10g',
+        clientServingMultiplier: '0.75',
+      }),
+      recipe({
+        name: 'Greek Yogurt Bowl',
+        calories: '300', protein: '25g', carbs: '30g', fats: '8g',
+        clientServingMultiplier: '1',
+      }),
+      recipe({ name: 'Custom lunch (d1-lunch)', calories: '470', protein: '40g', carbs: '42g', fats: '16g' }),
+      recipe({ name: 'Custom dinner (d1-dinner)', calories: '400', protein: '35g', carbs: '35g', fats: '13g' }),
+      recipe({ name: 'Custom Snack (d1-snack0)', calories: '150', protein: '15g', carbs: '12g', fats: '5g' }),
+    ],
+  }
+  const fitted = fitRecipeServingMultipliers(plan, { mealPlanStyle: 'individual_only' })
+  // The pinned card gets no fitted multiplier at all…
+  assert.equal(fitted.has('Overnight Oats'), false)
+  // …and the adjustable neighbor shrinks to absorb the pinned 293 cal
+  // (551-cal breakfast slot − 293 pinned ≈ 258 for the 300-cal bowl).
+  const bowl = fitted.get('Greek Yogurt Bowl')
+  assert.ok(bowl > 0.5 && bowl < 1, `expected the bowl carved below 1, got ${bowl}`)
+})

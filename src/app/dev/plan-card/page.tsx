@@ -4,20 +4,38 @@ import DayMeals from '@/components/coaching/DayMeals'
 import GroceryChecklist from '@/components/coaching/GroceryChecklist'
 import { buildGroceryList } from '@/lib/grocery-list'
 import { getClientPortalPreview, groceryDisplay } from '@/lib/coaching-engagement'
+import { isFreshCookStyle, isIndividualPlanStyle } from '@/lib/cooking-style'
+import { createAdminClient } from '@/lib/supabase/server'
 import { CoachingPlanSchema, MealDaySchema, RecipeSchema } from '@/lib/coaching-plan-schema'
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 // Dev-only harness: renders the client plan meal card with fixture data so
 // portion display and mobile layout can be checked without a client login.
-// Pass ?client=<coaching_clients.id> to render a real client's published plan
-// through the same components the portal uses. 404s in production.
+// Pass ?client=<coaching_clients.id> (or a first name, dev convenience) to
+// render a real client's published plan through the same components the
+// portal uses; add &style=family_dinners|individual_only|individual_fresh to
+// preview her plan under a different cooking style without changing her
+// saved plan. 404s in production.
 export default async function PlanCardPreview({
   searchParams,
 }: {
-  searchParams: Promise<{ client?: string }>
+  searchParams: Promise<{ client?: string; style?: string }>
 }) {
   if (process.env.NODE_ENV === 'production') notFound()
 
-  const { client: clientId } = await searchParams
+  let { client: clientId } = await searchParams
+  const { style } = await searchParams
+  if (clientId && !UUID.test(clientId)) {
+    const admin = await createAdminClient()
+    const { data } = await admin
+      .from('coaching_clients')
+      .select('id')
+      .ilike('first_name', clientId)
+      .maybeSingle()
+    clientId = data?.id
+    if (!clientId) notFound()
+  }
   if (clientId) {
     const preview = await getClientPortalPreview(clientId)
     if (!preview?.plan) notFound()
@@ -30,7 +48,8 @@ export default async function PlanCardPreview({
           <ClientPlanView
             client={{ id: preview.client.id }}
             plan={preview.plan}
-            individualPlanStyle={preview.individualPlanStyle}
+            individualPlanStyle={style ? isIndividualPlanStyle(style) : preview.individualPlanStyle}
+            freshCookStyle={style ? isFreshCookStyle(style) : preview.freshCookStyle}
             mealPlanStartDate={preview.mealPlanStartDate}
             previewMode
           />
@@ -87,6 +106,22 @@ export default async function PlanCardPreview({
       ingredients: ['170g Greek yogurt, plain, nonfat', '30g Granola', '80g Blueberries'],
     }),
     RecipeSchema.parse({
+      // Norma's oats case: a stale ¾ carve overridden by the coach's pin —
+      // the card must read "whole recipe is your portion" with full amounts.
+      name: 'Overnight Oats - Blueberry (pinned demo)',
+      familyServings: '4',
+      clientServingMultiplier: '0.75',
+      portionPinned: true,
+      prepTime: '5 min',
+      calories: '293',
+      protein: '9.6',
+      carbs: '42.5',
+      fats: '10',
+      fiber: '9.6',
+      ingredients: ['[fdc:1] 40g Oats, dry', '[fdc:2] 100g Blueberries, raw', '[fdc:3] 240g Unsweetened almond milk'],
+      instructions: ['Stir everything together and refrigerate overnight.'],
+    }),
+    RecipeSchema.parse({
       name: 'Berry Protein Smoothie',
       clientServingMultiplier: '1',
       clientServingGrams: '425',
@@ -103,8 +138,8 @@ export default async function PlanCardPreview({
   const day = MealDaySchema.parse({
     day: 'Monday',
     breakfast: {
-      name: 'Berry Protein Smoothie',
-      recipeNames: ['Berry Protein Smoothie'],
+      name: 'Berry Protein Smoothie + Overnight Oats - Blueberry (pinned demo)',
+      recipeNames: ['Berry Protein Smoothie', 'Overnight Oats - Blueberry (pinned demo)'],
     },
     dinner: {
       name: 'Baked Chicken Breast + Roasted Sweet Potato + Custom lunch (d1-lunch)',

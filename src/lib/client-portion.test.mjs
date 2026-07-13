@@ -143,3 +143,18 @@ test('no-scale fraction carries the division for multi-part shares', () => {
   assert.deepEqual(portionFraction(2 / 3), { label: '⅔', qualifier: null, parts: 3, take: 2 })
   assert.deepEqual(portionFraction(0.38), { label: '⅜', qualifier: null, parts: 8, take: 3 })
 })
+
+test('a pinned recipe is always the whole recipe, whatever the stored carve says', () => {
+  // Pin set after a fit carved ¾ — display must not wait for the next save.
+  const r = recipe({
+    portionPinned: true,
+    clientServingMultiplier: '0.75',
+    familyServings: '4',
+    ingredients: ['[fdc:1] 40g Oats, dry', '[fdc:2] 100g Blueberries, raw'],
+  })
+  assert.equal(clientPortionFactor(r, true), 1)
+  assert.equal(clientPortionFactor(r, false), 1)
+  const lines = clientPortionLines(r, true)
+  assert.equal(lines[0].grams, 40)
+  assert.equal(lines[1].grams, 100)
+})

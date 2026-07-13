@@ -54,6 +54,10 @@ export const RecipeSchema = z.object({
   familyServings: z.string().default(''),
   clientServing: z.string().default(''),
   clientServingMultiplier: z.string().default(''),
+  // Coach's pin: the recipe as written IS her portion. The macro fitter
+  // never resizes a pinned card and every pricing path uses multiplier 1.
+  // Absent from the AI draft schema on purpose — only Laura pins.
+  portionPinned: z.boolean().default(false),
   clientServingGrams: z.string().default(''),
   clientServingMeasure: z.string().default(''),
   clientServingBreakdown: z.string().default(''),

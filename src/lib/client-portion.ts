@@ -77,6 +77,9 @@ export function clientPortionFactor(
   recipe: CoachingPlanDraft['recipes'][number],
   individualPlanStyle = false,
 ): number {
+  // Coach-pinned card: the recipe as written IS her portion, whatever the
+  // stored carve says (the pin may predate the next save's re-pricing).
+  if (recipe.portionPinned) return 1
   const multiplier = parseFloat(recipe.clientServingMultiplier)
   const familyServings = parseFloat(recipe.familyServings)
   const isFamily = !individualPlanStyle && Number.isFinite(familyServings) && familyServings > 1

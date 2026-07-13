@@ -4,6 +4,7 @@ import {
   type PlanMeal,
 } from './coaching-plan-schema'
 import { isExcludedNutritionIngredient } from './nutrition-ingredient'
+import { isIndividualPlanStyle } from './cooking-style'
 import { resolvedServingMultiplier, scaleFullRecipeNutrition } from './nutrition-math'
 import { calculateRecipeNutritionFromUsda } from './usda/food-data'
 
@@ -117,13 +118,13 @@ export async function normalizeReferencedPlanNutrition({
   }
 
   const libraryByName = new Map(libraryRecipes.map((recipe) => [recipe.name, recipe]))
-  const individualOnly = mealPlanStyle === 'individual_only'
+  const individualOnly = isIndividualPlanStyle(mealPlanStyle)
 
   const recipes = await Promise.all(plan.recipes.map(async (recipe) => {
     if (!referenced.has(recipe.name) || recipe.ingredients.length === 0) return recipe
 
     const familyServings = firstNumber(recipe.familyServings || recipe.servings)
-    const multiplier = resolvedServingMultiplier(
+    const multiplier = recipe.portionPinned ? 1 : resolvedServingMultiplier(
       recipe.clientServingMultiplier,
       familyServings,
       !individualOnly && familyServings > 1,

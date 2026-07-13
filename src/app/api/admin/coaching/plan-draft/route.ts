@@ -13,6 +13,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { getUsdaApiKey } from '@/lib/usda/api-key'
 import { calculateRecipeNutritionFromUsda } from '@/lib/usda/food-data'
 import { declaredServingMultiplier } from '@/lib/nutrition-math'
+import { isIndividualPlanStyle } from '@/lib/cooking-style'
 import { fitRecipeServingMultipliers } from '@/lib/meal-portion-fitting'
 
 const LibraryRecipeSchema = z.object({
@@ -82,7 +83,7 @@ async function addUsdaServingMathToDraft(plan: CoachingPlanDraft, planningInputs
     return plan
   }
 
-  const individualPlanStyle = planningInputs.mealPlanStyle === 'individual_only'
+  const individualPlanStyle = isIndividualPlanStyle(planningInputs.mealPlanStyle)
 
   let recipes = await Promise.all(plan.recipes.map(async (recipe) => {
     if (recipe.ingredients.length === 0) return recipe
@@ -287,6 +288,22 @@ export async function POST(req: NextRequest) {
 
   const libraryRecipes = parsed.data.libraryRecipes ?? []
   const hasLibrary = libraryRecipes.length > 0
+  const draftStyle = parsed.data.planningInputs?.mealPlanStyle ?? 'family_dinners'
+
+  // Each cooking style schedules recipes differently: meal-prep plans reuse a
+  // batch as leftovers, fresh-cook plans scale portions down, family plans
+  // cook the pot every dinner.
+  const styleScheduling = draftStyle === 'individual_only'
+    ? [
+        'This client meal-preps: schedule each lunch and dinner recipe in 2–4 meal slots across the week, clustered within 3–4 consecutive days, so one cooked batch covers the repeats as leftovers. Some repetition is desirable here — do not maximize variety at the cost of extra cooking.',
+      ]
+    : draftStyle === 'individual_fresh'
+      ? [
+          'This client cooks fresh every time and does not eat leftovers: prefer recipes that scale down to a single portion easily (skillet meals, bowls, salads, sheet-pan for one). Avoid dishes that only work as large batches, like whole roasts or big casseroles. Vary recipes freely across days.',
+        ]
+      : [
+          'Dinners feed the whole family. When the same dinner appears twice in a week, suggest in that day\'s notes that she double-batch the first night and reheat the second.',
+        ]
 
   const libraryInstructions = hasLibrary ? [
     `Laura has a recipe library with ${libraryRecipes.length} recipes. You MUST use only recipes from this library — do not invent new ones.`,
@@ -295,7 +312,9 @@ export async function POST(req: NextRequest) {
     'For each recipe you select, copy its name, ingredients, instructions, and notes exactly as provided — do not modify them.',
     'Set familyServings from the library recipe\'s family_servings field.',
     'If a recipe in the library has no ingredients, still use it — USDA post-processing will be skipped for that recipe.',
-    'Fill all 3 days of the meal plan. Vary the recipes across days so the client is not eating the same thing every day.',
+    draftStyle === 'individual_only'
+      ? 'Fill all 3 days of the meal plan, repeating recipes per the meal-prep scheduling guidance below.'
+      : 'Fill all 3 days of the meal plan. Vary the recipes across days so the client is not eating the same thing every day.',
     'If the library does not have enough recipes for a meal type (e.g. no breakfast recipes), leave that slot empty rather than inventing a recipe.',
   ] : [
     'No recipe library was provided. Generate practical draft recipes from the client onboarding data and macro targets. Laura must review them before publishing.',
@@ -321,7 +340,8 @@ export async function POST(req: NextRequest) {
         'Use the admin-selected planGoal. Recomposition should be near maintenance with a small deficit, not an aggressive cut.',
         ...libraryInstructions,
         'If mealPlanStyle is family_dinners, dinners are full family recipes. Set familyServings to the total family yield. Leave clientServingMultiplier and clientServingBreakdown blank — USDA post-processing will calculate them.',
-        'If mealPlanStyle is individual_only, set familyServings to "not applicable", clientServing to the full individual serving, and clientServingMultiplier to "1".',
+        'If mealPlanStyle is individual_only or individual_fresh, set familyServings to "not applicable", clientServing to the full individual serving, and clientServingMultiplier to "1".',
+        ...styleScheduling,
         'Do not add fields outside the schema.',
         'When a meal in mealPlan uses a recipe, set recipeName exactly equal to that recipe\'s name so USDA-calculated macros flow back into the meal.',
         'Default to high-protein, high-fiber meals with moderate healthy fats and mostly minimally processed carbohydrates.',

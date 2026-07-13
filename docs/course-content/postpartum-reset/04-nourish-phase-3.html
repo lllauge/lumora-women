@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase 3 · Hydrate & Sustain — The Lumora Postpartum Reset</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap');
+
+  :root {
+    --page-bg: #F8F6F0; --card-bg: #FFFFFF; --section-tint: #EAF2E4;
+    --section-sand: #F0E8D8; --dark: #1E3220; --nav: #162814;
+    --ink: #1A2818; --ink-2: #3A4A38; --muted: #5A6B58;
+    --green: #44713B; --green-light: #C8DCC0;
+    --gold: #C8980A; --gold-deep: #A87808; --gold-soft: #F0D060;
+    --border: rgba(200, 220, 192, 0.45);
+    --serif: 'Libre Baskerville', Georgia, 'Times New Roman', serif;
+    --sans: 'DM Sans', system-ui, -apple-system, sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--page-bg); color: var(--ink); font-family: var(--sans); line-height: 1.75; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 40px 22px 64px; }
+
+  .hero { text-align: center; padding: 34px 26px 30px; background: var(--dark); border-radius: 18px; margin-bottom: 30px; }
+  .hero .eyebrow { color: var(--green-light); font-size: 11px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; }
+  .hero h1 { font-family: var(--serif); color: #FFFFFF; font-size: 30px; line-height: 1.25; font-weight: 700; margin: 12px 0 10px; }
+  .hero .sub { color: rgba(200,220,192,0.85); font-size: 14.5px; max-width: 520px; margin: 0 auto; }
+  .gold-rule { width: 72px; height: 3px; margin: 16px auto 0; border-radius: 999px;
+    background: linear-gradient(to right, #F0D060, #C8980A, #E8C040, #A87808, #D4AC30); }
+
+  h2 { font-family: var(--serif); font-size: 21px; color: var(--ink); margin: 38px 0 6px; line-height: 1.3; }
+  h3 { font-family: var(--sans); font-size: 15px; color: var(--ink); margin: 22px 0 6px; font-weight: 700; }
+  p { font-size: 15px; color: var(--ink-2); margin: 10px 0; }
+  ul, ol { margin: 10px 0 10px 22px; }
+  li { font-size: 15px; color: var(--ink-2); margin: 5px 0; }
+  strong { color: var(--ink); }
+  .label { font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--green); margin-top: 34px; }
+
+  .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; padding: 22px 24px; margin: 16px 0; }
+  .card.tint { background: var(--section-tint); border-color: transparent; }
+  .card.sand { background: var(--section-sand); border-color: transparent; }
+  .card.dark { background: var(--dark); border-color: transparent; }
+  .card.dark p, .card.dark li { color: var(--green-light); }
+  .card.dark h3, .card.dark strong { color: #FFFFFF; }
+
+  .medallion { display: flex; align-items: center; gap: 14px; margin: 26px 0 8px; }
+  .medallion svg { flex-shrink: 0; }
+  .medallion .m-title { font-family: var(--serif); font-size: 19px; font-weight: 700; color: var(--ink); }
+  .medallion .m-kicker { font-size: 11px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold-deep); }
+
+  .divider { text-align: center; margin: 34px 0; }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; background: #FFFFFF; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); }
+  th { background: var(--dark); color: #FFFFFF; font-family: var(--sans); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; padding: 10px 14px; text-align: left; font-weight: 700; }
+  td { padding: 10px 14px; font-size: 14.5px; color: var(--ink-2); border-top: 1px solid rgba(200,220,192,0.3); }
+  td.num { white-space: nowrap; font-weight: 600; color: var(--ink); }
+  tr.day-row td { background: var(--section-tint); font-weight: 700; color: var(--ink); font-family: var(--serif); font-size: 15px; }
+
+  .pill-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; padding: 0; list-style: none; }
+  .pill-list li { background: #FFFFFF; border: 1px solid var(--border); border-radius: 999px; padding: 6px 14px; font-size: 13.5px; color: var(--ink-2); margin: 0; }
+
+  .gate { display: flex; gap: 14px; align-items: flex-start; background: var(--dark); border-radius: 16px; padding: 20px 22px; margin: 22px 0; }
+  .gate p { color: var(--green-light); font-size: 14.5px; margin: 0; }
+  .gate strong { color: #FFFFFF; }
+  .gate .g-icon { flex-shrink: 0; margin-top: 2px; }
+
+  .note { border-left: 3px solid var(--gold); background: var(--section-sand); border-radius: 0 12px 12px 0; padding: 14px 18px; margin: 16px 0; }
+  .note p { margin: 0; font-size: 14px; }
+  .safety { border-left: 3px solid #A85C3A; background: #F5E9E1; border-radius: 0 12px 12px 0; padding: 14px 18px; margin: 16px 0; }
+  .safety p, .safety li { font-size: 14px; margin: 4px 0; }
+  .safety strong { color: #7A3E22; }
+
+  .tracker { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin: 14px 0; }
+  .tracker .day { aspect-ratio: 1; border: 1.5px solid var(--border); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--muted); background: #FFFFFF; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 560px) { .grid-2 { grid-template-columns: 1fr; } .wrap { padding: 24px 14px 48px; } .hero h1 { font-size: 24px; } }
+
+  .footer { margin-top: 46px; text-align: center; }
+  .footer p { font-size: 12px; color: var(--muted); }
+
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <div class="eyebrow">The Lumora Postpartum Reset</div>
+    <h1>Phase 3 · Hydrate & Sustain</h1>
+    <p class="sub">The simplest phase — and the one most women are furthest from.</p>
+    <div class="gold-rule"></div>
+  </header>
+  
+<p>Water is unglamorous, so it gets skipped. But mild dehydration reads as fatigue, headaches, brain fog, and cranky digestion — everything the newborn season already serves you for free. And if you're nursing, roughly 87% of what you make every day is water.</p>
+
+<h2>Your targets</h2>
+<div class="grid-2">
+  <div class="card">
+    <h3 style="margin-top:0;">Not nursing</h3>
+    
+<div style="margin:14px 0;">
+  <div style="display:flex; gap:5px; flex-wrap:wrap;">
+    <svg width="26" height="32" viewBox="0 0 26 32" xmlns="http://www.w3.org/2000/svg" fill="none" aria-hidden="true">
+      <path d="M4 4 H22 L19.5 28 H6.5 Z" fill="#C8DCC0" stroke="#44713B" stroke-width="1.6"/>
+      <path d="M7 12 H19 L18 26 H8 Z" fill="#44713B" opacity="0.55"/>
+    </svg>
+    <svg width="26" height="32" viewBox="0 0 26 32" xmlns="http://www.w3.org/2000/svg" fill="none" aria-hidden="true">
+      <path d="M4 4 H22 L19.5 28 H6.5 Z" fill="#C8DCC0" stroke="#44713B" stroke-width="1.6"/>
+      <path d="M7 12 H19 L18 26 H8 Z" fill="#44713B" opacity="0.55"/>
+    </svg>
+    <svg width="26" height="32" viewBox="0 0 26 32" xmlns="http://www.w3.org/2000/svg" fill="none" aria-hidden="true">
+      <path d="M4 4 H22 L19.5 28 H6.5 Z" fill="#C8DCC0" stroke="#44713B" stroke-width="1.6"/>
+      <path d="M7 12 H19 L18 26 H8 Z" fill="#44713B" opacity="0.55"/>
+    </svg>
+    <svg width="26" height="32" viewBox="0 0 26 32" xmlns="http://www.w3.org/2000/svg" fill="none" aria-hidden="true">
+      <path d="M4 4 H22 L19.5 28 H6.5 Z" fill="#C8DCC0" stroke="#44713B" stroke-width="1.6"/>
+      <path d="M7 12 H19 L18 26 H8 Z" fill="#44713B" opacity="0.55"/>
+    </svg>
+    <svg width="26" height="32" viewBox="0 0 26 32" xmlns="http://www.w3.org/2000/svg" fill="none" aria-hidden="true">
+      <path d="M4 4 H22 L19.5 28 H6.5 Z" fill="#C8DCC0" stroke="#44713B" stroke-width="1.6"/>
+      <path d="M7 12 H19 L18 26 H8 Z" fill="#44713B" opacity="0.55"/>
+    </svg>
+    <svg width="26" height="32" viewBox="0 0 26 32" xmlns="http://www.w3.org/2000/svg" fill="none" aria-hidden="true">
+      <path d="M4 4 H22 L19.5 28 H6.5 Z" fill="#C8DCC0" stroke="#44713B" stroke-width="1.6"/>
+      <path d="M7 12 H19 L18 26 H8 Z" fill="#44713B" opacity="0.55"/>
+    </svg>
+    <svg width="26" height="32" viewBox="0 0 26 32" xmlns="http://www.w3.org/2000/svg" fill="none" aria-hidden="true">
+      <path d="M4 4 H22 L19.5 28 H6.5 Z" fill="#C8DCC0" stroke="#44713B" stroke-width="1.6"/>
+      <path d="M7 12 H19 L18 26 H8 Z" fill="#44713B" opacity="0.55"/>
+    </svg>
+    <svg width="26" height="32" viewBox="0 0 26 32" xmlns="http://www.w3.org/2000/svg" fill="none" aria-hidden="true">
+      <path d="M4 4 H22 L19.5 28 H6.5 Z" fill="#C8DCC0" stroke="#44713B" stroke-width="1.6"/>
+      <path d="M7 12 H19 L18 26 H8 Z" fill="#44713B" opacity="0.55"/>
+    </svg>
+    <svg width="26" height="32" viewBox="0 0 26 32" xmlns="http://www.w3.org/2000/svg" fill="none" aria-hidden="true">
+      <path d="M4 4 H22 L19.5 28 H6.5 Z" fill="#C8DCC0" stroke="#44713B" stroke-width="1.6"/>
+      <path d="M7 12 H19 L18 26 H8 Z" fill="#44713B" opacity="0.55"/>
+    </svg></div>
+  <p style="font-size:13px; color:#5A6B58; margin-top:6px;">About 9 cups (2.2 L) of fluids a day</p>
+</div>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0;">Nursing</h3>
+    
+<div style="margin:14px 0;">
+  <div style="display:flex; gap:5px; flex-wrap:wrap;">
+    <svg width="26" height="32" viewBox="0 0 26 32" xmlns="http://www.w3.org/2000/svg" fill="none" aria-hidden="true">
+      <path d="M4 4 H22 L19.5 28 H6.5 Z" fill="#C8DCC0" stroke="#44713B" stroke-width="1.6"/>
+      <path d="M7 12 H19 L18 26 H8 Z" fill="#44713B" opacity="0.55"/>
+    </svg>
+    <svg width="26" height="32" viewBox="0 0 26 32" xmlns="http://www.w3.org/2000/svg" fill="none" aria-hidden="true">
+      <path d="M4 4 H22 L19.5 28 H6.5 Z" fill="#C8DCC0" stroke="#44713B" stroke-width="1.6"/>
+      <path d="M7 12 H19 L18 26 H8 Z" fill="#44713B" opacity="0.55"/>
+    </svg>
+    <svg width="26" height="32" viewBox="0 0 26 32" xmlns="http://www.w3.org/2000/svg" fill="none" aria-hidden="true">
+      <path d="M4 4 H22 L19.5 28 H6.5 Z" fill="#C8DCC0" stroke="#44713B" stroke-width="1.6"/>
+      <path d="M7 12 H19 L18 26 H8 Z" fill="#44713B" opacity="0.55"/>
+    </svg>
+    <svg width="26" height="32" viewBox="0 0 26 32" xmlns="http://www.w3.org/2000/svg" fill="none" aria-hidden="true">
+      <path d="M4 4 H22 L19.5 28 H6.5 Z" fill="#C8DCC0" stroke="#44713B" stroke-width="1.6"/>
+      <path d="M7 12 H19 L18 26 H8 Z" fill="#44713B" opacity="0.55"/>
+    </svg>
+    <svg width="26" height="32" viewBox="0 0 26 32" xmlns="http://www.w3.org/2000/svg" fill="none" aria-hidden="true">
+      <path d="M4 4 H22 L19.5 28 H6.5 Z" fill="#C8DCC0" stroke="#44713B" stroke-width="1.6"/>
+      <path d="M7 12 H19 L18 26 H8 Z" fill="#44713B" opacity="0.55"/>
+    </svg>
+    <svg width="26" height="32" viewBox="0 0 26 32" xmlns="http://www.w3.org/2000/svg" fill="none" aria-hidden="true">
+      <path d="M4 4 H22 L19.5 28 H6.5 Z" fill="#C8DCC0" stroke="#44713B" stroke-width="1.6"/>
+      <path d="M7 12 H19 L18 26 H8 Z" fill="#44713B" opacity="0.55"/>
+    </svg>
+    <svg width="26" height="32" viewBox="0 0 26 32" xmlns="http://www.w3.org/2000/svg" fill="none" aria-hidden="true">
+      <path d="M4 4 H22 L19.5 28 H6.5 Z" fill="#C8DCC0" stroke="#44713B" stroke-width="1.6"/>
+      <path d="M7 12 H19 L18 26 H8 Z" fill="#44713B" opacity="0.55"/>
+    </svg>
+    <svg width="26" height="32" viewBox="0 0 26 32" xmlns="http://www.w3.org/2000/svg" fill="none" aria-hidden="true">
+      <path d="M4 4 H22 L19.5 28 H6.5 Z" fill="#C8DCC0" stroke="#44713B" stroke-width="1.6"/>
+      <path d="M7 12 H19 L18 26 H8 Z" fill="#44713B" opacity="0.55"/>
+    </svg>
+    <svg width="26" height="32" viewBox="0 0 26 32" xmlns="http://www.w3.org/2000/svg" fill="none" aria-hidden="true">
+      <path d="M4 4 H22 L19.5 28 H6.5 Z" fill="#C8DCC0" stroke="#44713B" stroke-width="1.6"/>
+      <path d="M7 12 H19 L18 26 H8 Z" fill="#44713B" opacity="0.55"/>
+    </svg>
+    <svg width="26" height="32" viewBox="0 0 26 32" xmlns="http://www.w3.org/2000/svg" fill="none" aria-hidden="true">
+      <path d="M4 4 H22 L19.5 28 H6.5 Z" fill="#C8DCC0" stroke="#44713B" stroke-width="1.6"/>
+      <path d="M7 12 H19 L18 26 H8 Z" fill="#44713B" opacity="0.55"/>
+    </svg>
+    <svg width="26" height="32" viewBox="0 0 26 32" xmlns="http://www.w3.org/2000/svg" fill="none" aria-hidden="true">
+      <path d="M4 4 H22 L19.5 28 H6.5 Z" fill="#C8DCC0" stroke="#44713B" stroke-width="1.6"/>
+      <path d="M7 12 H19 L18 26 H8 Z" fill="#44713B" opacity="0.55"/>
+    </svg>
+    <svg width="26" height="32" viewBox="0 0 26 32" xmlns="http://www.w3.org/2000/svg" fill="none" aria-hidden="true">
+      <path d="M4 4 H22 L19.5 28 H6.5 Z" fill="#C8DCC0" stroke="#44713B" stroke-width="1.6"/>
+      <path d="M7 12 H19 L18 26 H8 Z" fill="#44713B" opacity="0.55"/>
+    </svg>
+    <svg width="26" height="32" viewBox="0 0 26 32" xmlns="http://www.w3.org/2000/svg" fill="none" aria-hidden="true">
+      <path d="M4 4 H22 L19.5 28 H6.5 Z" fill="#C8DCC0" stroke="#44713B" stroke-width="1.6"/>
+      <path d="M7 12 H19 L18 26 H8 Z" fill="#44713B" opacity="0.55"/>
+    </svg></div>
+  <p style="font-size:13px; color:#5A6B58; margin-top:6px;">About 13 cups (3.1 L) of fluids a day</p>
+</div>
+  </div>
+</div>
+<p style="font-size:13.5px; color:#5A6B58;">"Fluids" counts everything — water, milk, soup, herbal tea. Don't force chugging; build the habit and let thirst do the fine-tuning. Easiest self-check: your urine should run <strong>pale yellow</strong>.</p>
+
+<h2>Make it automatic, not heroic</h2>
+<div class="card tint">
+  <ul style="margin:0 0 0 22px;">
+    <li><strong>Anchor it to the baby:</strong> every time you sit down to nurse or give a bottle, you drink too. Feeds per day ≈ glasses per day. Done.</li>
+    <li><strong>Station bottles</strong> where life happens — nursing chair, kitchen counter, stroller, car.</li>
+    <li><strong>Start with two:</strong> if you're currently at nearly nothing, begin with two cups a day and add one cup every few days. Ramp, don't leap.</li>
+    <li><strong>Make it nice:</strong> lemon, cucumber, mint, fizzy water — flavor counts.</li>
+  </ul>
+</div>
+
+<div class="note"><p><strong>Caffeine:</strong> you don't have to give up coffee. Up to ~300&nbsp;mg a day (about two mugs) is considered fine while nursing. Just don't let coffee <em>replace</em> water.</p></div>
+
+
+<div class="divider" aria-hidden="true">
+  <svg width="120" height="22" viewBox="0 0 120 22" xmlns="http://www.w3.org/2000/svg" fill="none">
+    <line x1="0" y1="11" x2="44" y2="11" stroke="rgba(200,220,192,0.9)" stroke-width="1.5"/>
+    <path d="M60 3 C64 7 66 11 60 19 C54 11 56 7 60 3 Z" fill="#44713B"/>
+    <path d="M60 5.5 L60 16.5" stroke="#C8DCC0" stroke-width="1"/>
+    <line x1="76" y1="11" x2="120" y2="11" stroke="rgba(200,220,192,0.9)" stroke-width="1.5"/>
+  </svg>
+</div>
+<h2>Sustaining all three phases</h2>
+<p>Here's the quiet magic of what you've built: berries + greens + nuts + seeds + a palm of protein + whole grains + water <em>is</em> a complete template. Look at your plate: half colorful plants, a palm of protein, a fist of whole grains, a thumb of healthy fat, water beside it. That's the Lumora plate — no tracking app required.</p>
+<div class="gate">
+<svg class="g-icon" width="30" height="30" viewBox="0 0 30 30" xmlns="http://www.w3.org/2000/svg" fill="none" aria-hidden="true">
+  <circle cx="15" cy="15" r="14" stroke="#C8980A" stroke-width="1.5"/>
+  <path d="M9.5 15.5 L13.5 19.5 L21 11" stroke="#F0D060" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg><p><strong>This phase never ends</strong> — it just becomes how you live. Repeat any phase any time life knocks a habit loose (travel, teething, growth spurts — it happens to everyone).</p></div>
+
+  <footer class="footer">
+    
+<div class="divider" aria-hidden="true">
+  <svg width="120" height="22" viewBox="0 0 120 22" xmlns="http://www.w3.org/2000/svg" fill="none">
+    <line x1="0" y1="11" x2="44" y2="11" stroke="rgba(200,220,192,0.9)" stroke-width="1.5"/>
+    <path d="M60 3 C64 7 66 11 60 19 C54 11 56 7 60 3 Z" fill="#44713B"/>
+    <path d="M60 5.5 L60 16.5" stroke="#C8DCC0" stroke-width="1"/>
+    <line x1="76" y1="11" x2="120" y2="11" stroke="rgba(200,220,192,0.9)" stroke-width="1.5"/>
+  </svg>
+</div>
+    <p>© Lumora Women · This program is educational and is not medical advice. Always follow the guidance of your own physician or midwife.</p>
+  </footer>
+</div>
+</body>
+</html>

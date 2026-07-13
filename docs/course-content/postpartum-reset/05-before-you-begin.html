@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Before You Begin — The Lumora Postpartum Reset</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap');
+
+  :root {
+    --page-bg: #F8F6F0; --card-bg: #FFFFFF; --section-tint: #EAF2E4;
+    --section-sand: #F0E8D8; --dark: #1E3220; --nav: #162814;
+    --ink: #1A2818; --ink-2: #3A4A38; --muted: #5A6B58;
+    --green: #44713B; --green-light: #C8DCC0;
+    --gold: #C8980A; --gold-deep: #A87808; --gold-soft: #F0D060;
+    --border: rgba(200, 220, 192, 0.45);
+    --serif: 'Libre Baskerville', Georgia, 'Times New Roman', serif;
+    --sans: 'DM Sans', system-ui, -apple-system, sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--page-bg); color: var(--ink); font-family: var(--sans); line-height: 1.75; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 40px 22px 64px; }
+
+  .hero { text-align: center; padding: 34px 26px 30px; background: var(--dark); border-radius: 18px; margin-bottom: 30px; }
+  .hero .eyebrow { color: var(--green-light); font-size: 11px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; }
+  .hero h1 { font-family: var(--serif); color: #FFFFFF; font-size: 30px; line-height: 1.25; font-weight: 700; margin: 12px 0 10px; }
+  .hero .sub { color: rgba(200,220,192,0.85); font-size: 14.5px; max-width: 520px; margin: 0 auto; }
+  .gold-rule { width: 72px; height: 3px; margin: 16px auto 0; border-radius: 999px;
+    background: linear-gradient(to right, #F0D060, #C8980A, #E8C040, #A87808, #D4AC30); }
+
+  h2 { font-family: var(--serif); font-size: 21px; color: var(--ink); margin: 38px 0 6px; line-height: 1.3; }
+  h3 { font-family: var(--sans); font-size: 15px; color: var(--ink); margin: 22px 0 6px; font-weight: 700; }
+  p { font-size: 15px; color: var(--ink-2); margin: 10px 0; }
+  ul, ol { margin: 10px 0 10px 22px; }
+  li { font-size: 15px; color: var(--ink-2); margin: 5px 0; }
+  strong { color: var(--ink); }
+  .label { font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--green); margin-top: 34px; }
+
+  .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; padding: 22px 24px; margin: 16px 0; }
+  .card.tint { background: var(--section-tint); border-color: transparent; }
+  .card.sand { background: var(--section-sand); border-color: transparent; }
+  .card.dark { background: var(--dark); border-color: transparent; }
+  .card.dark p, .card.dark li { color: var(--green-light); }
+  .card.dark h3, .card.dark strong { color: #FFFFFF; }
+
+  .medallion { display: flex; align-items: center; gap: 14px; margin: 26px 0 8px; }
+  .medallion svg { flex-shrink: 0; }
+  .medallion .m-title { font-family: var(--serif); font-size: 19px; font-weight: 700; color: var(--ink); }
+  .medallion .m-kicker { font-size: 11px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold-deep); }
+
+  .divider { text-align: center; margin: 34px 0; }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; background: #FFFFFF; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); }
+  th { background: var(--dark); color: #FFFFFF; font-family: var(--sans); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; padding: 10px 14px; text-align: left; font-weight: 700; }
+  td { padding: 10px 14px; font-size: 14.5px; color: var(--ink-2); border-top: 1px solid rgba(200,220,192,0.3); }
+  td.num { white-space: nowrap; font-weight: 600; color: var(--ink); }
+  tr.day-row td { background: var(--section-tint); font-weight: 700; color: var(--ink); font-family: var(--serif); font-size: 15px; }
+
+  .pill-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; padding: 0; list-style: none; }
+  .pill-list li { background: #FFFFFF; border: 1px solid var(--border); border-radius: 999px; padding: 6px 14px; font-size: 13.5px; color: var(--ink-2); margin: 0; }
+
+  .gate { display: flex; gap: 14px; align-items: flex-start; background: var(--dark); border-radius: 16px; padding: 20px 22px; margin: 22px 0; }
+  .gate p { color: var(--green-light); font-size: 14.5px; margin: 0; }
+  .gate strong { color: #FFFFFF; }
+  .gate .g-icon { flex-shrink: 0; margin-top: 2px; }
+
+  .note { border-left: 3px solid var(--gold); background: var(--section-sand); border-radius: 0 12px 12px 0; padding: 14px 18px; margin: 16px 0; }
+  .note p { margin: 0; font-size: 14px; }
+  .safety { border-left: 3px solid #A85C3A; background: #F5E9E1; border-radius: 0 12px 12px 0; padding: 14px 18px; margin: 16px 0; }
+  .safety p, .safety li { font-size: 14px; margin: 4px 0; }
+  .safety strong { color: #7A3E22; }
+
+  .tracker { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin: 14px 0; }
+  .tracker .day { aspect-ratio: 1; border: 1.5px solid var(--border); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--muted); background: #FFFFFF; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 560px) { .grid-2 { grid-template-columns: 1fr; } .wrap { padding: 24px 14px 48px; } .hero h1 { font-size: 24px; } }
+
+  .footer { margin-top: 46px; text-align: center; }
+  .footer p { font-size: 12px; color: var(--muted); }
+
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <div class="eyebrow">The Lumora Postpartum Reset</div>
+    <h1>Before You Begin</h1>
+    <p class="sub">Five minutes of reading that makes the next six weeks safer and far more effective.</p>
+    <div class="gold-rule"></div>
+  </header>
+  
+<h2>First: are you cleared?</h2>
+<p>This plan assumes your physician or midwife has cleared you for exercise — typically at the six-week visit, often 8–10+ weeks after a cesarean or a complicated delivery. Gentle walking, the breathing work, and the Daily Dose below are appropriate almost immediately for most women, but the strength plan waits for clearance. When in doubt, ask; it's one question at one appointment.</p>
+
+
+<div class="safety">
+  <p><strong>Your body sets the pace.</strong> If you notice any of these during or after exercise, drop back to the easier version and give it more time:</p>
+  <ul>
+    <li>Leaking urine, or a feeling of heaviness / dragging in your pelvis</li>
+    <li>Doming or coning down the middle of your belly</li>
+    <li>Pain, or bleeding that returns or gets heavier after a workout</li>
+  </ul>
+  <p>These are signals, not failures. If they persist, a pelvic-floor physical therapist is worth their weight in gold.</p>
+</div>
+
+<h2>Check in with your core: the 30-second diastasis self-check</h2>
+<div class="card">
+  <ol>
+    <li>Lie on your back, knees bent, feet flat.</li>
+    <li>Place two fingers just above your belly button, fingertips pointing down toward your spine.</li>
+    <li>Exhale and lift just your head and shoulders slightly off the floor.</li>
+    <li>Feel for a gap between the two ridges of muscle. Note how many fingers wide, and whether your fingers sink deep or meet gentle tension.</li>
+  </ol>
+  <p style="margin-bottom:0;">A gap of 1–2 fingers with some tension is common and workable — this program is exactly the rehab for it. A gap of 3+ fingers, a belly that "domes" into a ridge when you sit up, or fingers that sink with no resistance? Start the program gently <em>and</em> book a pelvic-floor physical therapist. It's the single best investment in this entire journey.</p>
+</div>
+
+<h2>The two non-negotiables</h2>
+<p>The strongest evidence in all of postpartum exercise science backs two dull-sounding, quietly life-changing practices. One happens daily, one starts every workout.</p>
+
+<div class="card dark">
+  <h3 style="margin-top:0;">The Daily Dose — every day, workout or not <span style="font-weight:500; color:rgba(200,220,192,0.8);">(~5 minutes)</span></h3>
+  <p><strong>Pelvic floor training</strong> is the single best-proven postpartum exercise, and it works on daily repetition:</p>
+  <ul>
+    <li><strong>3 rounds of 8 squeezes</strong> — lift for 6 seconds (a slow elevator up, breathing the whole time), rest 6 seconds. Full relaxation between reps matters as much as the lift.</li>
+    <li><strong>Finish with 10 quick flicks</strong> — fast lift, fast release.</li>
+    <li>Start lying down; graduate to sitting, then standing as it gets easier.</li>
+    <li>Keep it up for <strong>at least three months</strong> — attach it to a feed, a shower, or brushing your teeth.</li>
+  </ul>
+  <p style="margin-bottom:0;"><strong>Plus a daily walk:</strong> start where you are (even 10 minutes) and build gradually toward 30 minutes at a pace where you can talk but you know you're moving.</p>
+</div>
+<p>Retraining the pelvic floor in the first postpartum year cuts the odds of leaking by about a third and of prolapse by roughly half — but only if it actually happens daily. Attach it to something you already do.</p>
+
+<div class="card tint">
+  <h3 style="margin-top:0;">Start every workout: The Foundation Five <span style="font-weight:500; color:#5A6B58;">(~5 minutes)</span></h3>
+  <ol>
+    <li><strong>360° breathing</strong> — 5 slow breaths. Inhale into your ribs and belly, exhale fully and feel your deep core gently wrap.</li>
+    <li><strong>Pelvic tilts</strong> — 10 slow rocks. Flatten your lower back toward the floor on the exhale, release on the inhale.</li>
+    <li><strong>Deep-core holds</strong> — 5 × 5-second holds, <strong>lying on your back</strong>. Exhale, gently draw your lower belly in (about 30% effort — a hug, not a crunch), breathe while you hold.</li>
+    <li><strong>Glute bridge</strong> — 2 × 10. Exhale up, squeeze at the top, lower with control.</li>
+    <li><strong>Bird dog</strong> — 2 × 6 per side. Long spine, no wobble, opposite arm and leg reach.</li>
+  </ol>
+  <p style="font-size:13.5px; color:#5A6B58; margin-bottom:0;">This is your warm-up <em>and</em> your deep-core rebuild. Do not skip it — it is the most important five minutes of the program.</p>
+</div>
+<p style="font-size:13.5px; color:#5A6B58;">The deep-core hold position progresses as you do: lying down in Weeks 1–2, hands-and-knees in Weeks 3–4, standing in Weeks 5–6 — each guide tells you which.</p>
+
+<h2>How the six weeks are shaped</h2>
+<div class="card tint">
+  <ul style="margin:0 0 0 22px;">
+    <li><strong>Every workout is full-body</strong> and built from the movements motherhood actually demands: squat (getting up with a baby), hinge (lifting the car seat), step (stairs), push and pull (strollers, doors, carrying everything), and loaded carries — because you carry, constantly.</li>
+    <li><strong>Weeks 1–2 · Reconnect & Foundation</strong> — bodyweight and light dumbbells, positions that protect your healing midline, zero impact.</li>
+    <li><strong>Weeks 3–4 · Build & Strengthen</strong> — heavier dumbbells, 8–12 reps, single-leg work for balance and bone-deep stability.</li>
+    <li><strong>Weeks 5–6 · Progress & Thrive</strong> — peak volume, a taste of power, plus <em>optional</em> impact and jog intervals — only after the readiness check in Week 5.</li>
+  </ul>
+</div>
+<p><strong>Choosing weights:</strong> the last two reps of a set should feel genuinely hard while your form stays clean. If you could chat through it, go heavier next set. If your form breaks, go lighter. That's the entire science of progression.</p>
+<p><strong>Missed a workout?</strong> Shift the week, don't cram. Two good sessions beat three rushed ones. And if the baby didn't sleep, halve the sets and call it a win — showing up tired counts double.</p>
+
+  <footer class="footer">
+    
+<div class="divider" aria-hidden="true">
+  <svg width="120" height="22" viewBox="0 0 120 22" xmlns="http://www.w3.org/2000/svg" fill="none">
+    <line x1="0" y1="11" x2="44" y2="11" stroke="rgba(200,220,192,0.9)" stroke-width="1.5"/>
+    <path d="M60 3 C64 7 66 11 60 19 C54 11 56 7 60 3 Z" fill="#44713B"/>
+    <path d="M60 5.5 L60 16.5" stroke="#C8DCC0" stroke-width="1"/>
+    <line x1="76" y1="11" x2="120" y2="11" stroke="rgba(200,220,192,0.9)" stroke-width="1.5"/>
+  </svg>
+</div>
+    <p>© Lumora Women · This program is educational and is not medical advice. Always follow the guidance of your own physician or midwife.</p>
+  </footer>
+</div>
+</body>
+</html>

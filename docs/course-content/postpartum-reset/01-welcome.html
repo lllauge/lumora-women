@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Welcome to Your Reset — The Lumora Postpartum Reset</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap');
+
+  :root {
+    --page-bg: #F8F6F0; --card-bg: #FFFFFF; --section-tint: #EAF2E4;
+    --section-sand: #F0E8D8; --dark: #1E3220; --nav: #162814;
+    --ink: #1A2818; --ink-2: #3A4A38; --muted: #5A6B58;
+    --green: #44713B; --green-light: #C8DCC0;
+    --gold: #C8980A; --gold-deep: #A87808; --gold-soft: #F0D060;
+    --border: rgba(200, 220, 192, 0.45);
+    --serif: 'Libre Baskerville', Georgia, 'Times New Roman', serif;
+    --sans: 'DM Sans', system-ui, -apple-system, sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--page-bg); color: var(--ink); font-family: var(--sans); line-height: 1.75; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 40px 22px 64px; }
+
+  .hero { text-align: center; padding: 34px 26px 30px; background: var(--dark); border-radius: 18px; margin-bottom: 30px; }
+  .hero .eyebrow { color: var(--green-light); font-size: 11px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; }
+  .hero h1 { font-family: var(--serif); color: #FFFFFF; font-size: 30px; line-height: 1.25; font-weight: 700; margin: 12px 0 10px; }
+  .hero .sub { color: rgba(200,220,192,0.85); font-size: 14.5px; max-width: 520px; margin: 0 auto; }
+  .gold-rule { width: 72px; height: 3px; margin: 16px auto 0; border-radius: 999px;
+    background: linear-gradient(to right, #F0D060, #C8980A, #E8C040, #A87808, #D4AC30); }
+
+  h2 { font-family: var(--serif); font-size: 21px; color: var(--ink); margin: 38px 0 6px; line-height: 1.3; }
+  h3 { font-family: var(--sans); font-size: 15px; color: var(--ink); margin: 22px 0 6px; font-weight: 700; }
+  p { font-size: 15px; color: var(--ink-2); margin: 10px 0; }
+  ul, ol { margin: 10px 0 10px 22px; }
+  li { font-size: 15px; color: var(--ink-2); margin: 5px 0; }
+  strong { color: var(--ink); }
+  .label { font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--green); margin-top: 34px; }
+
+  .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; padding: 22px 24px; margin: 16px 0; }
+  .card.tint { background: var(--section-tint); border-color: transparent; }
+  .card.sand { background: var(--section-sand); border-color: transparent; }
+  .card.dark { background: var(--dark); border-color: transparent; }
+  .card.dark p, .card.dark li { color: var(--green-light); }
+  .card.dark h3, .card.dark strong { color: #FFFFFF; }
+
+  .medallion { display: flex; align-items: center; gap: 14px; margin: 26px 0 8px; }
+  .medallion svg { flex-shrink: 0; }
+  .medallion .m-title { font-family: var(--serif); font-size: 19px; font-weight: 700; color: var(--ink); }
+  .medallion .m-kicker { font-size: 11px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold-deep); }
+
+  .divider { text-align: center; margin: 34px 0; }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; background: #FFFFFF; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); }
+  th { background: var(--dark); color: #FFFFFF; font-family: var(--sans); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; padding: 10px 14px; text-align: left; font-weight: 700; }
+  td { padding: 10px 14px; font-size: 14.5px; color: var(--ink-2); border-top: 1px solid rgba(200,220,192,0.3); }
+  td.num { white-space: nowrap; font-weight: 600; color: var(--ink); }
+  tr.day-row td { background: var(--section-tint); font-weight: 700; color: var(--ink); font-family: var(--serif); font-size: 15px; }
+
+  .pill-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; padding: 0; list-style: none; }
+  .pill-list li { background: #FFFFFF; border: 1px solid var(--border); border-radius: 999px; padding: 6px 14px; font-size: 13.5px; color: var(--ink-2); margin: 0; }
+
+  .gate { display: flex; gap: 14px; align-items: flex-start; background: var(--dark); border-radius: 16px; padding: 20px 22px; margin: 22px 0; }
+  .gate p { color: var(--green-light); font-size: 14.5px; margin: 0; }
+  .gate strong { color: #FFFFFF; }
+  .gate .g-icon { flex-shrink: 0; margin-top: 2px; }
+
+  .note { border-left: 3px solid var(--gold); background: var(--section-sand); border-radius: 0 12px 12px 0; padding: 14px 18px; margin: 16px 0; }
+  .note p { margin: 0; font-size: 14px; }
+  .safety { border-left: 3px solid #A85C3A; background: #F5E9E1; border-radius: 0 12px 12px 0; padding: 14px 18px; margin: 16px 0; }
+  .safety p, .safety li { font-size: 14px; margin: 4px 0; }
+  .safety strong { color: #7A3E22; }
+
+  .tracker { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin: 14px 0; }
+  .tracker .day { aspect-ratio: 1; border: 1.5px solid var(--border); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--muted); background: #FFFFFF; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 560px) { .grid-2 { grid-template-columns: 1fr; } .wrap { padding: 24px 14px 48px; } .hero h1 { font-size: 24px; } }
+
+  .footer { margin-top: 46px; text-align: center; }
+  .footer p { font-size: 12px; color: var(--muted); }
+
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <div class="eyebrow">The Lumora Postpartum Reset</div>
+    <h1>Welcome to Your Reset</h1>
+    <p class="sub">A six-week return to strength and nourishment — built for the season you are actually in.</p>
+    <div class="gold-rule"></div>
+  </header>
+  
+<p>You just did one of the most physically demanding things a body can do. And now you're holding a newborn, maybe chasing a toddler, maybe back at work — and being told to "bounce back."</p>
+<p>We're not going to do that here.</p>
+<p>The Lumora Postpartum Reset is a six-week program that rebuilds from the inside out: your deep core and pelvic floor first, your strength second, and your energy throughout — powered by <strong>adding</strong> nourishing food, never by restriction. Small, doable habits, repeated until they feel like yours.</p>
+
+<div class="card tint">
+  <h3 style="margin-top:0;">How the program works</h3>
+  <ul>
+    <li><strong>Nourish</strong> — three food phases. Each one adds a small daily habit. You move on only when the habit sticks, so nothing falls apart on a hard week.</li>
+    <li><strong>Rebuild</strong> — six weeks of strength training, three short sessions a week, at home or at the gym. Every session starts with five minutes of deep-core and pelvic-floor work.</li>
+    <li><strong>The Library</strong> — form cues and videos for every exercise, so you're never guessing.</li>
+  </ul>
+</div>
+
+<div class="label">Honest expectations</div>
+<h2>What six weeks can really do</h2>
+<p>Programs like this one — consistent strength work plus steady habits — are what the research actually supports for postpartum women: better core function, fewer pelvic-floor symptoms, more energy, and, if weight loss is one of your goals, a sustainable <strong>½–1 pound per week</strong>.</p>
+<p>If you're breastfeeding, that gentle pace is a feature, not a flaw: it's the rate that protects your milk supply. You will likely need <strong>at least 1,800 calories a day</strong> while nursing — this program will never ask you to eat less than your body needs.</p>
+
+<div class="safety">
+  <p><strong>Before you start, two ground rules:</strong></p>
+  <ul>
+    <li>Wait until your physician or midwife has cleared you for exercise (typically around your six-week visit; often later after a cesarean or complications).</li>
+    <li>If you're nursing, hold off on any intentional weight loss until around 8 weeks, when your supply is established. You can absolutely start the food phases and gentle movement before then.</li>
+  </ul>
+</div>
+
+<div class="card sand">
+  <h3 style="margin-top:0;">What you'll need</h3>
+  <ul style="margin-bottom:0;">
+    <li>A pair or two of dumbbells (a light and a medium set is perfect)</li>
+    <li>A sturdy step, stair, or low bench</li>
+    <li>A water bottle you actually like</li>
+    <li>About 30 minutes, three times a week</li>
+  </ul>
+</div>
+
+<p>That's it. No detoxes, no cutting food groups, no jumping before your body is ready. Let's begin.</p>
+
+<div class="divider" aria-hidden="true">
+  <svg width="120" height="22" viewBox="0 0 120 22" xmlns="http://www.w3.org/2000/svg" fill="none">
+    <line x1="0" y1="11" x2="44" y2="11" stroke="rgba(200,220,192,0.9)" stroke-width="1.5"/>
+    <path d="M60 3 C64 7 66 11 60 19 C54 11 56 7 60 3 Z" fill="#44713B"/>
+    <path d="M60 5.5 L60 16.5" stroke="#C8DCC0" stroke-width="1"/>
+    <line x1="76" y1="11" x2="120" y2="11" stroke="rgba(200,220,192,0.9)" stroke-width="1.5"/>
+  </svg>
+</div>
+<p style="text-align:center; font-size:14px; color:#5A6B58;">Start with <strong>Phase 1 · Build Your Base</strong> — and begin the strength plan whenever you're cleared.</p>
+
+  <footer class="footer">
+    
+<div class="divider" aria-hidden="true">
+  <svg width="120" height="22" viewBox="0 0 120 22" xmlns="http://www.w3.org/2000/svg" fill="none">
+    <line x1="0" y1="11" x2="44" y2="11" stroke="rgba(200,220,192,0.9)" stroke-width="1.5"/>
+    <path d="M60 3 C64 7 66 11 60 19 C54 11 56 7 60 3 Z" fill="#44713B"/>
+    <path d="M60 5.5 L60 16.5" stroke="#C8DCC0" stroke-width="1"/>
+    <line x1="76" y1="11" x2="120" y2="11" stroke="rgba(200,220,192,0.9)" stroke-width="1.5"/>
+  </svg>
+</div>
+    <p>© Lumora Women · This program is educational and is not medical advice. Always follow the guidance of your own physician or midwife.</p>
+  </footer>
+</div>
+</body>
+</html>

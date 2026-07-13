@@ -4,7 +4,7 @@ import DayMeals from '@/components/coaching/DayMeals'
 import GroceryChecklist from '@/components/coaching/GroceryChecklist'
 import { buildGroceryList } from '@/lib/grocery-list'
 import { getClientPortalPreview, groceryDisplay } from '@/lib/coaching-engagement'
-import { isFreshCookStyle, isIndividualPlanStyle } from '@/lib/cooking-style'
+import { isFamilyMealPrepStyle, isFreshCookStyle, isIndividualPlanStyle } from '@/lib/cooking-style'
 import { createAdminClient } from '@/lib/supabase/server'
 import { CoachingPlanSchema, MealDaySchema, RecipeSchema } from '@/lib/coaching-plan-schema'
 
@@ -50,6 +50,7 @@ export default async function PlanCardPreview({
             plan={preview.plan}
             individualPlanStyle={style ? isIndividualPlanStyle(style) : preview.individualPlanStyle}
             freshCookStyle={style ? isFreshCookStyle(style) : preview.freshCookStyle}
+            familyPrepStyle={style ? isFamilyMealPrepStyle(style) : preview.familyPrepStyle}
             mealPlanStartDate={preview.mealPlanStartDate}
             previewMode
           />

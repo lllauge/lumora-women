@@ -1,7 +1,11 @@
-// Cooking-style semantics for a plan's mealPlanStyle planning input. Three
+// Cooking-style semantics for a plan's mealPlanStyle planning input. Four
 // lifestyles, one axis: who eats the pot and how often she cooks.
 //   family_dinners   — full recipes cooked per meal, her portion carved out,
 //                      the family eats the rest.
+//   family_meal_prep — same family math (a repeated dinner still feeds the
+//                      family every time, so groceries are identical), but
+//                      repeats are double-batched: cook once at multiple
+//                      yield, reheat on the repeat nights.
 //   individual_only  — solo meal-prep: cook whole batches, repeats of a
 //                      recipe during the week are leftovers.
 //   individual_fresh — solo fresh cook: she cooks exactly her portion every
@@ -18,6 +22,11 @@ export function isIndividualPlanStyle(style: unknown): boolean {
 
 export function isFreshCookStyle(style: unknown): boolean {
   return style === 'individual_fresh'
+}
+
+/** Family macros and groceries, but repeated dinners get double-batch coaching. */
+export function isFamilyMealPrepStyle(style: unknown): boolean {
+  return style === 'family_meal_prep'
 }
 
 /** The grocery math that matches a plan's cooking style. */
@@ -42,6 +51,55 @@ function listDays(names: string[]): string {
   return `${names.slice(0, -1).join(', ')} & ${names[names.length - 1]}`
 }
 
+function recipeAppearances(
+  days: { day: CoachingPlanDraft['mealPlan'][number]; index: number }[],
+): Map<string, { dayIndex: number; dayName: string }[]> {
+  const appearances = new Map<string, { dayIndex: number; dayName: string }[]>()
+  for (const [position, { day, index }] of days.entries()) {
+    for (const meal of [day.breakfast, day.lunch, day.dinner, ...day.snacks]) {
+      for (const name of mealRecipeNames(meal)) {
+        const seen = appearances.get(name) ?? []
+        seen.push({ dayIndex: index, dayName: dayLabel(day, position) })
+        appearances.set(name, seen)
+      }
+    }
+  }
+  return appearances
+}
+
+const BATCH_WORD = ['', '', 'double', 'triple', 'quadruple']
+
+/**
+ * Double-batch coaching for a family meal-prep menu, keyed like
+ * mealPrepBadges. The family eats the whole dish every time it appears, so
+ * quantities never change — a repeat just means the first night cooks a
+ * multiple batch and the repeat nights reheat instead of cooking again.
+ */
+export function familyPrepBadges(
+  days: { day: CoachingPlanDraft['mealPlan'][number]; index: number }[],
+): Map<string, MealPrepBadge> {
+  const badges = new Map<string, MealPrepBadge>()
+  for (const [name, uses] of recipeAppearances(days)) {
+    if (uses.length < 2) continue
+    const [first, ...rest] = uses
+    const laterDays = [...new Set(rest.map((use) => use.dayName).filter((d) => d !== first.dayName))]
+    const batchWord = BATCH_WORD[uses.length] ?? `${uses.length}×`
+    badges.set(`${first.dayIndex}:${name}`, {
+      kind: 'cook',
+      label: `Make a ${batchWord} batch — refrigerate the extra for ${listDays(laterDays) || 'the repeat meals'}`,
+    })
+    for (const use of rest) {
+      const key = `${use.dayIndex}:${name}`
+      if (badges.has(key)) continue
+      badges.set(key, {
+        kind: 'leftover',
+        label: `Already cooked ${first.dayName} — just reheat and serve`,
+      })
+    }
+  }
+  return badges
+}
+
 /**
  * Cook-day / leftover badges for a solo meal-prep menu, keyed by
  * `${dayIndex}:${recipeName}`. A recipe whose batches cover several meal
@@ -53,19 +111,8 @@ export function mealPrepBadges(
   days: { day: CoachingPlanDraft['mealPlan'][number]; index: number }[],
   recipes: CoachingPlanDraft['recipes'],
 ): Map<string, MealPrepBadge> {
-  const appearances = new Map<string, { dayIndex: number; dayName: string }[]>()
-  for (const [position, { day, index }] of days.entries()) {
-    for (const meal of [day.breakfast, day.lunch, day.dinner, ...day.snacks]) {
-      for (const name of mealRecipeNames(meal)) {
-        const seen = appearances.get(name) ?? []
-        seen.push({ dayIndex: index, dayName: dayLabel(day, position) })
-        appearances.set(name, seen)
-      }
-    }
-  }
-
   const badges = new Map<string, MealPrepBadge>()
-  for (const [name, uses] of appearances) {
+  for (const [name, uses] of recipeAppearances(days)) {
     if (uses.length < 2) continue
     const recipe = recipes.find((r) => r.name === name)
     if (!recipe) continue

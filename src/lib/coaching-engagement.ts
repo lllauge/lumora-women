@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createAdminClient, createClient } from '@/lib/supabase/server'
 import { mealRecipeNames, parseCoachingPlan, type CoachingPlanDraft } from '@/lib/coaching-plan-schema'
-import { isFreshCookStyle, isIndividualPlanStyle } from '@/lib/cooking-style'
+import { isFamilyMealPrepStyle, isFreshCookStyle, isIndividualPlanStyle } from '@/lib/cooking-style'
 
 // Portion and measurement math lives in client-portion.ts and
 // household-measure.ts (pure, unit-tested); re-exported so portal pages keep
@@ -74,6 +74,8 @@ export type PortalContext = {
    * (individual_fresh) instead of batching leftovers (individual_only).
    */
   freshCookStyle: boolean
+  /** Family style where repeated dinners are double-batched (family_meal_prep). */
+  familyPrepStyle: boolean
   /** ISO date the plan's Day 1 begins; '' when the coach hasn't set one. */
   mealPlanStartDate: string
 }
@@ -336,7 +338,7 @@ export async function getClientPortalPreview(clientId: string) {
     .eq('status', 'published')
     .maybeSingle()
   if (!planRow) {
-    return { client, plan: null, individualPlanStyle: false, freshCookStyle: false, mealPlanStartDate: '', planPublishedAt: '' }
+    return { client, plan: null, individualPlanStyle: false, freshCookStyle: false, familyPrepStyle: false, mealPlanStartDate: '', planPublishedAt: '' }
   }
 
   const planningInputs = (planRow.planning_inputs ?? {}) as Record<string, unknown>
@@ -354,6 +356,7 @@ export async function getClientPortalPreview(clientId: string) {
     plan,
     individualPlanStyle: isIndividualPlanStyle(planningInputs.mealPlanStyle),
     freshCookStyle: isFreshCookStyle(planningInputs.mealPlanStyle),
+    familyPrepStyle: isFamilyMealPrepStyle(planningInputs.mealPlanStyle),
     mealPlanStartDate: typeof planningInputs.mealPlanStartDate === 'string' ? planningInputs.mealPlanStartDate : '',
     planPublishedAt: planRow.updated_at as string,
   }
@@ -402,6 +405,7 @@ export async function getPortalContext(): Promise<PortalContext> {
     planPublishedAt: planRow.updated_at,
     individualPlanStyle: isIndividualPlanStyle(planningInputs.mealPlanStyle),
     freshCookStyle: isFreshCookStyle(planningInputs.mealPlanStyle),
+    familyPrepStyle: isFamilyMealPrepStyle(planningInputs.mealPlanStyle),
     mealPlanStartDate: typeof planningInputs.mealPlanStartDate === 'string' ? planningInputs.mealPlanStartDate : '',
   }
 }

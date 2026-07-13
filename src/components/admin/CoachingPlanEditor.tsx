@@ -1506,6 +1506,7 @@ export default function CoachingPlanEditor({
               <span className="admin-label">Meal Plan Style</span>
               <select className="admin-input" value={planningInputs.mealPlanStyle} onChange={(e) => updatePlanningInput('mealPlanStyle', e.target.value)}>
                 <option value="family_dinners">Family Dinners + Her Servings</option>
+                <option value="family_meal_prep">Family Dinners + Her Servings — Meal Prep (double-batch)</option>
                 <option value="individual_only">Individual — Meal Prep (batch + leftovers)</option>
                 <option value="individual_fresh">Individual — Cooks Fresh (scaled portions)</option>
               </select>

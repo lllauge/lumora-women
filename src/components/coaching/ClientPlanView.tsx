@@ -10,7 +10,7 @@ import {
 } from '@/lib/coaching-engagement'
 import GroceryChecklist from '@/components/coaching/GroceryChecklist'
 import { buildGroceryList, clientGroceryList } from '@/lib/grocery-list'
-import { mealPrepBadges } from '@/lib/cooking-style'
+import { familyPrepBadges, mealPrepBadges } from '@/lib/cooking-style'
 import { mealPlanBlocks, mealPlanSchedule, friendlyBlockDate } from '@/lib/meal-plan-schedule'
 import DayMeals from '@/components/coaching/DayMeals'
 import { type CoachingPlanDraft } from '@/lib/coaching-plan-schema'
@@ -54,6 +54,7 @@ export default async function ClientPlanView({
   plan,
   individualPlanStyle,
   freshCookStyle = false,
+  familyPrepStyle = false,
   mealPlanStartDate,
   selectedDayIndex = NaN,
   selectedMealIndex = NaN,
@@ -65,6 +66,8 @@ export default async function ClientPlanView({
   individualPlanStyle: boolean
   /** Solo client who cooks fresh each time instead of batching leftovers. */
   freshCookStyle?: boolean
+  /** Family plan where repeated dinners are double-batched, not re-cooked. */
+  familyPrepStyle?: boolean
   mealPlanStartDate: string
   selectedDayIndex?: number
   selectedMealIndex?: number
@@ -115,11 +118,17 @@ export default async function ClientPlanView({
     ? buildGroceryList({ ...plan, mealPlan: nextDays.map(({ day }) => day) }, groceryOptions)
     : []
 
-  // Cook-day / leftover badges for solo meal-prep menus, computed per visible
-  // menu so they always agree with that menu's grocery list.
+  // Cook-day / leftover badges for solo meal-prep menus, and double-batch /
+  // reheat badges for family meal-prep menus — computed per visible menu so
+  // they always agree with that menu's grocery list.
   const batchStyle = individualPlanStyle && !freshCookStyle
-  const prepBadges = batchStyle ? mealPrepBadges(currentDays, plan.recipes) : new Map()
-  const nextPrepBadges = batchStyle && nextDays.length > 0 ? mealPrepBadges(nextDays, plan.recipes) : new Map()
+  const badgesFor = (days: typeof currentDays) => batchStyle
+    ? mealPrepBadges(days, plan.recipes)
+    : familyPrepStyle
+      ? familyPrepBadges(days)
+      : new Map()
+  const prepBadges = badgesFor(currentDays)
+  const nextPrepBadges = nextDays.length > 0 ? badgesFor(nextDays) : new Map()
   const groceryStorageKey = schedule.active
     ? `lumora-grocery-${client.id}-b${schedule.currentBlock}`
     : `lumora-grocery-${client.id}`
@@ -415,7 +424,9 @@ export default async function ClientPlanView({
                 ? 'Amounts are scaled to your portions — you cook fresh each time, so this buys exactly what you\'ll eat.'
                 : individualPlanStyle
                   ? 'Meals that repeat during the week come from one batch, so this buys just what you need.'
-                  : '',
+                  : familyPrepStyle
+                    ? 'Repeated dinners are double-batched — this buys enough for every night, you just cook once.'
+                    : '',
             ].filter(Boolean).join(' ')}
           />
           <div className="portal-card">

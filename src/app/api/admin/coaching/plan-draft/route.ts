@@ -301,9 +301,13 @@ export async function POST(req: NextRequest) {
       ? [
           'This client cooks fresh every time and does not eat leftovers: prefer recipes that scale down to a single portion easily (skillet meals, bowls, salads, sheet-pan for one). Avoid dishes that only work as large batches, like whole roasts or big casseroles. Vary recipes freely across days.',
         ]
-      : [
-          'Dinners feed the whole family. When the same dinner appears twice in a week, suggest in that day\'s notes that she double-batch the first night and reheat the second.',
-        ]
+      : draftStyle === 'family_meal_prep'
+        ? [
+            'Dinners feed the whole family AND she meal-preps: schedule each dinner recipe on 2 nights within 3–4 days of each other so she can double-batch the first night and reheat the second. Prefer dishes that reheat well (stews, bakes, casseroles) over ones that don\'t (crispy or fried dishes).',
+          ]
+        : [
+            'Dinners feed the whole family. When the same dinner appears twice in a week, suggest in that day\'s notes that she double-batch the first night and reheat the second.',
+          ]
 
   const libraryInstructions = hasLibrary ? [
     `Laura has a recipe library with ${libraryRecipes.length} recipes. You MUST use only recipes from this library — do not invent new ones.`,

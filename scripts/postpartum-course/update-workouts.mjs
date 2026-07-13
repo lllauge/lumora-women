@@ -67,8 +67,12 @@ async function main() {
       Body: fs.readFileSync(filePath), ContentType: 'text/html',
       CacheControl: 'public, max-age=31536000, immutable',
     }))
+    // Store the full public URL, not r2://<key>. Production's R2 env points at
+    // different buckets than local, so key-based lookups 502 there; the asset
+    // route serves registered full URLs via its external-asset path instead.
+    const publicUrl = `${env.R2_PUBLIC_URL.replace(/\/+$/, '')}/${key}`
     const { error: uErr } = await supabase
-      .from('downloads').update({ file_url: `r2://${key}` }).eq('id', dl.id)
+      .from('downloads').update({ file_url: publicUrl }).eq('id', dl.id)
     if (uErr) throw new Error(uErr.message)
     console.log('updated guide:', lesson.title)
   }

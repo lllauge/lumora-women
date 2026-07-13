@@ -55,7 +55,7 @@ ${body}
 </table>`
 }
 
-/** Hydration cups visual — filled vs outline cups. */
+/** Hydration cups visual: filled vs outline cups. */
 export function cupsRow(filled, total, label) {
   const cup = (isFilled, i) => `
     <svg width="26" height="32" viewBox="0 0 26 32" xmlns="http://www.w3.org/2000/svg" fill="none" aria-hidden="true">
@@ -79,25 +79,25 @@ export function foundationFive(position = 'lying on your back') {
 <div class="card tint">
   <h3 style="margin-top:0;">Start every workout: The Foundation Five <span style="font-weight:500; color:#5A6B58;">(~5 minutes)</span></h3>
   <ol>
-    <li><strong>360° breathing</strong> — 5 slow breaths. Inhale into your ribs and belly, exhale fully and feel your deep core gently wrap.</li>
-    <li><strong>Pelvic tilts</strong> — 10 slow rocks. Flatten your lower back toward the floor on the exhale, release on the inhale.</li>
-    <li><strong>Deep-core holds</strong> — 5 × 5-second holds, <strong>${position}</strong>. Exhale, gently draw your lower belly in (about 30% effort — a hug, not a crunch), breathe while you hold.</li>
-    <li><strong>Glute bridge</strong> — 2 × 10. Exhale up, squeeze at the top, lower with control.</li>
-    <li><strong>Bird dog</strong> — 2 × 6 per side. Long spine, no wobble, opposite arm and leg reach.</li>
+    <li><strong>360° breathing</strong>: 5 slow breaths. Inhale into your ribs and belly, exhale fully and feel your deep core gently wrap.</li>
+    <li><strong>Pelvic tilts</strong>: 10 slow rocks. Flatten your lower back toward the floor on the exhale, release on the inhale.</li>
+    <li><strong>Deep-core holds</strong>: 5 × 5-second holds, <strong>${position}</strong>. Exhale, gently draw your lower belly in (about 30% effort, a hug rather than a crunch), and breathe while you hold.</li>
+    <li><strong>Glute bridge</strong>: 2 × 10. Exhale up, squeeze at the top, lower with control.</li>
+    <li><strong>Bird dog</strong>: 2 × 6 per side. Long spine, no wobble, opposite arm and leg reach.</li>
   </ol>
-  <p style="font-size:13.5px; color:#5A6B58; margin-bottom:0;">This is your warm-up <em>and</em> your deep-core rebuild. Do not skip it — it is the most important five minutes of the program.</p>
+  <p style="font-size:13.5px; color:#5A6B58; margin-bottom:0;">This is your warm-up <em>and</em> your deep-core rebuild. Do not skip it. It is the most important five minutes of the program.</p>
 </div>`
 }
 
 export const DAILY_DOSE = `
 <div class="card dark">
-  <h3 style="margin-top:0;">The Daily Dose — every day, workout or not <span style="font-weight:500; color:rgba(200,220,192,0.8);">(~5 minutes)</span></h3>
+  <h3 style="margin-top:0;">The Daily Dose: every day, workout or not <span style="font-weight:500; color:rgba(200,220,192,0.8);">(~5 minutes)</span></h3>
   <p><strong>Pelvic floor training</strong> is the single best-proven postpartum exercise, and it works on daily repetition:</p>
   <ul>
-    <li><strong>3 rounds of 8 squeezes</strong> — lift for 6 seconds (a slow elevator up, breathing the whole time), rest 6 seconds. Full relaxation between reps matters as much as the lift.</li>
-    <li><strong>Finish with 10 quick flicks</strong> — fast lift, fast release.</li>
+    <li><strong>3 rounds of 8 squeezes</strong>: lift for 6 seconds (a slow elevator up, breathing the whole time), rest 6 seconds. Full relaxation between reps matters as much as the lift.</li>
+    <li><strong>Finish with 10 quick flicks</strong>: fast lift, fast release.</li>
     <li>Start lying down; graduate to sitting, then standing as it gets easier.</li>
-    <li>Keep it up for <strong>at least three months</strong> — attach it to a feed, a shower, or brushing your teeth.</li>
+    <li>Keep it up for <strong>at least three months</strong>. Attach it to a feed, a shower, or brushing your teeth.</li>
   </ul>
   <p style="margin-bottom:0;"><strong>Plus a daily walk:</strong> start where you are (even 10 minutes) and build gradually toward 30 minutes at a pace where you can talk but you know you're moving.</p>
 </div>`

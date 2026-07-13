@@ -41,9 +41,9 @@ const GUIDES_DIR = path.join(process.cwd(), 'docs', 'course-content', 'postpartu
 const COURSE = {
   title: 'The Postpartum Reset',
   subtitle:
-    'A 6-week strength and nourishment program for the fourth trimester — rebuild your core, restore your energy, and come back stronger than before.',
+    'A 6-week strength and nourishment program for the fourth trimester. Rebuild your core, restore your energy, and come back stronger than before.',
   description:
-    'Six weeks, three short workouts a week, and a food method built on adding — never restricting. ' +
+    'Six weeks, three short workouts a week, and a food method built on adding, never restricting. ' +
     'The Postpartum Reset starts where postpartum recovery actually starts: your breath, deep core, and pelvic floor. ' +
     'From there you build real strength with simple dumbbell training you can do at home or at the gym, while three gentle ' +
     'nutrition phases layer in the foods your recovery (and your milk supply, if you are nursing) depends on. ' +
@@ -55,16 +55,16 @@ const COURSE = {
 // content lesson order → guide file
 const CONTENT_LESSONS = [
   { module: 'Start Here', title: 'Welcome to Your Reset', file: '01-welcome.html', content: 'What this program is, who it is for, and the two ground rules before you begin.' },
-  { module: 'Nourish · The Food Phases', title: 'Phase 1 · Build Your Base', file: '02-nourish-phase-1.html', content: 'Three small daily food additions — berries, leafy greens, and nuts — repeated for two weeks.' },
+  { module: 'Nourish · The Food Phases', title: 'Phase 1 · Build Your Base', file: '02-nourish-phase-1.html', content: 'Three small daily food additions (berries, leafy greens, and nuts) repeated for two weeks.' },
   { module: 'Nourish · The Food Phases', title: 'Phase 2 · Power Up Your Plate', file: '03-nourish-phase-2.html', content: 'Omega-3 seeds, a palm of protein at every meal, and whole grains. The recovery heavyweights.' },
   { module: 'Nourish · The Food Phases', title: 'Phase 3 · Hydrate & Sustain', file: '04-nourish-phase-3.html', content: 'Realistic hydration targets, habit anchors that make water automatic, and how the phases become a lifestyle.' },
   { module: 'Rebuild · The 6-Week Strength Plan', title: 'Before You Begin', file: '05-before-you-begin.html', content: 'Medical clearance, the diastasis self-check, warning signs to respect, and the Foundation Five warm-up.' },
   { module: 'Rebuild · The 6-Week Strength Plan', title: 'Week 1 · Reconnect', file: '06-week-1.html', content: 'Light, controlled, zero impact. Groove the movements and find your breath under load.' },
   { module: 'Rebuild · The 6-Week Strength Plan', title: 'Week 2 · Foundation', file: '07-week-2.html', content: 'Same calm pace, a little more volume.' },
-  { module: 'Rebuild · The 6-Week Strength Plan', title: 'Week 3 · Build', file: '08-week-3.html', content: 'Heavier dumbbells, four sets. This is where change begins — and Phase 2 eating starts.' },
+  { module: 'Rebuild · The 6-Week Strength Plan', title: 'Week 3 · Build', file: '08-week-3.html', content: 'Heavier dumbbells, four sets. This is where change begins, and Phase 2 eating starts.' },
   { module: 'Rebuild · The 6-Week Strength Plan', title: 'Week 4 · Strengthen', file: '09-week-4.html', content: 'The halfway mark. Heavier, more confident, visibly stronger.' },
   { module: 'Rebuild · The 6-Week Strength Plan', title: 'Week 5 · Progress', file: '10-week-5.html', content: 'Peak strength, plus the impact-readiness check and optional jump work.' },
-  { module: 'Rebuild · The 6-Week Strength Plan', title: 'Week 6 · Thrive', file: '11-week-6.html', content: 'Your strongest week — and how to repeat the program heavier.' },
+  { module: 'Rebuild · The 6-Week Strength Plan', title: 'Week 6 · Thrive', file: '11-week-6.html', content: 'Your strongest week, and how to repeat the program heavier.' },
 ]
 
 // Exercise library lives in library.mjs (shared with update-workouts.mjs).
@@ -104,7 +104,7 @@ async function main() {
     .from('courses').select('id').eq('title', COURSE.title).maybeSingle()
   if (exErr) throw new Error(`course lookup failed: ${exErr.message}`)
   if (existing) {
-    console.error(`A course titled "${COURSE.title}" already exists (${existing.id}). Aborting — edit it in /admin/courses instead.`)
+    console.error(`A course titled "${COURSE.title}" already exists (${existing.id}). Aborting. Edit it in /admin/courses instead.`)
     process.exit(1)
   }
 
@@ -165,10 +165,12 @@ async function main() {
     const key = `courses/${courseId}/downloads/${randomUUID()}.html`
     await uploadToR2(key, html, 'text/html')
 
+    // Full public URL, not r2://<key>: production R2 env differs from local,
+    // so the asset route serves these via its external-asset path.
     const { error: dErr } = await supabase.from('downloads').insert({
       lesson_id: l.id,
       file_name: lesson.file,
-      file_url: `r2://${key}`,
+      file_url: `${env.R2_PUBLIC_URL.replace(/\/+$/, '')}/${key}`,
       file_type: 'text/html',
     })
     if (dErr) throw new Error(`download insert failed (${lesson.title}): ${dErr.message}`)
@@ -190,7 +192,7 @@ async function main() {
   console.log(`exercise library: ${LIBRARY.length} lessons`)
 
   console.log('\nDone. The course is a DRAFT (unpublished).')
-  console.log(`Review it at /admin/courses/edit/${courseId} — set the price, attach your videos, then publish.`)
+  console.log(`Review it at /admin/courses/edit/${courseId}. Set the price, attach your videos, then publish.`)
 }
 
 main().catch((err) => {

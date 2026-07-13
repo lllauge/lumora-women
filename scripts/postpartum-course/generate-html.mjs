@@ -96,7 +96,7 @@ function page({ title, sub, body }) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${title} — The Lumora Postpartum Reset</title>
+<title>${title} | The Lumora Postpartum Reset</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap');
 ${BASE_CSS}

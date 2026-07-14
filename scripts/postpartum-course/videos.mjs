@@ -26,8 +26,6 @@ export const VIDEO_MAP = {
   'Romanian Deadlift': 'ymove:romanian-deadlift',
   'Single-Leg Romanian Deadlift': 'ymove:dumbbell-single-leg-deadlift',
   'Clamshells': 'ymove:clams-side-lying-with-knee-lifts-aceab1',
-  'Side-Lying Hip Abduction': null,
-  'Standing Hip Abduction': null,
   'Donkey Kicks': 'ymove:glute-kickback-f13e0d',
   'Calf Raises': 'ymove:dumbbel-calf-raises',
   'Push-Up Progression': 'ymove:knee-push-ups',
@@ -36,9 +34,7 @@ export const VIDEO_MAP = {
   'Bicep Curl': 'ymove:dumbbell-bicep-curl-standing',
   'Overhead Tricep Extension': 'ymove:standing-dumbbell-triceps-extension',
   'Side Plank Progression': 'ymove:side-plank-48ec26',
-  'Suitcase Carry': null,
   'Farmer Carry': 'ymove:kettlebell-farmer-carry-91419a',
   'Mountain Climbers (Slow, Hands Elevated)': 'ymove:mountain-climbers-6fb7f3',
-  'Squat to Calf Raise': null,
   'Jump Squats': 'ymove:explosive-jump-squats',
 }

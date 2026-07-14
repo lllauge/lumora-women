@@ -29,8 +29,6 @@ export const LIBRARY = [
   ['Romanian Deadlift', 'Dumbbells in front of your thighs, soft knees. Hinge at your hips, sending them straight back, and let the weights slide down your thighs, spine long, until you feel the stretch in the back of your legs. Exhale and stand by squeezing your glutes. This is the safe way to lift everything, car seats included.'],
   ['Single-Leg Romanian Deadlift', 'Same hinge, one leg. Hold support with your free hand at first. Hips stay square to the floor as the back leg reaches away. Balance, hamstrings, and hip stability in one elegant move.'],
   ['Clamshells', 'Lie on your side, knees bent 45°, feet together, head resting on your arm. Keeping feet touching, exhale and open the top knee like a clamshell, without rolling your pelvis back. Slow close. You should feel the side of your hip working.'],
-  ['Side-Lying Hip Abduction', 'Lie on your side, body in one long line. Lift the top leg to about 45° with the kneecap facing forward, not up. Lower slowly without stacking your hips backward.'],
-  ['Standing Hip Abduction', 'Standing tall (hold a counter if needed), lift one leg straight out to the side, toes forward, torso still. Think long leg, quiet upper body. Lower with control.'],
   ['Donkey Kicks', 'On hands and knees, spine neutral. Keeping the knee bent at 90°, press your foot toward the ceiling until your thigh is in line with your torso. Squeeze the glute at the top; do not let the back arch.'],
   ['Calf Raises', 'Stand tall, hands on a counter. Rise onto the balls of both feet, pause at the top, lower with 3 seconds of control. Progress to single-leg. Ten clean single-leg raises per side is one of the readiness benchmarks for returning to impact.'],
 
@@ -43,11 +41,9 @@ export const LIBRARY = [
 
   // ── Core & carries ────────────────────────────────────────────────────────
   ['Side Plank Progression', 'Start from knees: lie on your side, prop onto your forearm, knees bent, and lift your hips into one line from knees to head. Progress to full side plank (feet stacked), then add a top-leg lift. Breathe throughout. One of the best-tolerated core builders during diastasis recovery.'],
-  ['Suitcase Carry', 'One dumbbell at your side, like carrying a suitcase. Walk tall and slow: ribs stacked over hips, shoulders level, zero leaning toward the weight. Your deep core fights the sideways pull every step; this is the exact strength that carrying a car seat demands.'],
   ['Farmer Carry', 'A dumbbell in each hand, shoulders back and down, walk tall with purpose. Grip, posture, core, and calm all at once. Heavier than you think, cleaner than you expect.'],
   ['Mountain Climbers (Slow, Hands Elevated)', 'Hands on a bench or countertop, body in one line. Exhale and draw one knee toward your chest, place it back, switch. Slow and controlled. This is a moving plank, not a sprint. Keep hips level and midline quiet.'],
 
   // ── Power & impact ────────────────────────────────────────────────────────
-  ['Squat to Calf Raise', 'The low-impact power builder. Squat, then drive up fast and finish tall on the balls of your feet. It is everything a jump gives you except the landing. Use it anywhere jump squats appear until you pass the readiness check.'],
   ['Jump Squats', 'Only after passing the Week 5 impact-readiness check. Squat, then drive up into a small, quiet jump, and land softly through your forefoot with knees bending, exhaling on the landing. Any leaking, heaviness, or doming means you swap for squat to calf raise.'],
 ]

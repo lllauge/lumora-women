@@ -259,7 +259,7 @@ ${dayTable('Day 1 · Lower & Core', [
 ${dayTable('Day 2 · Upper & Core', [
   ['Wall push-up', 3, '10'],
   ['Supported single-arm dumbbell row', 3, '10 / side'],
-  ['Standing hip abduction (hold a counter)', 3, '10 / side'],
+  ['Clamshells', 3, '10 / side'],
   ['Side-lying open book', 2, '8 / side'],
 ])}
 ${dayTable('Day 3 · Full Body', [
@@ -287,7 +287,7 @@ ${foundationFive('lying on your back')}
 ${dayTable('Day 1 · Lower & Core', [
   ['Goblet squat to a chair (light dumbbell)', 3, '10'],
   ['Glute bridge', 4, '10'],
-  ['Side-lying hip abduction', 3, '12 / side'],
+  ['Donkey kicks', 3, '12 / side'],
   ['Calf raises', 3, '15'],
 ])}
 ${dayTable('Day 2 · Upper & Core', [
@@ -299,12 +299,12 @@ ${dayTable('Day 2 · Upper & Core', [
 ${dayTable('Day 3 · Full Body & Carry', [
   ['Romanian deadlift (light dumbbells)', 3, '10'],
   ['Step-up', 3, '10 / side'],
-  ['Suitcase carry (one dumbbell, walk tall)', 3, '30 steps / side'],
+  ['Farmer carry (a dumbbell in each hand, walk tall)', 3, '30 steps'],
   ['Dead bug (opposite arm & leg)', 3, '8 / side'],
 ])}
 ${REST_NOTE}
 ${finisher('5–10 minutes of brisk walking or cycling.')}
-<div class="note"><p><strong>Suitcase carry cue:</strong> one dumbbell at your side, ribs stacked over hips, no leaning. It quietly trains the exact core control that protects your back all day. If you feel doming or pelvic heaviness, go lighter.</p></div>
+<div class="note"><p><strong>Farmer carry cue:</strong> a dumbbell in each hand, ribs stacked over hips, shoulders level, walk tall. It quietly trains the exact core control that protects your back all day. If you feel doming or pelvic heaviness, go lighter.</p></div>
 <div class="note"><p><strong>Nutrition:</strong> finishing your second consistent week of <strong>Phase 1</strong>? You've earned <strong>Phase 2</strong>. Start it alongside Week 3.</p></div>
 `,
   },
@@ -366,7 +366,7 @@ ${dayTable('Day 2 · Upper & Core', [
 ${dayTable('Day 3 · Full Body & Carry', [
   ['Romanian deadlift (heavier)', 4, '8–10'],
   ['Walking lunge', 3, '10 / side'],
-  ['Suitcase carry (heavier)', 3, '40 steps / side'],
+  ['Farmer carry (heavier)', 3, '40 steps'],
   ['Dead bug holding one light dumbbell', 3, '10 / side'],
 ])}
 ${REST_NOTE}
@@ -396,7 +396,7 @@ ${ARM_FINISHER}
     <li>10 single-leg squats to a chair per side</li>
     <li>30 seconds of fast marching, then 10 small hops in place</li>
   </ul>
-  <p style="margin-bottom:0;">Any box unchecked? Use the low-impact swap (squat to calf raise). It builds the same power, and the box will check itself in time.</p>
+  <p style="margin-bottom:0;">Any box unchecked? Use the low-impact swap: squat to calf raise (squat, then drive up fast and finish tall on your toes). It builds the same power, and the box will check itself in time.</p>
 </div>
 
 ${foundationFive('standing tall')}
@@ -449,7 +449,7 @@ ${dayTable('Day 2 · Upper & Core', [
 ${dayTable('Day 3 · Full Body & Carry', [
   ['Romanian deadlift', 4, '10–12'],
   ['Step-up (dumbbells)', 4, '10 / side'],
-  ['Suitcase carry', 4, '50 steps / side'],
+  ['Farmer carry', 4, '50 steps'],
   ['Bird dog crunch', 3, '10 / side'],
 ])}
 ${REST_NOTE}

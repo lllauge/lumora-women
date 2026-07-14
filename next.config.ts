@@ -13,7 +13,8 @@ const securityHeaders = [
       "font-src 'self' data:",
       "frame-src https://www.google.com https://recaptcha.google.com https://js.stripe.com https://*.stripe.com https://customer-*.cloudflarestream.com",
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://www.google.com https://recaptcha.google.com https://api.stripe.com https://upload.imagedelivery.net https://customer-*.cloudflarestream.com",
-      "media-src 'self' https://*.r2.dev https://customer-*.cloudflarestream.com blob:",
+      // *.b-cdn.net: YMove exercise demo videos redirect to Bunny CDN.
+      "media-src 'self' https://*.r2.dev https://customer-*.cloudflarestream.com https://*.b-cdn.net blob:",
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",

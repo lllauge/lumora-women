@@ -472,6 +472,19 @@ export default function LessonPage({
                 allowFullScreen
                 title={lesson.title}
               />
+            ) : lesson?.video_url?.startsWith('ymove:') ? (
+              // YMove demo videos: the same-origin route resolves the slug to a
+              // fresh signed CDN URL (they expire) and redirects the player to it.
+              <video
+                key={lesson.video_url}
+                controls
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                playsInline
+                aria-label={`Video: ${lesson.title}`}
+              >
+                <source src={`/api/ymove/exercises/${encodeURIComponent(lesson.video_url.slice(6).trim())}/video`} />
+                Your browser does not support the video element.
+              </video>
             ) : (
               <video
                 key={lesson?.video_url}

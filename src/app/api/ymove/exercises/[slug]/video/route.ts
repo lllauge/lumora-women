@@ -20,8 +20,18 @@ async function canViewYMoveVideo() {
     .select('id')
     .eq('user_id', user.id)
     .maybeSingle()
+  if (client) return true
 
-  return Boolean(client)
+  // Course students: exercise-library lessons reference YMove demo videos,
+  // so anyone enrolled in a course may stream them too.
+  const { data: enrollment } = await admin
+    .from('enrollments')
+    .select('id')
+    .eq('user_id', user.id)
+    .limit(1)
+    .maybeSingle()
+
+  return Boolean(enrollment)
 }
 
 export async function GET(

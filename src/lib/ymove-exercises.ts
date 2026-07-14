@@ -73,7 +73,9 @@ export function bestYMoveVideoUrl(exercise: YMoveExercise) {
     ?? exercise.videos?.find((video) => video.tag === 'white-background')
     ?? exercise.videos?.find((video) => video.isPrimary)
     ?? exercise.videos?.[0]
-  return primary?.videoHlsUrl || primary?.videoUrl || exercise.videoHlsUrl || exercise.videoUrl || ''
+  // MP4 before HLS: browsers other than Safari cannot play .m3u8 natively,
+  // and these URLs feed plain <video> tags and direct link opens.
+  return primary?.videoUrl || primary?.videoHlsUrl || exercise.videoUrl || exercise.videoHlsUrl || ''
 }
 
 function normalizedWords(exercise: YMoveExercise) {

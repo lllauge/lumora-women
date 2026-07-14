@@ -19,6 +19,7 @@ import { createClient } from '@supabase/supabase-js'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import sharp from 'sharp'
 import { LIBRARY } from './library.mjs'
+import { VIDEO_MAP } from './videos.mjs'
 
 // ── env ──────────────────────────────────────────────────────────────────────
 const env = Object.fromEntries(
@@ -180,11 +181,12 @@ async function main() {
   // 5. exercise library lessons (text cues; videos attachable later in admin)
   for (let i = 0; i < LIBRARY.length; i++) {
     const [title, cues] = LIBRARY[i]
+    const videoUrl = VIDEO_MAP[title] ?? null
     const { error } = await supabase.from('lessons').insert({
       module_id: moduleIds['The Exercise Library'],
       title,
-      content: cues,
-      video_url: null,
+      content: videoUrl ? cues : `${cues} (Video coming soon.)`,
+      video_url: videoUrl,
       order_number: i,
     })
     if (error) throw new Error(`library lesson failed (${title}): ${error.message}`)

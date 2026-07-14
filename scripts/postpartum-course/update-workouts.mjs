@@ -16,6 +16,7 @@ import { randomUUID } from 'node:crypto'
 import { createClient } from '@supabase/supabase-js'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { LIBRARY } from './library.mjs'
+import { VIDEO_MAP } from './videos.mjs'
 
 const COURSE_TITLE = 'The Postpartum Reset'
 const GUIDES_DIR = path.join(process.cwd(), 'docs', 'course-content', 'postpartum-reset')
@@ -94,8 +95,10 @@ async function main() {
 
   for (let i = 0; i < LIBRARY.length; i++) {
     const [title, cues] = LIBRARY[i]
+    const videoUrl = VIDEO_MAP[title] ?? null
+    const content = videoUrl ? cues : `${cues} (Video coming soon.)`
     const { error } = await supabase.from('lessons').insert({
-      module_id: libModule.id, title, content: cues, video_url: null, order_number: i,
+      module_id: libModule.id, title, content, video_url: videoUrl, order_number: i,
     })
     if (error) throw new Error(`library insert failed (${title}): ${error.message}`)
   }

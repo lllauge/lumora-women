@@ -86,6 +86,7 @@ export async function sendCoachingCompInviteEmail(input: {
   firstName?: string
   signupUrl: string
   loginUrl: string
+  lang?: 'en' | 'es'
 }) {
   const resendKey = process.env.RESEND_API_KEY
   if (!resendKey) {
@@ -94,21 +95,55 @@ export async function sendCoachingCompInviteEmail(input: {
 
   const resend = new Resend(resendKey)
   const firstName = input.firstName?.trim()
-  const greeting = firstName ? `Hi ${escapeHtml(firstName)},` : 'Hi,'
+  const es = input.lang === 'es'
+
+  const copy = es
+    ? {
+        greeting: firstName ? `Hola ${escapeHtml(firstName)},` : 'Hola,',
+        subject: 'Tu acceso al coaching de Lumora Women está listo',
+        heading: 'Bienvenida al coaching de Lumora Women',
+        body: 'Tu acceso al coaching 1:1 está listo. Crea tu cuenta (o inicia sesión si ya tienes una) con este mismo correo y completa tu formulario inicial para que pueda crear tu plan.',
+        button: 'Crear cuenta y comenzar',
+        loginPrompt: '¿Ya tienes una cuenta?',
+        loginLink: 'Inicia sesión aquí',
+        textGreeting: firstName ? `Hola ${firstName},` : 'Hola,',
+        textBody: [
+          'Tu acceso al coaching 1:1 de Lumora Women está listo.',
+          'Crea tu cuenta (o inicia sesión) con este mismo correo y completa tu formulario inicial.',
+        ],
+        textSignup: 'Crear cuenta',
+        textLogin: 'Iniciar sesión',
+      }
+    : {
+        greeting: firstName ? `Hi ${escapeHtml(firstName)},` : 'Hi,',
+        subject: 'Your Lumora Women coaching access is ready',
+        heading: 'Welcome to Lumora Women coaching',
+        body: 'Your 1:1 coaching access is ready. Create your account (or log in if you already have one) using this same email, then complete your onboarding so I can build your plan.',
+        button: 'Create Account &amp; Start Onboarding',
+        loginPrompt: 'Already have an account?',
+        loginLink: 'Log in here',
+        textGreeting: `Hi ${firstName || 'there'},`,
+        textBody: [
+          'Your 1:1 Lumora Women coaching access is ready.',
+          'Create your account (or log in) with this same email and complete your onboarding form.',
+        ],
+        textSignup: 'Create account',
+        textLogin: 'Log in',
+      }
 
   const html = `
     <div style="font-family: Arial, sans-serif; background:#F8F6F0; padding:32px;">
       <div style="max-width:580px; margin:0 auto; background:#FFFFFF; border-radius:16px; padding:36px; border:1px solid #E5E0D6;">
-        <p style="color:#3A4A38; font-size:16px; line-height:1.7; margin:0 0 16px;">${greeting}</p>
-        <h1 style="font-family: Georgia, serif; color:#1A2818; margin:0 0 14px; font-size:32px;">Welcome to Lumora Women coaching</h1>
+        <p style="color:#3A4A38; font-size:16px; line-height:1.7; margin:0 0 16px;">${copy.greeting}</p>
+        <h1 style="font-family: Georgia, serif; color:#1A2818; margin:0 0 14px; font-size:32px;">${copy.heading}</h1>
         <p style="color:#3A4A38; font-size:16px; line-height:1.7; margin:0 0 22px;">
-          Your 1:1 coaching access is ready. Create your account (or log in if you already have one) using this same email, then complete your onboarding so I can build your plan.
+          ${copy.body}
         </p>
         <a href="${input.signupUrl}" style="display:inline-block; background:#3A4B36; color:#FFFFFF; text-decoration:none; padding:14px 22px; border-radius:999px; font-weight:700;">
-          Create Account &amp; Start Onboarding
+          ${copy.button}
         </a>
         <p style="color:#6B6B64; font-size:14px; line-height:1.6; margin:22px 0 0;">
-          Already have an account? <a href="${input.loginUrl}" style="color:#3A4B36;">Log in here</a>.
+          ${copy.loginPrompt} <a href="${input.loginUrl}" style="color:#3A4B36;">${copy.loginLink}</a>.
         </p>
       </div>
     </div>
@@ -117,16 +152,15 @@ export async function sendCoachingCompInviteEmail(input: {
   const { error } = await resend.emails.send({
     from: 'Lumora Women <hello@lumorawomen.com>',
     to: input.to,
-    subject: 'Your Lumora Women coaching access is ready',
+    subject: copy.subject,
     html,
     text: [
-      `Hi ${firstName || 'there'},`,
+      copy.textGreeting,
       '',
-      'Your 1:1 Lumora Women coaching access is ready.',
-      'Create your account (or log in) with this same email and complete your onboarding form.',
+      ...copy.textBody,
       '',
-      `Create account: ${input.signupUrl}`,
-      `Log in: ${input.loginUrl}`,
+      `${copy.textSignup}: ${input.signupUrl}`,
+      `${copy.textLogin}: ${input.loginUrl}`,
     ].join('\n'),
   })
 

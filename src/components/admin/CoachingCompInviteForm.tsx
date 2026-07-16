@@ -6,6 +6,7 @@ export default function CoachingCompInviteForm() {
   const [email, setEmail] = useState('')
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
+  const [lang, setLang] = useState('en')
   const [signupUrl, setSignupUrl] = useState('')
   const [emailed, setEmailed] = useState<boolean | null>(null)
   const [emailError, setEmailError] = useState('')
@@ -23,7 +24,7 @@ export default function CoachingCompInviteForm() {
     const res = await fetch('/api/admin/coaching/comp-invite', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, firstName, lastName }),
+      body: JSON.stringify({ email, firstName, lastName, lang }),
     })
     const data = await res.json()
 
@@ -62,6 +63,17 @@ export default function CoachingCompInviteForm() {
       <label className="space-y-1 block">
         <span className="admin-label">Client Email</span>
         <input className="admin-input" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+      </label>
+
+      <label className="space-y-1 block">
+        <span className="admin-label">Onboarding Language</span>
+        <select className="admin-input" value={lang} onChange={(e) => setLang(e.target.value)}>
+          <option value="en">English</option>
+          <option value="es">Spanish</option>
+        </select>
+        <span style={{ display: 'block', fontFamily: 'var(--font-hanken)', fontSize: '0.8125rem', color: 'var(--admin-on-surface-variant)' }}>
+          Spanish sends her invite email in Spanish and opens the onboarding form in Spanish.
+        </span>
       </label>
 
       <button type="submit" className="btn-primary" disabled={pending} style={{ borderRadius: '0.5rem' }}>

@@ -11,6 +11,7 @@ const CompInviteSchema = z.object({
   email: z.string().email(),
   firstName: z.string().max(80).optional().default(''),
   lastName: z.string().max(80).optional().default(''),
+  lang: z.enum(['en', 'es']).optional().default('en'),
 })
 
 function siteUrl(req: NextRequest) {
@@ -105,7 +106,8 @@ export async function POST(req: NextRequest) {
   }
 
   const baseUrl = siteUrl(req)
-  const onboardingRedirect = encodeURIComponent('/coaching/onboarding')
+  const onboardingPath = input.lang === 'es' ? '/coaching/onboarding?lang=es' : '/coaching/onboarding'
+  const onboardingRedirect = encodeURIComponent(onboardingPath)
   const signupUrl = `${baseUrl}/signup?email=${encodeURIComponent(email)}&redirectTo=${onboardingRedirect}`
   const loginUrl = `${baseUrl}/login?redirectTo=${onboardingRedirect}`
 
@@ -114,6 +116,7 @@ export async function POST(req: NextRequest) {
     firstName: input.firstName,
     signupUrl,
     loginUrl,
+    lang: input.lang,
   })
 
   return NextResponse.json({

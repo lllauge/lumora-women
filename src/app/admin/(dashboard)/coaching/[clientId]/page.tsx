@@ -462,6 +462,7 @@ export default async function AdminCoachingClientPage({ params }: PageProps) {
                   { key: 'lastName', label: 'Last Name' },
                   { key: 'phone', label: 'Phone' },
                   { key: 'timezone', label: 'Time Zone' },
+                  { key: 'preferredLanguage', label: 'Preferred Language' },
                 ]}
               />
 
@@ -473,8 +474,6 @@ export default async function AdminCoachingClientPage({ params }: PageProps) {
                   { key: 'age', label: 'Age' },
                   { key: 'weight', label: 'Current Weight' },
                   { key: 'targetWeight', label: 'Goal Weight' },
-                  { key: 'waist', label: 'Waist' },
-                  { key: 'hips', label: 'Hips' },
                   { key: 'primaryGoal', label: 'Main Goal' },
                   { key: 'whyNow', label: 'Why Now' },
                   { key: 'success', label: '12-Week Success' },
@@ -502,7 +501,7 @@ export default async function AdminCoachingClientPage({ params }: PageProps) {
                   { key: 'trackingExperience', label: 'Tracking Experience' },
                   { key: 'allergies', label: 'Allergies' },
                   { key: 'restrictions', label: 'Restrictions' },
-                  { key: 'favoriteFoods', label: 'Favorite Foods' },
+                  { key: 'favoriteFoods', label: 'Common Foods She Likes' },
                   { key: 'dislikedFoods', label: 'Disliked Foods' },
                   { key: 'eatingOut', label: 'Eating Out' },
                   { key: 'water', label: 'Water' },

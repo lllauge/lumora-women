@@ -31,12 +31,15 @@ export async function submitCoachingOnboarding(formData: FormData) {
       .eq('id', client.id)
   }
 
+  const lang = value(formData, 'lang') === 'es' ? 'es' : 'en'
+
   const payload = {
     personal: {
       firstName: value(formData, 'firstName'),
       lastName: value(formData, 'lastName'),
       phone: value(formData, 'phone'),
       timezone: value(formData, 'timezone'),
+      preferredLanguage: lang === 'es' ? 'Spanish' : 'English',
     },
     goals: {
       primaryGoal: value(formData, 'primaryGoal'),
@@ -48,8 +51,6 @@ export async function submitCoachingOnboarding(formData: FormData) {
       age: value(formData, 'age'),
       height: value(formData, 'height'),
       weight: value(formData, 'weight'),
-      waist: value(formData, 'waist'),
-      hips: value(formData, 'hips'),
     },
     health: {
       medicalConditions: value(formData, 'medicalConditions'),
@@ -113,5 +114,5 @@ export async function submitCoachingOnboarding(formData: FormData) {
     console.error('[coaching-onboarding] admin SMS failed:', sms.reason)
   }
 
-  redirect('/coaching/onboarding?submitted=1')
+  redirect(lang === 'es' ? '/coaching/onboarding?submitted=1&lang=es' : '/coaching/onboarding?submitted=1')
 }

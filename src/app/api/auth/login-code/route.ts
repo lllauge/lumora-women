@@ -11,6 +11,7 @@ import {
   createClientEmailMfaCookie,
   getSessionId,
 } from '@/lib/client-email-mfa'
+import { sessionActivityCookies } from '@/lib/session-activity'
 
 const RequestSchema = z.discriminatedUnion('action', [
   z.object({
@@ -21,7 +22,9 @@ const RequestSchema = z.discriminatedUnion('action', [
   z.object({
     action: z.literal('verify'),
     email: z.string().trim().email().max(320),
-    code: z.string().regex(/^\d{6}$/),
+    // Supabase's email OTP length is a dashboard setting (6-10 digits), so
+    // accept the full range rather than assuming the default of 6.
+    code: z.string().regex(/^\d{6,10}$/),
   }),
 ])
 
@@ -139,6 +142,12 @@ export async function POST(request: NextRequest) {
   }
 
   const response = NextResponse.json({ ok: true })
+
+  // A fresh sign-in must start a fresh activity clock. Activity cookies
+  // outlive sessions that end without a proper sign-out, and a stale
+  // startedAt would end the new session at the OLD session's 24-hour mark.
+  response.cookies.delete(sessionActivityCookies.admin)
+  response.cookies.delete(sessionActivityCookies.client)
 
   // The emailed code already proved inbox access, so satisfy the email-MFA
   // gate for this session instead of asking for a second emailed code.

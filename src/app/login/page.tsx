@@ -309,18 +309,18 @@ function LoginForm() {
                   display: 'block',
                 }}
               >
-                6-Digit Login Code
+                Login Code From Your Email
               </label>
               <input
                 id="login-code"
                 type="text"
                 inputMode="numeric"
                 autoComplete="one-time-code"
-                maxLength={6}
-                pattern="\d{6}"
+                maxLength={10}
+                pattern="\d{6,10}"
                 value={code}
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-                placeholder="123456"
+                placeholder="Enter your code"
                 required
                 aria-required="true"
                 style={{
@@ -340,7 +340,7 @@ function LoginForm() {
               />
               <button
                 type="submit"
-                disabled={codeLoading || code.length !== 6}
+                disabled={codeLoading || code.length < 6}
                 className="btn-primary w-full"
                 style={{ borderRadius: '0.5rem', padding: '0.75rem' }}
               >

@@ -5,6 +5,19 @@ import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { requireSameOrigin } from '@/lib/request-security'
 import { sendAdminSms } from '@/lib/admin-sms'
 import { verifyRecaptcha } from '@/lib/recaptcha'
+import { sessionActivityCookies } from '@/lib/session-activity'
+
+/**
+ * A fresh sign-in must start a fresh activity clock. Activity cookies outlive
+ * sessions that end without a proper sign-out (closed browser, natural
+ * expiry), and a stale startedAt would end the new session at the OLD
+ * session's 24-hour mark.
+ */
+function clearActivityCookies(response: NextResponse) {
+  response.cookies.delete(sessionActivityCookies.admin)
+  response.cookies.delete(sessionActivityCookies.client)
+  return response
+}
 
 const LoginSchema = z.object({
   email: z.string().trim().email().max(320),
@@ -82,16 +95,16 @@ export async function POST(request: NextRequest) {
   const isAdmin = profile?.role === 'admin'
 
   if (!isAdmin) {
-    return NextResponse.json({
+    return clearActivityCookies(NextResponse.json({
       role: 'user',
       mfaMode: 'challenge',
-    })
+    }))
   }
 
-  return NextResponse.json({
+  return clearActivityCookies(NextResponse.json({
     role: 'admin',
     mfaMode: assurance?.currentLevel === 'aal2'
       ? null
       : assurance?.nextLevel === 'aal2' ? 'challenge' : 'enroll',
-  })
+  }))
 }

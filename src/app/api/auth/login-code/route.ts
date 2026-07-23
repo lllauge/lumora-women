@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
 
   // A fresh sign-in must start a fresh activity clock. Activity cookies
   // outlive sessions that end without a proper sign-out, and a stale
-  // startedAt would end the new session at the OLD session's 24-hour mark.
+  // startedAt would end the new session at the OLD session's absolute cap.
   response.cookies.delete(sessionActivityCookies.admin)
   response.cookies.delete(sessionActivityCookies.client)
 

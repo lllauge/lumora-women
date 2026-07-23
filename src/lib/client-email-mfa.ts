@@ -1,5 +1,8 @@
 export const clientEmailMfaCookie = 'lumora_client_email_mfa'
-export const clientEmailMfaLifetimeSeconds = 24 * 60 * 60
+// Must cover the full client session window (sessionAbsoluteSeconds.client):
+// if this expires first, clients get bounced to the email-code screen while
+// their session is still valid.
+export const clientEmailMfaLifetimeSeconds = 7 * 24 * 60 * 60
 
 function getSigningSecret() {
   const secret = process.env.CLIENT_EMAIL_MFA_SECRET

@@ -7,12 +7,12 @@ export const sessionActivityCookies = {
 
 export const sessionIdleSeconds = {
   admin: 4 * 60 * 60,
-  client: 12 * 60 * 60,
+  client: 7 * 24 * 60 * 60,
 } as const
 
 export const sessionAbsoluteSeconds = {
   admin: 8 * 60 * 60,
-  client: 24 * 60 * 60,
+  client: 7 * 24 * 60 * 60,
 } as const
 
 const ACTIVITY_COOKIE_LIFETIME_SECONDS = 365 * 24 * 60 * 60

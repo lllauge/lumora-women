@@ -11,7 +11,7 @@ import { sessionActivityCookies } from '@/lib/session-activity'
  * A fresh sign-in must start a fresh activity clock. Activity cookies outlive
  * sessions that end without a proper sign-out (closed browser, natural
  * expiry), and a stale startedAt would end the new session at the OLD
- * session's 24-hour mark.
+ * session's absolute cap.
  */
 function clearActivityCookies(response: NextResponse) {
   response.cookies.delete(sessionActivityCookies.admin)

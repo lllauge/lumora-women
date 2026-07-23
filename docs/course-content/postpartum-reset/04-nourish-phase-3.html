@@ -71,7 +71,12 @@
   .safety strong { color: #7A3E22; }
 
   .tracker { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin: 14px 0; }
-  .tracker .day { aspect-ratio: 1; border: 1.5px solid var(--border); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--muted); background: #FFFFFF; }
+  .tracker .day { aspect-ratio: 1; border: 1.5px solid var(--border); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--muted); background: #FFFFFF; font-family: var(--sans); cursor: pointer; padding: 0; position: relative; transition: background 0.15s, border-color 0.15s; }
+  .tracker .day:hover { border-color: var(--green); }
+  .tracker .day:focus-visible { outline: 2px solid var(--gold-deep); outline-offset: 2px; }
+  .tracker .day.checked { background: var(--section-tint); border-color: var(--green); color: var(--ink); }
+  .tracker .day.checked::after { content: '\2713'; position: absolute; top: 3px; right: 6px; font-size: 11px; color: var(--green); }
+  .tracker-count { font-size: 13px; color: var(--muted); margin-top: 2px; min-height: 1.2em; }
 
   .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   @media (max-width: 560px) { .grid-2 { grid-template-columns: 1fr; } .wrap { padding: 24px 14px 48px; } .hero h1 { font-size: 24px; } }
@@ -201,17 +206,22 @@
 </div>
 <p style="font-size:13.5px; color:#5A6B58;">"Fluids" counts everything: water, milk, soup, herbal tea. Don't force chugging; build the habit and let thirst do the fine-tuning. Easiest self-check: your urine should run <strong>pale yellow</strong>.</p>
 
-<h2>Make it automatic, not heroic</h2>
+<h2>Make it automatic</h2>
 <div class="card tint">
   <ul style="margin:0 0 0 22px;">
     <li><strong>Anchor it to the baby:</strong> every time you sit down to nurse or give a bottle, you drink too. Feeds per day ≈ glasses per day. Done.</li>
     <li><strong>Station bottles</strong> where life happens: nursing chair, kitchen counter, stroller, car.</li>
-    <li><strong>Start with two:</strong> if you're currently at nearly nothing, begin with two cups a day and add one cup every few days. Ramp, don't leap.</li>
+    <li><strong>Start with two:</strong> if you're currently at nearly nothing, begin with two cups a day and add one every few days until you reach your target.</li>
     <li><strong>Make it nice:</strong> lemon, cucumber, mint, fizzy water. Flavor counts.</li>
   </ul>
 </div>
 
 <div class="note"><p><strong>Caffeine:</strong> you don't have to give up coffee. Up to ~300&nbsp;mg a day (about two mugs) is considered fine while nursing. Just don't let coffee <em>replace</em> water.</p></div>
+
+<h2>Fourteen days to make it stick</h2>
+<p>Tick a box each day you hit your fluid target. Two weeks of ticks and the habit mostly runs itself.</p>
+<div class="tracker" data-tracker="tracker-1" role="group" aria-label="14-day habit tracker"><button type="button" class="day" role="checkbox" aria-checked="false" data-day="1" aria-label="Day 1">1</button><button type="button" class="day" role="checkbox" aria-checked="false" data-day="2" aria-label="Day 2">2</button><button type="button" class="day" role="checkbox" aria-checked="false" data-day="3" aria-label="Day 3">3</button><button type="button" class="day" role="checkbox" aria-checked="false" data-day="4" aria-label="Day 4">4</button><button type="button" class="day" role="checkbox" aria-checked="false" data-day="5" aria-label="Day 5">5</button><button type="button" class="day" role="checkbox" aria-checked="false" data-day="6" aria-label="Day 6">6</button><button type="button" class="day" role="checkbox" aria-checked="false" data-day="7" aria-label="Day 7">7</button><button type="button" class="day" role="checkbox" aria-checked="false" data-day="8" aria-label="Day 8">8</button><button type="button" class="day" role="checkbox" aria-checked="false" data-day="9" aria-label="Day 9">9</button><button type="button" class="day" role="checkbox" aria-checked="false" data-day="10" aria-label="Day 10">10</button><button type="button" class="day" role="checkbox" aria-checked="false" data-day="11" aria-label="Day 11">11</button><button type="button" class="day" role="checkbox" aria-checked="false" data-day="12" aria-label="Day 12">12</button><button type="button" class="day" role="checkbox" aria-checked="false" data-day="13" aria-label="Day 13">13</button><button type="button" class="day" role="checkbox" aria-checked="false" data-day="14" aria-label="Day 14">14</button></div>
+<p class="tracker-count" data-tracker-count="tracker-1" aria-live="polite"></p>
 
 
 <div class="divider" aria-hidden="true">
@@ -223,7 +233,7 @@
   </svg>
 </div>
 <h2>Sustaining all three phases</h2>
-<p>Here's the quiet magic of what you've built: berries + greens + nuts + seeds + a palm of protein + whole grains + water <em>is</em> a complete template. Look at your plate: half colorful plants, a palm of protein, a fist of whole grains, a thumb of healthy fat, water beside it. That's the Lumora plate, no tracking app required.</p>
+<p>Put the phases side by side and you can see what they add up to: berries + greens + nuts + seeds + a palm of protein + whole grains + water <em>is</em> a complete template. Look at your plate: half colorful plants, a palm of protein, a fist of whole grains or starchy veg, a thumb of healthy fat, water beside it. That's the Lumora plate, no tracking app required.</p>
 <div class="gate">
 <svg class="g-icon" width="30" height="30" viewBox="0 0 30 30" xmlns="http://www.w3.org/2000/svg" fill="none" aria-hidden="true">
   <circle cx="15" cy="15" r="14" stroke="#C8980A" stroke-width="1.5"/>
@@ -243,5 +253,81 @@
     <p>© Lumora Women · This program is educational and is not medical advice. Always follow the guidance of your own physician or midwife.</p>
   </footer>
 </div>
+
+<script>
+(function () {
+  var trackers = document.querySelectorAll('[data-tracker]');
+  if (!trackers.length) return;
+
+  // localStorage throws inside the sandboxed lesson iframe; that's fine,
+  // there the parent page persists to Supabase instead.
+  function lsGet(key) {
+    try { var v = localStorage.getItem('lumora-tracker:' + key); return v ? JSON.parse(v) : null; }
+    catch (e) { return null; }
+  }
+  function lsSet(key, days) {
+    try { localStorage.setItem('lumora-tracker:' + key, JSON.stringify(days)); } catch (e) {}
+  }
+
+  function cellsOf(el) { return el.querySelectorAll('.day'); }
+
+  function checkedDays(el) {
+    var days = [];
+    cellsOf(el).forEach(function (c) {
+      if (c.getAttribute('aria-checked') === 'true') days.push(parseInt(c.getAttribute('data-day'), 10));
+    });
+    return days;
+  }
+
+  function updateCount(el) {
+    var key = el.getAttribute('data-tracker');
+    var counter = document.querySelector('[data-tracker-count="' + key + '"]');
+    if (!counter) return;
+    var n = checkedDays(el).length;
+    var total = cellsOf(el).length;
+    counter.textContent = n === 0 ? '' : n + ' of ' + total + ' days ticked';
+  }
+
+  function applyState(el, days) {
+    if (!Array.isArray(days)) return;
+    cellsOf(el).forEach(function (c) {
+      var on = days.indexOf(parseInt(c.getAttribute('data-day'), 10)) !== -1;
+      c.setAttribute('aria-checked', on ? 'true' : 'false');
+      c.classList.toggle('checked', on);
+    });
+    updateCount(el);
+  }
+
+  trackers.forEach(function (el) {
+    var key = el.getAttribute('data-tracker');
+    var saved = lsGet(key);
+    if (saved) applyState(el, saved);
+
+    el.addEventListener('click', function (e) {
+      var cell = e.target.closest('.day');
+      if (!cell) return;
+      var on = cell.getAttribute('aria-checked') === 'true';
+      cell.setAttribute('aria-checked', on ? 'false' : 'true');
+      cell.classList.toggle('checked', !on);
+      updateCount(el);
+      var days = checkedDays(el);
+      lsSet(key, days);
+      window.parent.postMessage({ __lumoraTrackerSave: { key: key, days: days } }, '*');
+    });
+  });
+
+  // Saved state pushed in by the lesson page once it has loaded it.
+  window.addEventListener('message', function (event) {
+    var data = event.data;
+    if (!data || !data.__lumoraTrackerState) return;
+    Object.keys(data.__lumoraTrackerState).forEach(function (key) {
+      var el = document.querySelector('[data-tracker="' + key + '"]');
+      if (el) applyState(el, data.__lumoraTrackerState[key]);
+    });
+  });
+  window.parent.postMessage({ __lumoraTrackerReady: true }, '*');
+})();
+</script>
+
 </body>
 </html>

@@ -71,7 +71,12 @@
   .safety strong { color: #7A3E22; }
 
   .tracker { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin: 14px 0; }
-  .tracker .day { aspect-ratio: 1; border: 1.5px solid var(--border); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--muted); background: #FFFFFF; }
+  .tracker .day { aspect-ratio: 1; border: 1.5px solid var(--border); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--muted); background: #FFFFFF; font-family: var(--sans); cursor: pointer; padding: 0; position: relative; transition: background 0.15s, border-color 0.15s; }
+  .tracker .day:hover { border-color: var(--green); }
+  .tracker .day:focus-visible { outline: 2px solid var(--gold-deep); outline-offset: 2px; }
+  .tracker .day.checked { background: var(--section-tint); border-color: var(--green); color: var(--ink); }
+  .tracker .day.checked::after { content: '\2713'; position: absolute; top: 3px; right: 6px; font-size: 11px; color: var(--green); }
+  .tracker-count { font-size: 13px; color: var(--muted); margin-top: 2px; min-height: 1.2em; }
 
   .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   @media (max-width: 560px) { .grid-2 { grid-template-columns: 1fr; } .wrap { padding: 24px 14px 48px; } .hero h1 { font-size: 24px; } }
@@ -112,11 +117,11 @@
     <li>Exhale and lift just your head and shoulders slightly off the floor.</li>
     <li>Feel for a gap between the two ridges of muscle. Note how many fingers wide, and whether your fingers sink deep or meet gentle tension.</li>
   </ol>
-  <p style="margin-bottom:0;">A gap of 1–2 fingers with some tension is common and workable. This program is exactly the rehab for it. A gap of 3+ fingers, a belly that "domes" into a ridge when you sit up, or fingers that sink with no resistance? Start the program gently <em>and</em> book a pelvic-floor physical therapist. It's the single best investment in this entire journey.</p>
+  <p style="margin-bottom:0;">A gap of 1–2 fingers with some tension is common and workable. This program is exactly the rehab for it. A gap of 3+ fingers, a belly that "domes" into a ridge when you sit up, or fingers that sink with no resistance? Start the program gently <em>and</em> book a pelvic-floor physical therapist. It's the best money you can spend on your recovery.</p>
 </div>
 
 <h2>The two non-negotiables</h2>
-<p>The strongest evidence in all of postpartum exercise science backs two dull-sounding, quietly life-changing practices. One happens daily, one starts every workout.</p>
+<p>Two practices carry the strongest evidence in postpartum exercise science, and both are easy to blow off because they look so small. One happens daily, one starts every workout.</p>
 
 <div class="card dark">
   <h3 style="margin-top:0;">The Daily Dose: every day, workout or not <span style="font-weight:500; color:rgba(200,220,192,0.8);">(~5 minutes)</span></h3>
@@ -153,8 +158,8 @@
     <li><strong>Weeks 5–6 · Progress & Thrive</strong>: peak volume, a taste of power, plus <em>optional</em> impact and jog intervals, only after the readiness check in Week 5.</li>
   </ul>
 </div>
-<p><strong>Choosing weights:</strong> the last two reps of a set should feel genuinely hard while your form stays clean. If you could chat through it, go heavier next set. If your form breaks, go lighter. That's the entire science of progression.</p>
-<p><strong>Missed a workout?</strong> Shift the week, don't cram. Two good sessions beat three rushed ones. And if the baby didn't sleep, halve the sets and call it a win. Showing up tired counts double.</p>
+<p><strong>Choosing weights:</strong> the last two reps of a set should feel genuinely hard while your form stays clean. If you could chat through it, go heavier next set. If your form breaks, go lighter.</p>
+<p><strong>Missed a workout?</strong> Shift the rest of the week back a day. Two good sessions beat three rushed ones. And if the baby didn't sleep, halve the sets and call it a win. Showing up tired counts double.</p>
 
   <footer class="footer">
     
@@ -169,5 +174,81 @@
     <p>© Lumora Women · This program is educational and is not medical advice. Always follow the guidance of your own physician or midwife.</p>
   </footer>
 </div>
+
+<script>
+(function () {
+  var trackers = document.querySelectorAll('[data-tracker]');
+  if (!trackers.length) return;
+
+  // localStorage throws inside the sandboxed lesson iframe; that's fine,
+  // there the parent page persists to Supabase instead.
+  function lsGet(key) {
+    try { var v = localStorage.getItem('lumora-tracker:' + key); return v ? JSON.parse(v) : null; }
+    catch (e) { return null; }
+  }
+  function lsSet(key, days) {
+    try { localStorage.setItem('lumora-tracker:' + key, JSON.stringify(days)); } catch (e) {}
+  }
+
+  function cellsOf(el) { return el.querySelectorAll('.day'); }
+
+  function checkedDays(el) {
+    var days = [];
+    cellsOf(el).forEach(function (c) {
+      if (c.getAttribute('aria-checked') === 'true') days.push(parseInt(c.getAttribute('data-day'), 10));
+    });
+    return days;
+  }
+
+  function updateCount(el) {
+    var key = el.getAttribute('data-tracker');
+    var counter = document.querySelector('[data-tracker-count="' + key + '"]');
+    if (!counter) return;
+    var n = checkedDays(el).length;
+    var total = cellsOf(el).length;
+    counter.textContent = n === 0 ? '' : n + ' of ' + total + ' days ticked';
+  }
+
+  function applyState(el, days) {
+    if (!Array.isArray(days)) return;
+    cellsOf(el).forEach(function (c) {
+      var on = days.indexOf(parseInt(c.getAttribute('data-day'), 10)) !== -1;
+      c.setAttribute('aria-checked', on ? 'true' : 'false');
+      c.classList.toggle('checked', on);
+    });
+    updateCount(el);
+  }
+
+  trackers.forEach(function (el) {
+    var key = el.getAttribute('data-tracker');
+    var saved = lsGet(key);
+    if (saved) applyState(el, saved);
+
+    el.addEventListener('click', function (e) {
+      var cell = e.target.closest('.day');
+      if (!cell) return;
+      var on = cell.getAttribute('aria-checked') === 'true';
+      cell.setAttribute('aria-checked', on ? 'false' : 'true');
+      cell.classList.toggle('checked', !on);
+      updateCount(el);
+      var days = checkedDays(el);
+      lsSet(key, days);
+      window.parent.postMessage({ __lumoraTrackerSave: { key: key, days: days } }, '*');
+    });
+  });
+
+  // Saved state pushed in by the lesson page once it has loaded it.
+  window.addEventListener('message', function (event) {
+    var data = event.data;
+    if (!data || !data.__lumoraTrackerState) return;
+    Object.keys(data.__lumoraTrackerState).forEach(function (key) {
+      var el = document.querySelector('[data-tracker="' + key + '"]');
+      if (el) applyState(el, data.__lumoraTrackerState[key]);
+    });
+  });
+  window.parent.postMessage({ __lumoraTrackerReady: true }, '*');
+})();
+</script>
+
 </body>
 </html>

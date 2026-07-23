@@ -35,11 +35,96 @@ export function gate(text) {
   return `<div class="gate">${GATE_ICON}<p>${text}</p></div>`
 }
 
-/** 14-day habit tracker grid. */
-export function tracker(days = 14) {
-  const cells = Array.from({ length: days }, (_, i) => `<div class="day">${i + 1}</div>`).join('')
-  return `<div class="tracker" role="img" aria-label="${days}-day habit tracker">${cells}</div>`
+/**
+ * Tickable habit tracker grid. Each cell is a real checkbox button; state is
+ * applied/persisted by TRACKER_SCRIPT (appended to every guide page):
+ * inside the lesson page it syncs with Supabase through a postMessage bridge,
+ * and in a standalone download it falls back to localStorage.
+ */
+export function tracker(days = 14, key = 'tracker-1') {
+  const cells = Array.from({ length: days }, (_, i) =>
+    `<button type="button" class="day" role="checkbox" aria-checked="false" data-day="${i + 1}" aria-label="Day ${i + 1}">${i + 1}</button>`
+  ).join('')
+  return `<div class="tracker" data-tracker="${key}" role="group" aria-label="${days}-day habit tracker">${cells}</div>
+<p class="tracker-count" data-tracker-count="${key}" aria-live="polite"></p>`
 }
+
+export const TRACKER_SCRIPT = `
+<script>
+(function () {
+  var trackers = document.querySelectorAll('[data-tracker]');
+  if (!trackers.length) return;
+
+  // localStorage throws inside the sandboxed lesson iframe; that's fine,
+  // there the parent page persists to Supabase instead.
+  function lsGet(key) {
+    try { var v = localStorage.getItem('lumora-tracker:' + key); return v ? JSON.parse(v) : null; }
+    catch (e) { return null; }
+  }
+  function lsSet(key, days) {
+    try { localStorage.setItem('lumora-tracker:' + key, JSON.stringify(days)); } catch (e) {}
+  }
+
+  function cellsOf(el) { return el.querySelectorAll('.day'); }
+
+  function checkedDays(el) {
+    var days = [];
+    cellsOf(el).forEach(function (c) {
+      if (c.getAttribute('aria-checked') === 'true') days.push(parseInt(c.getAttribute('data-day'), 10));
+    });
+    return days;
+  }
+
+  function updateCount(el) {
+    var key = el.getAttribute('data-tracker');
+    var counter = document.querySelector('[data-tracker-count="' + key + '"]');
+    if (!counter) return;
+    var n = checkedDays(el).length;
+    var total = cellsOf(el).length;
+    counter.textContent = n === 0 ? '' : n + ' of ' + total + ' days ticked';
+  }
+
+  function applyState(el, days) {
+    if (!Array.isArray(days)) return;
+    cellsOf(el).forEach(function (c) {
+      var on = days.indexOf(parseInt(c.getAttribute('data-day'), 10)) !== -1;
+      c.setAttribute('aria-checked', on ? 'true' : 'false');
+      c.classList.toggle('checked', on);
+    });
+    updateCount(el);
+  }
+
+  trackers.forEach(function (el) {
+    var key = el.getAttribute('data-tracker');
+    var saved = lsGet(key);
+    if (saved) applyState(el, saved);
+
+    el.addEventListener('click', function (e) {
+      var cell = e.target.closest('.day');
+      if (!cell) return;
+      var on = cell.getAttribute('aria-checked') === 'true';
+      cell.setAttribute('aria-checked', on ? 'false' : 'true');
+      cell.classList.toggle('checked', !on);
+      updateCount(el);
+      var days = checkedDays(el);
+      lsSet(key, days);
+      window.parent.postMessage({ __lumoraTrackerSave: { key: key, days: days } }, '*');
+    });
+  });
+
+  // Saved state pushed in by the lesson page once it has loaded it.
+  window.addEventListener('message', function (event) {
+    var data = event.data;
+    if (!data || !data.__lumoraTrackerState) return;
+    Object.keys(data.__lumoraTrackerState).forEach(function (key) {
+      var el = document.querySelector('[data-tracker="' + key + '"]');
+      if (el) applyState(el, data.__lumoraTrackerState[key]);
+    });
+  });
+  window.parent.postMessage({ __lumoraTrackerReady: true }, '*');
+})();
+</script>
+`
 
 /** Workout day table. dayTitle e.g. "Day 1 · Lower Body", rows = [[name, sets, reps], ...] */
 export function dayTable(dayTitle, rows) {

@@ -71,7 +71,12 @@
   .safety strong { color: #7A3E22; }
 
   .tracker { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin: 14px 0; }
-  .tracker .day { aspect-ratio: 1; border: 1.5px solid var(--border); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--muted); background: #FFFFFF; }
+  .tracker .day { aspect-ratio: 1; border: 1.5px solid var(--border); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--muted); background: #FFFFFF; font-family: var(--sans); cursor: pointer; padding: 0; position: relative; transition: background 0.15s, border-color 0.15s; }
+  .tracker .day:hover { border-color: var(--green); }
+  .tracker .day:focus-visible { outline: 2px solid var(--gold-deep); outline-offset: 2px; }
+  .tracker .day.checked { background: var(--section-tint); border-color: var(--green); color: var(--ink); }
+  .tracker .day.checked::after { content: '\2713'; position: absolute; top: 3px; right: 6px; font-size: 11px; color: var(--green); }
+  .tracker-count { font-size: 13px; color: var(--muted); margin-top: 2px; min-height: 1.2em; }
 
   .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   @media (max-width: 560px) { .grid-2 { grid-template-columns: 1fr; } .wrap { padding: 24px 14px 48px; } .hero h1 { font-size: 24px; } }
@@ -86,7 +91,7 @@
   <header class="hero">
     <div class="eyebrow">The Lumora Postpartum Reset</div>
     <h1>Week 1 · Reconnect</h1>
-    <p class="sub">Bodyweight, control, and reconnection. This week is a conversation with your body, not a test.</p>
+    <p class="sub">Bodyweight, control, and reconnection. Nothing to prove this week.</p>
     <div class="gold-rule"></div>
   </header>
   
@@ -161,5 +166,81 @@
     <p>© Lumora Women · This program is educational and is not medical advice. Always follow the guidance of your own physician or midwife.</p>
   </footer>
 </div>
+
+<script>
+(function () {
+  var trackers = document.querySelectorAll('[data-tracker]');
+  if (!trackers.length) return;
+
+  // localStorage throws inside the sandboxed lesson iframe; that's fine,
+  // there the parent page persists to Supabase instead.
+  function lsGet(key) {
+    try { var v = localStorage.getItem('lumora-tracker:' + key); return v ? JSON.parse(v) : null; }
+    catch (e) { return null; }
+  }
+  function lsSet(key, days) {
+    try { localStorage.setItem('lumora-tracker:' + key, JSON.stringify(days)); } catch (e) {}
+  }
+
+  function cellsOf(el) { return el.querySelectorAll('.day'); }
+
+  function checkedDays(el) {
+    var days = [];
+    cellsOf(el).forEach(function (c) {
+      if (c.getAttribute('aria-checked') === 'true') days.push(parseInt(c.getAttribute('data-day'), 10));
+    });
+    return days;
+  }
+
+  function updateCount(el) {
+    var key = el.getAttribute('data-tracker');
+    var counter = document.querySelector('[data-tracker-count="' + key + '"]');
+    if (!counter) return;
+    var n = checkedDays(el).length;
+    var total = cellsOf(el).length;
+    counter.textContent = n === 0 ? '' : n + ' of ' + total + ' days ticked';
+  }
+
+  function applyState(el, days) {
+    if (!Array.isArray(days)) return;
+    cellsOf(el).forEach(function (c) {
+      var on = days.indexOf(parseInt(c.getAttribute('data-day'), 10)) !== -1;
+      c.setAttribute('aria-checked', on ? 'true' : 'false');
+      c.classList.toggle('checked', on);
+    });
+    updateCount(el);
+  }
+
+  trackers.forEach(function (el) {
+    var key = el.getAttribute('data-tracker');
+    var saved = lsGet(key);
+    if (saved) applyState(el, saved);
+
+    el.addEventListener('click', function (e) {
+      var cell = e.target.closest('.day');
+      if (!cell) return;
+      var on = cell.getAttribute('aria-checked') === 'true';
+      cell.setAttribute('aria-checked', on ? 'false' : 'true');
+      cell.classList.toggle('checked', !on);
+      updateCount(el);
+      var days = checkedDays(el);
+      lsSet(key, days);
+      window.parent.postMessage({ __lumoraTrackerSave: { key: key, days: days } }, '*');
+    });
+  });
+
+  // Saved state pushed in by the lesson page once it has loaded it.
+  window.addEventListener('message', function (event) {
+    var data = event.data;
+    if (!data || !data.__lumoraTrackerState) return;
+    Object.keys(data.__lumoraTrackerState).forEach(function (key) {
+      var el = document.querySelector('[data-tracker="' + key + '"]');
+      if (el) applyState(el, data.__lumoraTrackerState[key]);
+    });
+  });
+  window.parent.postMessage({ __lumoraTrackerReady: true }, '*');
+})();
+</script>
+
 </body>
 </html>

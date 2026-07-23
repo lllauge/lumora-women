@@ -50,8 +50,8 @@ export const LESSON_GUIDES = [
 
 <div class="label">Honest expectations</div>
 <h2>What six weeks can really do</h2>
-<p>Programs built on consistent strength work plus steady habits are what the research actually supports for postpartum women: better core function, fewer pelvic-floor symptoms, more energy, and, if weight loss is one of your goals, a sustainable <strong>½–1 pound per week</strong>.</p>
-<p>If you're breastfeeding, that gentle pace is a feature, not a flaw: it's the rate that protects your milk supply. You will likely need <strong>at least 1,800 calories a day</strong> while nursing. This program will never ask you to eat less than your body needs.</p>
+<p>The postpartum research points to the same few outcomes again and again for women who train consistently and eat enough: better core function, fewer pelvic-floor symptoms, and more energy. If weight loss is one of your goals, expect around <strong>½–1 pound per week</strong>.</p>
+<p>We keep the pace there on purpose. Lose faster while breastfeeding and your milk supply is usually what pays for it. Most nursing moms need <strong>at least 1,800 calories a day</strong>, and nothing in this program will put you under what your body needs.</p>
 
 <div class="safety">
   <p><strong>Before you start, two ground rules:</strong></p>
@@ -114,7 +114,7 @@ ${medallion('1C', 'Daily add № 3', 'A small handful of nuts or seeds')}
 
 ${LEAF_DIVIDER}
 <h2>Your only job: fourteen days</h2>
-<p>Tick a box each day all three adds happen. Miss a day? Nothing is ruined. Just don't start the next phase until you've strung together two solid weeks. The habit is the result.</p>
+<p>Tick a box each day all three adds happen. Miss a day? Nothing is ruined. Just don't start the next phase until you've strung together two solid weeks, however long that takes.</p>
 ${tracker(14)}
 ${gate('<strong>Stay here until all three adds have been part of your day for at least two weeks.</strong> Consistency first, then we build on it.')}
 `,
@@ -124,7 +124,7 @@ ${gate('<strong>Stay here until all three adds have been part of your day for at
   {
     slug: '03-nourish-phase-2',
     title: 'Phase 2 · Power Up Your Plate',
-    sub: 'Keep everything from Phase 1. Now we add the recovery heavyweights: omega-3s, protein, and whole grains.',
+    sub: 'Keep everything from Phase 1. Now we add the recovery heavyweights: omega-3s, protein, and fiber-rich carbs.',
     body: `
 <p>Phase 1 is running on autopilot? Beautiful. Phase 2 adds the three nutrients that do the heaviest lifting in postpartum recovery. If you're nursing, they are also the ones your baby is drawing from you daily.</p>
 
@@ -141,19 +141,20 @@ ${medallion('2B', 'Daily add № 5', 'A palm of protein, at every meal')}
   <p><strong>Add a palm-sized portion of protein to each meal</strong> (not just once a day; your muscles and healing tissues are asking all day long).</p>
   <ul class="pill-list"><li>Whole eggs</li><li>Chicken</li><li>Salmon & white fish</li><li>Greek yogurt</li><li>Cottage cheese</li><li>Tofu & tempeh</li><li>Lentils & chickpeas</li><li>Beans</li><li>Shrimp</li><li>Lean beef</li></ul>
   <p><strong>Why it matters now:</strong> protein is the raw material of recovery, and it's what makes the strength plan actually build strength. Rough target: <strong>1.3–1.8&nbsp;g per kg of body weight per day</strong>, which for most women simply means "a palm at every meal, plus a protein-ish snack."</p>
-  <div class="note"><p>Notice we say <strong>whole eggs</strong>, not egg whites. The yolk holds the choline (you need ~550&nbsp;mg/day while nursing) and most of the vitamins. And full-fat yogurt is welcome here: fat is a nutrient, not a villain.</p></div>
+  <div class="note"><p>Notice we say <strong>whole eggs</strong>, not egg whites. The yolk holds the choline (you need ~550&nbsp;mg/day while nursing) and most of the vitamins. And full-fat yogurt is welcome here. The fat keeps you full and your hormones fed.</p></div>
 </div>
 
-${medallion('2C', 'Daily add № 6', 'Whole grains that hold you over')}
+${medallion('2C', 'Daily add № 6', 'Carbs that hold you over')}
 <div class="card">
-  <p><strong>Add ½–1 cup of whole grains to your meals.</strong></p>
-  <ul class="pill-list"><li>Oats</li><li>Quinoa</li><li>Brown rice</li><li>Whole-wheat bread</li><li>Farro</li><li>Bulgur</li><li>Buckwheat</li><li>Millet</li></ul>
-  <p><strong>Why it matters now:</strong> steady carbohydrates are your energy floor. They keep blood sugar (and mood) from crashing mid-afternoon, feed your workouts, and support milk supply. Cutting carbs while nursing is one of the fastest ways to tank both energy and supply.</p>
+  <p><strong>Add ½–1 cup of whole grains or fiber-rich starches to your meals.</strong> Whole grains are the workhorse here, but they're not the only option.</p>
+  <ul class="pill-list"><li>Oats</li><li>Quinoa</li><li>Brown rice</li><li>Whole-wheat bread</li><li>Farro</li><li>Bulgur</li><li>Buckwheat</li><li>Millet</li><li>Sweet potato</li><li>Butternut squash</li><li>Potatoes, skin on</li><li>Corn & peas</li></ul>
+  <p><strong>Why it matters now:</strong> steady carbohydrates are your energy floor, and the fiber that comes with them keeps blood sugar (and mood) from crashing mid-afternoon and postpartum digestion moving. They feed your workouts and support milk supply. Cutting carbs while nursing is one of the fastest ways to tank both energy and supply.</p>
 </div>
 
 ${LEAF_DIVIDER}
 <h2>Three weeks, then Phase 3</h2>
-<p>You're now carrying six small habits. Give them three weeks to settle in. That's long enough for this to stop feeling like a program and start feeling like how you eat.</p>
+<p>You're now carrying six small habits. Give them three weeks to settle in. That's long enough for this to stop feeling like a program and start feeling like how you eat. Tick a box each day all six adds happen.</p>
+${tracker(21)}
 ${gate('<strong>Stay here until the Phase 1 + Phase 2 adds have been daily habits for at least three weeks.</strong> Then Phase 3 is the easiest one of all.')}
 `,
   },
@@ -179,21 +180,25 @@ ${gate('<strong>Stay here until the Phase 1 + Phase 2 adds have been daily habit
 </div>
 <p style="font-size:13.5px; color:#5A6B58;">"Fluids" counts everything: water, milk, soup, herbal tea. Don't force chugging; build the habit and let thirst do the fine-tuning. Easiest self-check: your urine should run <strong>pale yellow</strong>.</p>
 
-<h2>Make it automatic, not heroic</h2>
+<h2>Make it automatic</h2>
 <div class="card tint">
   <ul style="margin:0 0 0 22px;">
     <li><strong>Anchor it to the baby:</strong> every time you sit down to nurse or give a bottle, you drink too. Feeds per day ≈ glasses per day. Done.</li>
     <li><strong>Station bottles</strong> where life happens: nursing chair, kitchen counter, stroller, car.</li>
-    <li><strong>Start with two:</strong> if you're currently at nearly nothing, begin with two cups a day and add one cup every few days. Ramp, don't leap.</li>
+    <li><strong>Start with two:</strong> if you're currently at nearly nothing, begin with two cups a day and add one every few days until you reach your target.</li>
     <li><strong>Make it nice:</strong> lemon, cucumber, mint, fizzy water. Flavor counts.</li>
   </ul>
 </div>
 
 <div class="note"><p><strong>Caffeine:</strong> you don't have to give up coffee. Up to ~300&nbsp;mg a day (about two mugs) is considered fine while nursing. Just don't let coffee <em>replace</em> water.</p></div>
 
+<h2>Fourteen days to make it stick</h2>
+<p>Tick a box each day you hit your fluid target. Two weeks of ticks and the habit mostly runs itself.</p>
+${tracker(14)}
+
 ${LEAF_DIVIDER}
 <h2>Sustaining all three phases</h2>
-<p>Here's the quiet magic of what you've built: berries + greens + nuts + seeds + a palm of protein + whole grains + water <em>is</em> a complete template. Look at your plate: half colorful plants, a palm of protein, a fist of whole grains, a thumb of healthy fat, water beside it. That's the Lumora plate, no tracking app required.</p>
+<p>Put the phases side by side and you can see what they add up to: berries + greens + nuts + seeds + a palm of protein + whole grains + water <em>is</em> a complete template. Look at your plate: half colorful plants, a palm of protein, a fist of whole grains or starchy veg, a thumb of healthy fat, water beside it. That's the Lumora plate, no tracking app required.</p>
 ${gate('<strong>This phase never ends.</strong> It just becomes how you live. Repeat any phase any time life knocks a habit loose (travel, teething, growth spurts; it happens to everyone).')}
 `,
   },
@@ -217,11 +222,11 @@ ${SYMPTOM_RULE}
     <li>Exhale and lift just your head and shoulders slightly off the floor.</li>
     <li>Feel for a gap between the two ridges of muscle. Note how many fingers wide, and whether your fingers sink deep or meet gentle tension.</li>
   </ol>
-  <p style="margin-bottom:0;">A gap of 1–2 fingers with some tension is common and workable. This program is exactly the rehab for it. A gap of 3+ fingers, a belly that "domes" into a ridge when you sit up, or fingers that sink with no resistance? Start the program gently <em>and</em> book a pelvic-floor physical therapist. It's the single best investment in this entire journey.</p>
+  <p style="margin-bottom:0;">A gap of 1–2 fingers with some tension is common and workable. This program is exactly the rehab for it. A gap of 3+ fingers, a belly that "domes" into a ridge when you sit up, or fingers that sink with no resistance? Start the program gently <em>and</em> book a pelvic-floor physical therapist. It's the best money you can spend on your recovery.</p>
 </div>
 
 <h2>The two non-negotiables</h2>
-<p>The strongest evidence in all of postpartum exercise science backs two dull-sounding, quietly life-changing practices. One happens daily, one starts every workout.</p>
+<p>Two practices carry the strongest evidence in postpartum exercise science, and both are easy to blow off because they look so small. One happens daily, one starts every workout.</p>
 ${DAILY_DOSE}
 <p>Retraining the pelvic floor in the first postpartum year cuts the odds of leaking by about a third and of prolapse by roughly half, but only if it actually happens daily. Attach it to something you already do.</p>
 ${foundationFive('lying on your back')}
@@ -236,8 +241,8 @@ ${foundationFive('lying on your back')}
     <li><strong>Weeks 5–6 · Progress & Thrive</strong>: peak volume, a taste of power, plus <em>optional</em> impact and jog intervals, only after the readiness check in Week 5.</li>
   </ul>
 </div>
-<p><strong>Choosing weights:</strong> the last two reps of a set should feel genuinely hard while your form stays clean. If you could chat through it, go heavier next set. If your form breaks, go lighter. That's the entire science of progression.</p>
-<p><strong>Missed a workout?</strong> Shift the week, don't cram. Two good sessions beat three rushed ones. And if the baby didn't sleep, halve the sets and call it a win. Showing up tired counts double.</p>
+<p><strong>Choosing weights:</strong> the last two reps of a set should feel genuinely hard while your form stays clean. If you could chat through it, go heavier next set. If your form breaks, go lighter.</p>
+<p><strong>Missed a workout?</strong> Shift the rest of the week back a day. Two good sessions beat three rushed ones. And if the baby didn't sleep, halve the sets and call it a win. Showing up tired counts double.</p>
 `,
   },
 
@@ -245,7 +250,7 @@ ${foundationFive('lying on your back')}
   {
     slug: '06-week-1',
     title: 'Week 1 · Reconnect',
-    sub: 'Bodyweight, control, and reconnection. This week is a conversation with your body, not a test.',
+    sub: 'Bodyweight, control, and reconnection. Nothing to prove this week.',
     body: `
 <p>Goal this week: groove the movement patterns, find your breath under load, and finish each session feeling <em>better</em> than you started. Bodyweight or the lightest dumbbells only. Week 3 is where we chase heavy.</p>
 <div class="note"><p><strong>Every day this week:</strong> the Daily Dose (pelvic floor 3 × 8 plus quick flicks, and a walk, even if it's just 10 minutes).</p></div>
@@ -339,7 +344,7 @@ ${dayTable('Day 3 · Full Body & Carry', [
 ${REST_NOTE}
 ${finisher('5–10 minutes. Try intervals: 1 minute brisk, 1 minute easy.')}
 ${ARM_FINISHER}
-<div class="note"><p><strong>Nutrition:</strong> begin <strong>Phase 2</strong> this week: seeds, a palm of protein at every meal, whole grains. The protein especially matters now that training is heavier.</p></div>
+<div class="note"><p><strong>Nutrition:</strong> begin <strong>Phase 2</strong> this week: seeds, a palm of protein at every meal, fiber-rich carbs. The protein especially matters now that training is heavier.</p></div>
 `,
   },
 
@@ -373,7 +378,7 @@ ${REST_NOTE}
 ${finisher('5–10 minutes of any cardio you look forward to.')}
 ${ARM_FINISHER}
 <div class="note"><p><strong>Feeding-posture bonus:</strong> all those rows and presses are quietly fixing the rounded "nursing hunch." Stand tall this week and feel the difference between your shoulder blades.</p></div>
-<div class="note"><p><strong>Nutrition:</strong> continue <strong>Phase 2</strong>. You're roughly a week and a half in. Consistency over perfection.</p></div>
+<div class="note"><p><strong>Nutrition:</strong> continue <strong>Phase 2</strong>. You're roughly a week and a half in; a missed day here and there changes nothing.</p></div>
 `,
   },
 
@@ -383,7 +388,7 @@ ${ARM_FINISHER}
     title: 'Week 5 · Progress',
     sub: 'Peak strength, a taste of power, and, if your body says yes, the first impact.',
     body: `
-<p>Two things happen this week: your deep-core work moves to standing (the hardest position), and impact becomes <em>available</em>: optional, earned, and only after the readiness check below. Plenty of strong women skip impact entirely this round and repeat the program with it next time. Both paths are wins.</p>
+<p>Two things happen this week: your deep-core work moves to standing (the hardest position), and impact becomes <em>available</em>: optional, earned, and only after the readiness check below. Plenty of strong women skip impact entirely this round and repeat the program with it next time.</p>
 
 <div class="card dark">
   <h3 style="margin-top:0;">The impact-readiness check</h3>
@@ -463,10 +468,10 @@ ${LEAF_DIVIDER}
     <li><strong>Run it again, heavier.</strong> The program is built to repeat: same structure, heavier dumbbells, full push-ups, impact unlocked if it wasn't before. Most women get 3–4 strong cycles out of it.</li>
     <li><strong>Want to run?</strong> Keep building the jog intervals: 1 min jog / 2 min walk, adding a minute of jogging each week as long as you stay symptom-free. That's the physical-therapy progression, and it works.</li>
     <li><strong>Keep the Daily Dose for at least three months total.</strong> Five minutes a day. It's core and pelvic-floor insurance for life.</li>
-    <li><strong>The food phases are already yours.</strong> Berries to water: that's not a program anymore, it's how you eat.</li>
+    <li><strong>The food phases are already yours.</strong> Berries to water, that's just how you eat now.</li>
   </ul>
 </div>
-<p>You didn't bounce back. You built forward, stronger than before, on a foundation that will hold. We're proud to have been in your corner.</p>
+<p>Remember "bounce back" from week one? You did something better. You rebuilt, slowly and on purpose, and strength earned that way holds. We're proud to have been in your corner.</p>
 <p style="font-family: 'Libre Baskerville', Georgia, serif; font-size:17px; color:#1A2818;">With love, Lumora</p>
 `,
   },

@@ -97,11 +97,72 @@ function prepareCourseHtml(rawHtml: string): string {
   return neutralized + IFRAME_HEIGHT_SHIM
 }
 
-function HtmlEmbed({ url, title }: { url: string; title: string }) {
+function HtmlEmbed({ url, title, lessonId }: { url: string; title: string; lessonId: string }) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [srcDoc, setSrcDoc] = useState<string>('')
   const [height, setHeight] = useState<number>(600)
+  // Habit trackers inside the guide (see TRACKER_SCRIPT in
+  // scripts/postpartum-course/helpers.mjs). The iframe announces readiness,
+  // we push the user's saved ticks in, and every toggle comes back out here
+  // to be upserted, so progress follows the account across devices.
+  const trackerStateRef = useRef<Record<string, number[]> | null>(null)
+  const trackerFrameReadyRef = useRef(false)
+
+  function pushTrackerState() {
+    if (!trackerFrameReadyRef.current || !trackerStateRef.current) return
+    iframeRef.current?.contentWindow?.postMessage(
+      { __lumoraTrackerState: trackerStateRef.current },
+      '*'
+    )
+  }
+
+  useEffect(() => {
+    let cancelled = false
+    trackerStateRef.current = null
+
+    async function loadTrackerState() {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user || cancelled) return
+      const { data, error } = await supabase
+        .from('habit_tracker_progress')
+        .select('tracker_key, checked_days')
+        .eq('user_id', user.id)
+        .eq('lesson_id', lessonId)
+      if (cancelled) return
+      if (error) {
+        console.error('[lesson-html] failed to load tracker progress:', error)
+        return
+      }
+      trackerStateRef.current = Object.fromEntries(
+        (data ?? []).map((r) => [r.tracker_key, r.checked_days ?? []])
+      )
+      pushTrackerState()
+    }
+
+    loadTrackerState()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lessonId])
+
+  async function saveTrackerToggle(key: string, days: number[]) {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    if (trackerStateRef.current) trackerStateRef.current[key] = days
+    const { error } = await supabase.from('habit_tracker_progress').upsert(
+      {
+        user_id: user.id,
+        lesson_id: lessonId,
+        tracker_key: key,
+        checked_days: days,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'user_id,lesson_id,tracker_key' }
+    )
+    if (error) console.error('[lesson-html] failed to save tracker progress:', error)
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -144,10 +205,29 @@ function HtmlEmbed({ url, title }: { url: string; title: string }) {
   useEffect(() => {
     function onMessage(event: MessageEvent) {
       if (event.source !== iframeRef.current?.contentWindow) return
-      const data = event.data as { __lumoraHtmlHeight?: number } | null
-      if (data && typeof data.__lumoraHtmlHeight === 'number') {
+      const data = event.data as {
+        __lumoraHtmlHeight?: number
+        __lumoraTrackerReady?: boolean
+        __lumoraTrackerSave?: { key?: unknown; days?: unknown }
+      } | null
+      if (!data) return
+      if (typeof data.__lumoraHtmlHeight === 'number') {
         const next = Math.min(Math.max(data.__lumoraHtmlHeight, 400), 20000)
         setHeight(next)
+      }
+      if (data.__lumoraTrackerReady) {
+        trackerFrameReadyRef.current = true
+        pushTrackerState()
+      }
+      if (data.__lumoraTrackerSave) {
+        const { key, days } = data.__lumoraTrackerSave
+        if (
+          typeof key === 'string' &&
+          Array.isArray(days) &&
+          days.every((d) => typeof d === 'number' && Number.isInteger(d))
+        ) {
+          saveTrackerToggle(key, days)
+        }
       }
     }
     window.addEventListener('message', onMessage)
@@ -590,7 +670,7 @@ export default function LessonPage({
                   Download
                 </a>
               </div>
-              <HtmlEmbed url={dl.file_url} title={dl.file_name} />
+              <HtmlEmbed url={dl.file_url} title={dl.file_name} lessonId={lessonId} />
             </section>
           ))}
 

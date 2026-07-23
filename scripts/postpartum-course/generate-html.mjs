@@ -11,7 +11,7 @@
  */
 import fs from 'node:fs'
 import path from 'node:path'
-import { LEAF_DIVIDER } from './helpers.mjs'
+import { LEAF_DIVIDER, TRACKER_SCRIPT } from './helpers.mjs'
 import { LESSON_GUIDES } from './lessons.mjs'
 
 const OUT_DIR = path.join(process.cwd(), 'docs', 'course-content', 'postpartum-reset')
@@ -81,7 +81,12 @@ const BASE_CSS = `
   .safety strong { color: #7A3E22; }
 
   .tracker { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin: 14px 0; }
-  .tracker .day { aspect-ratio: 1; border: 1.5px solid var(--border); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--muted); background: #FFFFFF; }
+  .tracker .day { aspect-ratio: 1; border: 1.5px solid var(--border); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--muted); background: #FFFFFF; font-family: var(--sans); cursor: pointer; padding: 0; position: relative; transition: background 0.15s, border-color 0.15s; }
+  .tracker .day:hover { border-color: var(--green); }
+  .tracker .day:focus-visible { outline: 2px solid var(--gold-deep); outline-offset: 2px; }
+  .tracker .day.checked { background: var(--section-tint); border-color: var(--green); color: var(--ink); }
+  .tracker .day.checked::after { content: '\\2713'; position: absolute; top: 3px; right: 6px; font-size: 11px; color: var(--green); }
+  .tracker-count { font-size: 13px; color: var(--muted); margin-top: 2px; min-height: 1.2em; }
 
   .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   @media (max-width: 560px) { .grid-2 { grid-template-columns: 1fr; } .wrap { padding: 24px 14px 48px; } .hero h1 { font-size: 24px; } }
@@ -116,6 +121,7 @@ ${BASE_CSS}
     <p>© Lumora Women · This program is educational and is not medical advice. Always follow the guidance of your own physician or midwife.</p>
   </footer>
 </div>
+${TRACKER_SCRIPT}
 </body>
 </html>`
 }

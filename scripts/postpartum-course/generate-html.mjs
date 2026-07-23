@@ -52,6 +52,8 @@ const BASE_CSS = `
   .card.dark { background: var(--dark); border-color: transparent; }
   .card.dark p, .card.dark li { color: var(--green-light); }
   .card.dark h3, .card.dark strong { color: #FFFFFF; }
+  .video-link { display: inline-block; margin-top: 4px; font-weight: 700; color: var(--gold-soft); text-decoration: underline; text-underline-offset: 3px; }
+  .video-link:hover { color: #FFFFFF; }
 
   .medallion { display: flex; align-items: center; gap: 14px; margin: 26px 0 8px; }
   .medallion svg { flex-shrink: 0; }

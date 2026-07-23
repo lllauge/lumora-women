@@ -177,13 +177,15 @@ export function foundationFive(position = 'lying on your back') {
 export const DAILY_DOSE = `
 <div class="card dark">
   <h3 style="margin-top:0;">The Daily Dose: every day, workout or not <span style="font-weight:500; color:rgba(200,220,192,0.8);">(~5 minutes)</span></h3>
-  <p><strong>Pelvic floor training</strong> is the single best-proven postpartum exercise, and it works on daily repetition:</p>
+  <p><strong>Pelvic floor training</strong> is the single best-proven postpartum exercise, and it works on daily repetition.</p>
+  <p><strong>Finding the right muscles:</strong> squeeze as if you're stopping your urine midstream and holding in wind at the same time, then lift up and in. Belly, thighs, and glutes stay soft. If you're unsure you've got it, the video below shows exactly what it should feel like.</p>
   <ul>
     <li><strong>3 rounds of 8 squeezes</strong>: lift for 6 seconds (a slow elevator up, breathing the whole time), rest 6 seconds. Full relaxation between reps matters as much as the lift.</li>
     <li><strong>Finish with 10 quick flicks</strong>: fast lift, fast release.</li>
     <li>Start lying down; graduate to sitting, then standing as it gets easier.</li>
     <li>Keep it up for <strong>at least three months</strong>. Attach it to a feed, a shower, or brushing your teeth.</li>
   </ul>
+  <p><a class="video-link" href="https://www.youtube.com/watch?v=-1lViRMMdJg" target="_blank" rel="noopener">&#9654;&nbsp; Watch: real-time guided pelvic floor training (8 min)</a><br><span style="font-size:13px; color:rgba(200,220,192,0.8);">Follow along with pelvic floor physiotherapist Michelle Kenway until the movement feels familiar. Opens in a new tab.</span></p>
   <p style="margin-bottom:0;"><strong>Plus a daily walk:</strong> start where you are (even 10 minutes) and build gradually toward 30 minutes at a pace where you can talk but you know you're moving.</p>
 </div>`
 

@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bloom Again — Postpartum Wellness Course | Lumora Women</title>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --green-dark: #162814;
+  --green-mid: #1E3220;
+  --green-accent: #4A7A40;
+  --green-tint: #EAF2E4;
+  --green-pale: #C8DCC0;
+  --ivory: #F8F6F0;
+  --warm-sand: #F0E8D8;
+  --white: #FFFFFF;
+  --ink: #1A2818;
+  --ink-mid: #3A4A38;
+  --ink-light: #6A7A68;
+  --gold: linear-gradient(135deg, #F0D060 0%, #C8980A 25%, #E8C040 50%, #A87808 75%, #D4AC30 100%);
+  --gold-solid: #C8980A;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'DM Sans', sans-serif; background: var(--ivory); color: var(--ink); line-height: 1.75; }
+
+/* COVER */
+.cover {
+  background: var(--green-dark);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 80px 40px;
+  position: relative;
+  overflow: hidden;
+}
+.cover::before { content: '🌿'; position: absolute; top: -20px; left: -20px; font-size: 220px; opacity: 0.03; transform: rotate(-20deg); pointer-events: none; }
+.cover::after { content: '🌱'; position: absolute; bottom: -20px; right: -20px; font-size: 200px; opacity: 0.03; transform: rotate(15deg); pointer-events: none; }
+.cover-logo { position: absolute; top: 28px; left: 40px; font-family: 'Libre Baskerville', serif; font-size: 16px; font-weight: 700; background: var(--gold); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.gold-line { width: 60px; height: 2px; background: var(--gold); margin: 0 auto 28px; border-radius: 100px; }
+.cover-eyebrow { font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; font-weight: 500; color: var(--green-pale); margin-bottom: 20px; opacity: 0.75; }
+.cover h1 { font-family: 'Libre Baskerville', serif; font-size: clamp(42px, 7vw, 72px); font-weight: 700; line-height: 1.05; margin-bottom: 10px; background: var(--gold); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.cover h1 em { font-style: italic; font-weight: 400; }
+.cover-sub { font-family: 'Libre Baskerville', serif; font-size: clamp(18px, 3vw, 24px); font-weight: 400; font-style: italic; color: var(--green-pale); margin-bottom: 28px; opacity: 0.8; }
+.cover-desc { font-size: 14px; color: var(--green-pale); max-width: 500px; line-height: 1.85; font-weight: 300; opacity: 0.6; margin-bottom: 44px; }
+.cover-modules { display: flex; flex-direction: column; gap: 8px; max-width: 420px; width: 100%; }
+.cover-mod { display: flex; align-items: center; gap: 14px; background: rgba(255,255,255,0.04); border: 1px solid rgba(200,152,10,0.2); border-radius: 10px; padding: 12px 18px; text-align: left; }
+.cover-mod-num { width: 28px; height: 28px; border-radius: 50%; background: var(--gold); display: flex; align-items: center; justify-content: center; font-family: 'Libre Baskerville', serif; font-size: 13px; font-weight: 700; color: var(--green-dark); flex-shrink: 0; }
+.cover-mod-text { font-size: 13px; color: var(--green-pale); font-weight: 400; opacity: 0.8; }
+.cover-page { position: absolute; bottom: 28px; right: 40px; font-size: 11px; color: var(--green-pale); opacity: 0.3; }
+
+/* WELCOME NOTE */
+.welcome { background: var(--warm-sand); padding: 72px 24px; }
+.welcome-inner { max-width: 680px; margin: 0 auto; text-align: left; }
+.welcome-inner h2 { font-family: 'Libre Baskerville', serif; font-size: 30px; font-weight: 700; color: var(--ink); margin-bottom: 24px; }
+.welcome-inner p { font-size: 14.5px; color: var(--ink-mid); font-weight: 300; margin-bottom: 16px; line-height: 1.9; }
+.welcome-sig { font-family: 'Libre Baskerville', serif; font-style: italic; font-size: 20px; color: var(--gold-solid); margin-top: 28px; }
+
+/* MODULE HEADER */
+.module { border-bottom: 1px solid rgba(74,122,64,0.1); }
+.module:nth-child(even) { background: var(--white); }
+.module:nth-child(odd) { background: var(--ivory); }
+.module-header { background: var(--green-dark); padding: 56px 48px 48px; position: relative; overflow: hidden; text-align: center; }
+.module-header::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--gold); }
+.module-header-inner { max-width: 720px; margin: 0 auto; }
+.module-num-label { font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--green-pale); font-weight: 500; opacity: 0.55; margin-bottom: 10px; }
+.module-title { font-family: 'Libre Baskerville', serif; font-size: clamp(28px, 4vw, 42px); font-weight: 700; background: var(--gold); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 16px; line-height: 1.15; }
+.module-intro { font-size: 14.5px; color: var(--green-pale); font-weight: 300; max-width: 580px; line-height: 1.9; opacity: 0.72; margin: 0 auto; }
+
+/* LESSONS */
+.lessons-wrap { padding: 48px 24px 56px; max-width: 820px; margin: 0 auto; }
+.lesson-card { background: var(--white); border-radius: 16px; overflow: hidden; margin-bottom: 16px; border: 1px solid rgba(74,122,64,0.1); box-shadow: 0 2px 16px rgba(26,40,24,0.05); max-width: 780px; margin-left: auto; margin-right: auto; margin-bottom: 16px; }
+.lesson-head { display: flex; align-items: center; gap: 16px; padding: 20px 24px; cursor: pointer; user-select: none; }
+.lesson-icon { width: 44px; height: 44px; border-radius: 12px; background: var(--green-tint); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+.lesson-title { font-family: 'Libre Baskerville', serif; font-size: 16px; font-weight: 700; color: var(--ink); flex: 1; }
+.lesson-toggle { font-size: 24px; color: var(--gold-solid); transition: transform 0.3s; font-weight: 300; line-height: 1; }
+.lesson-card.open .lesson-toggle { transform: rotate(45deg); }
+.lesson-body { display: none; padding: 8px 24px 28px; border-top: 1px solid rgba(74,122,64,0.08); }
+.lesson-card.open .lesson-body { display: block; }
+
+.lsec { margin-top: 20px; }
+.lsec-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.15em; color: var(--green-accent); font-weight: 500; margin-bottom: 8px; }
+.lsec p { font-size: 14px; color: var(--ink-mid); font-weight: 300; line-height: 1.85; }
+.lsec ul { padding-left: 0; list-style: none; margin-top: 8px; }
+.lsec ul li { font-size: 14px; color: var(--ink-mid); font-weight: 300; line-height: 1.8; padding-left: 18px; position: relative; margin-bottom: 4px; }
+.lsec ul li::before { content: '·'; position: absolute; left: 6px; color: var(--gold-solid); font-size: 18px; line-height: 1; top: 1px; }
+
+.action-box { margin-top: 20px; background: var(--green-tint); border-left: 3px solid var(--gold-solid); border-radius: 0 12px 12px 0; padding: 16px 20px; }
+.action-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--green-accent); font-weight: 500; margin-bottom: 8px; }
+.action-box p { font-size: 14px; color: var(--ink-mid); font-weight: 300; line-height: 1.8; }
+
+/* CHECKLIST */
+.module-checklist { margin: 0 auto 48px; max-width: 780px; background: var(--warm-sand); border-radius: 16px; padding: 28px 32px; border: 1px solid rgba(74,122,64,0.1); width: calc(100% - 48px); }
+.checklist-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.15em; color: var(--green-accent); font-weight: 500; margin-bottom: 14px; }
+.checklist-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.check-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px; background: var(--white); border-radius: 10px; border: 1px solid rgba(74,122,64,0.1); }
+.check-circle { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid rgba(200,152,10,0.4); flex-shrink: 0; margin-top: 2px; cursor: pointer; transition: all 0.2s; }
+.check-circle.done { background: var(--gold-solid); border-color: var(--gold-solid); }
+.check-text { font-size: 13px; color: var(--ink-mid); font-weight: 300; line-height: 1.6; }
+
+/* HABIT TRACKER */
+.tracker-section { padding: 64px 24px; background: var(--white); }
+.tracker-inner { max-width: 780px; margin: 0 auto; }
+.tracker-inner h2 { font-family: 'Libre Baskerville', serif; font-size: 28px; font-weight: 700; color: var(--ink); margin-bottom: 8px; }
+.tracker-sub { font-size: 14px; color: var(--ink-light); font-weight: 300; margin-bottom: 32px; }
+.tracker-box { background: var(--ivory); border: 1px solid rgba(74,122,64,0.12); border-radius: 20px; padding: 32px; }
+.day-head { display: flex; align-items: center; padding-bottom: 14px; border-bottom: 1px solid rgba(74,122,64,0.12); margin-bottom: 6px; }
+.day-spacer { flex: 1; }
+.day-labels { display: flex; gap: 10px; }
+.day-lbl { width: 30px; text-align: center; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold-solid); font-weight: 500; }
+.t-row { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(74,122,64,0.06); }
+.t-row:last-child { border-bottom: none; }
+.t-habit { flex: 1; font-size: 13.5px; color: var(--ink-mid); font-weight: 300; }
+.t-dots { display: flex; gap: 10px; }
+.t-dot { width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid rgba(74,122,64,0.2); background: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 13px; color: transparent; transition: all 0.18s; }
+.t-dot.on { background: var(--gold-solid); border-color: var(--gold-solid); color: white; }
+
+/* FOOTER */
+.course-footer { background: var(--green-dark); padding: 56px 24px; text-align: center; position: relative; overflow: hidden; }
+.course-footer h3 { font-family: 'Libre Baskerville', serif; font-size: 26px; font-weight: 700; background: var(--gold); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 14px; }
+.course-footer p { font-size: 14px; color: var(--green-pale); font-weight: 300; max-width: 560px; margin: 0 auto; line-height: 1.85; opacity: 0.65; }
+.course-footer .disc { margin-top: 28px; font-size: 11px; opacity: 0.3; max-width: 640px; }
+
+@media (max-width: 600px) {
+  .lessons-wrap, .module-header { padding-left: 24px; padding-right: 24px; }
+  .module-checklist { margin-left: 24px; margin-right: 24px; }
+  .checklist-grid { grid-template-columns: 1fr; }
+  .cover { padding: 60px 28px; }
+}
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<section class="cover">
+  <div class="cover-logo">Lumora Women</div>
+  <div class="gold-line"></div>
+  <div class="cover-eyebrow">A 6-Module Postpartum Wellness Course</div>
+  <h1>Bloom <em>Again</em></h1>
+  <div class="cover-sub">Small daily habits that help you feel like yourself again</div>
+  <div class="cover-desc">No dieting. No calorie counting. No overwhelm. Just practical, gentle habits that support your digestion, hormones, energy, metabolism, and nervous system from the inside out.</div>
+  <div class="cover-modules">
+    <div class="cover-mod"><div class="cover-mod-num">1</div><div class="cover-mod-text">Gentle Morning Reset</div></div>
+    <div class="cover-mod"><div class="cover-mod-num">2</div><div class="cover-mod-text">Eat Better Without Dieting</div></div>
+    <div class="cover-mod"><div class="cover-mod-num">3</div><div class="cover-mod-text">Digestion and Gut Support</div></div>
+    <div class="cover-mod"><div class="cover-mod-num">4</div><div class="cover-mod-text">Movement That Works Postpartum</div></div>
+    <div class="cover-mod"><div class="cover-mod-num">5</div><div class="cover-mod-text">Cycle-Aware Wellness Habits</div></div>
+    <div class="cover-mod"><div class="cover-mod-num">6</div><div class="cover-mod-text">Stress, Mood and Lasting Habits</div></div>
+  </div>
+  <div class="cover-page">lumorawomen.com</div>
+</section>
+
+<!-- WELCOME -->
+<section class="welcome">
+  <div class="welcome-inner">
+    <h2>Before you begin</h2>
+    <p>First, I want you to know that how you are feeling right now makes complete sense. Your body has been through an extraordinary journey. Growing a human, giving birth, recovering, and caring for a baby while the rest of the world kept moving. That is a lot.</p>
+    <p>If you are feeling tired, puffy, disconnected from your body, and wondering where your energy went, you are not broken. You are depleted, and your body is asking for some gentle care.</p>
+    <p>This course is not about restriction. It is not about counting anything. It is not about punishing your body into a new shape. It is about adding small, nourishing habits, one at a time, that help your body feel supported, balanced, and energized again.</p>
+    <p>You do not need to be perfect. You just need to show up, gently, as often as you can. That is enough. Let us begin.</p>
+    <div style="background:white;border-radius:14px;padding:24px 28px;margin-top:32px;border-left:4px solid #C8980A;">
+      <p style="font-size:11px;font-weight:500;color:#4A7A40;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:10px;">Important Disclaimer</p>
+      <p style="font-size:13px;color:#3A4A38;font-weight:300;line-height:1.85;margin-bottom:0;">I am a wellness coach, not a doctor, not a registered dietitian, and not a certified healthcare professional of any kind. Everything in this course is for <strong style="font-weight:500;color:#1A2818;">educational and informational purposes only</strong> and is not intended as medical advice, diagnosis, or treatment of any condition. The habits and information shared here are based on general wellness research and my own personal experience. Individual results will vary. Please always consult your own healthcare provider before making changes to your diet, exercise routine, or wellness habits, especially if you are managing a postpartum health condition, taking medication, or have been advised otherwise by a medical professional. Your doctor is your partner. Use both.</p>
+    </div>
+    <div class="welcome-sig">With love, your Bloom Again course</div>
+  </div>
+</section>
+
+<!-- MODULE 1 -->
+<section class="module" id="m1">
+  <div class="module-header"><div class="module-header-inner">
+    <div class="module-num-label">Module One · 5 Lessons</div>
+    <div class="module-title">Gentle Morning Reset</div>
+    <div class="module-intro">How you start your morning shapes your whole day. Your energy, your cravings, your mood, your digestion. These five small shifts take less than ten minutes total and the difference they make is not subtle.</div>
+  </div></div>
+  <div class="lessons-wrap">
+
+    <div class="lesson-card" id="l1-1">
+      <div class="lesson-head" onclick="toggle('l1-1')">
+        <div class="lesson-icon">🫗</div>
+        <div class="lesson-title">Lesson 1.1 — Warm Water Before Anything Else</div>
+        <div class="lesson-toggle">+</div>
+      </div>
+      <div class="lesson-body">
+        <div class="lsec"><div class="lsec-label">What this is</div><p>Before your coffee, before your phone, before you do anything for anyone else, drink a glass of warm or room temperature water. That is the whole habit.</p></div>
+        <div class="lsec"><div class="lsec-label">Why it matters</div><p>You wake up mildly dehydrated every single morning. Your digestion, your metabolism, your brain, and your energy levels all need hydration before they can function properly. Warm water gently activates your digestive system and signals to your body that it is time to wake up from the inside out. And here is something most people do not realize: thirst and hunger use remarkably similar signals in the brain. A lot of that morning fogginess and urge to reach for something sweet right away is often just your body asking for water. Starting with hydration can quiet those early cravings before they even begin.</p></div>
+        <div class="lsec"><div class="lsec-label">What to do</div><p>Set a glass of water on your nightstand before you go to sleep. When your alarm goes off, drink it before you stand up. Add a squeeze of fresh lemon if you enjoy it. It supports digestion and tastes intentional, which honestly helps you stick to it.</p></div>
+        <div class="action-box"><div class="action-label">Your Action Step</div><p>Tonight, put a glass of water on your nightstand. Tomorrow morning, drink it before anything else. Do this every day for one week and notice how your mornings begin to feel different.</p></div>
+      </div>
+    </div>
+
+    <div class="lesson-card" id="l1-2">
+      <div class="lesson-head" onclick="toggle('l1-2')">
+        <div class="lesson-icon">☀️</div>
+        <div class="lesson-title">Lesson 1.2 — Get Outside for Morning Light</div>
+        <div class="lesson-toggle">+</div>
+      </div>
+      <div class="lesson-body">
+        <div class="lsec"><div class="lsec-label">What this is</div><p>Within the first hour of waking up, get your face in natural light. Outside is best, but a sunny window works. Even five or ten minutes is enough.</p></div>
+        <div class="lsec"><div class="lsec-label">Why it matters</div><p>Morning light resets your body's internal clock, which is responsible for when you feel sleepy, when you feel hungry, when you feel alert, and when you naturally wind down. When that clock is off, and for most postpartum moms it is, you feel tired at the wrong times, wired when you want to sleep, and off-rhythm all day. Light is genuinely one of the most powerful free tools you have.</p></div>
+        <div class="lsec"><div class="lsec-label">What to do</div><p>Step outside while your coffee brews. Sit near an open window during the first quiet moment you get. Take a quick walk to the end of the driveway. It does not need to be long. You just need light on your face while the morning is still early.</p></div>
+        <div class="action-box"><div class="action-label">Your Action Step</div><p>Tomorrow morning, after your water, step outside for five minutes. Leave your phone inside. Just stand in the light and breathe. That is it.</p></div>
+      </div>
+    </div>
+
+    <div class="lesson-card" id="l1-3">
+      <div class="lesson-head" onclick="toggle('l1-3')">
+        <div class="lesson-icon">🍳</div>
+        <div class="lesson-title">Lesson 1.3 — A Breakfast That Actually Keeps You Full</div>
+        <div class="lesson-toggle">+</div>
+      </div>
+      <div class="lesson-body">
+        <div class="lsec"><div class="lsec-label">What this is</div><p>Starting your morning with a real source of protein. Eggs, Greek yogurt, cottage cheese, a protein smoothie. Something filling that your body can actually use.</p></div>
+        <div class="lsec"><div class="lsec-label">Why it matters</div><p>A protein-rich breakfast is one of the single most effective things you can do for your blood sugar, your energy, and your cravings for the rest of the day. When you start with a bowl of cereal, a piece of toast, or nothing at all, your blood sugar spikes and then drops. By mid-morning you are starving, reaching for sugar, and wondering why you have no willpower. You do not have a willpower problem. You have a breakfast problem. Protein changes that completely.</p></div>
+        <div class="lsec"><div class="lsec-label">Simple options that work</div>
+          <ul>
+            <li>Two scrambled eggs with avocado toast</li>
+            <li>Greek yogurt with berries and a small handful of granola</li>
+            <li>Cottage cheese with sliced fruit</li>
+            <li>A smoothie with protein powder, banana, nut butter, and milk of your choice</li>
+            <li>Overnight oats with Greek yogurt stirred in</li>
+          </ul>
+        </div>
+        <div class="action-box"><div class="action-label">Your Action Step</div><p>Plan your breakfasts for the next three days right now. Just pick from the list above or choose your own. Make sure each one has at least one real protein source. That is the only rule.</p></div>
+      </div>
+    </div>
+
+    <div class="lesson-card" id="l1-4">
+      <div class="lesson-head" onclick="toggle('l1-4')">
+        <div class="lesson-icon">☕</div>
+        <div class="lesson-title">Lesson 1.4 — The Simple Coffee Timing Shift</div>
+        <div class="lesson-toggle">+</div>
+      </div>
+      <div class="lesson-body">
+        <div class="lsec"><div class="lsec-label">What this is</div><p>A small but meaningful change: have your water, then eat something, then have your coffee. Not instead of coffee. Just after a little food first.</p></div>
+        <div class="lsec"><div class="lsec-label">Why it matters</div><p>Drinking coffee on a completely empty stomach spikes cortisol, which is your stress hormone, more aggressively than it would on a fed stomach. High morning cortisol throws off your blood sugar, drives cravings, increases fatigue later in the day, and keeps your body in a mild stress state before you have even started your morning. You do not have to give up coffee. Just eat something first, even a few bites, to buffer the response.</p></div>
+        <div class="action-box"><div class="action-label">Your Action Step</div><p>For the next week, follow this order every morning: water, then food, then coffee. Notice how your energy and mood feel by noon compared to before.</p></div>
+      </div>
+    </div>
+
+    <div class="lesson-card" id="l1-5">
+      <div class="lesson-head" onclick="toggle('l1-5')">
+        <div class="lesson-icon">🌿</div>
+        <div class="lesson-title">Lesson 1.5 — Five Minutes That Belong to You</div>
+        <div class="lesson-toggle">+</div>
+      </div>
+      <div class="lesson-body">
+        <div class="lsec"><div class="lsec-label">What this is</div><p>One tiny moment at the beginning of your day that is quiet, intentional, and entirely yours. Before the demands start. Before you are needed by everyone else. Just five minutes.</p></div>
+        <div class="lsec"><div class="lsec-label">Why it matters</div><p>When you wake up and immediately go into reactive mode, answering to every need around you from the very first second, your nervous system stays in a low-grade stress state all day. Creating even a brief intentional moment for yourself at the start of the morning helps regulate your stress response and sets a completely different tone for everything that follows.</p></div>
+        <div class="lsec"><div class="lsec-label">Options that work for busy moms</div>
+          <ul>
+            <li>Sit quietly with your warm water for three minutes before getting up</li>
+            <li>Write down one thing you are grateful for and one thing you are looking forward to</li>
+            <li>Take five slow breaths before you pick up your phone</li>
+            <li>Put on one song you love while you get ready</li>
+            <li>Step outside and breathe in the morning air for a few minutes</li>
+          </ul>
+        </div>
+        <div class="action-box"><div class="action-label">Your Action Step</div><p>Pick one thing from that list. Just one. Do it tomorrow before you check your phone. That single moment is a form of nervous system care and it compounds over time.</p></div>
+      </div>
+    </div>
+
+  </div>
+  <div class="module-checklist">
+    <div class="checklist-title">Module 1 Checklist — Your Morning Reset Habits</div>
+    <div class="checklist-grid" id="cl1">
+      <div class="check-item"><div class="check-circle" onclick="this.classList.toggle('done')"></div><div class="check-text">Glass of water on nightstand tonight</div></div>
+      <div class="check-item"><div class="check-circle" onclick="this.classList.toggle('done')"></div><div class="check-text">Getting outside or near a sunny window within the first hour</div></div>
+      <div class="check-item"><div class="check-circle" onclick="this.classList.toggle('done')"></div><div class="check-text">Three days of protein breakfasts planned</div></div>
+      <div class="check-item"><div class="check-circle" onclick="this.classList.toggle('done')"></div><div class="check-text">Coffee coming after water and food</div></div>
+      <div class="check-item"><div class="check-circle" onclick="this.classList.toggle('done')"></div><div class="check-text">One quiet morning moment chosen and protected</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- MODULE 2 -->
+<section class="module" id="m2">
+  <div class="module-header"><div class="module-header-inner">
+    <div class="module-num-label">Module Two · 7 Lessons</div>
+    <div class="module-title">Eat Better Without Dieting</div>
+    <div class="module-intro">No calorie counting. No macro spreadsheets. Just a clear, visual way to understand what nourishing your body actually looks like and why it works.</div>
+  </div></div>
+  <div class="lessons-wrap">
+
+    <div class="lesson-card" id="l2-1">
+      <div class="lesson-head" onclick="toggle('l2-1')">
+        <div class="lesson-icon">🥦</div>
+        <div class="lesson-title">Lesson 2.1 — Whole Foods vs. Processed Foods</div>
+        <div class="lesson-toggle">+</div>
+      </div>
+      <div class="lesson-body">
+        <div class="lsec"><div class="lsec-label">The simple version</div><p>A whole food is something close to how it came out of the ground or off the animal. An egg. An apple. A piece of chicken. Sweet potato. Oats. A processed food has been significantly changed from its original form, usually with additives, refined starches, and sugar to make it taste good and last on a shelf.</p></div>
+        <div class="lsec"><div class="lsec-label">Why this matters for your body</div><p>Whole foods give your body steady fuel, fiber, vitamins, minerals, and information it knows how to use. Ultra-processed foods tend to cause blood sugar swings, more intense cravings, energy crashes, bloating, and inflammation. You do not have to be perfect. But every time you lean toward a more real version of something, your body notices.</p></div>
+        <div class="action-box"><div class="action-label">Your Action Step</div><p>Identify one processed food you eat regularly this week. Think of one whole food swap you could try. Just one. Small swaps made consistently matter far more than total overhauls that do not last.</p></div>
+      </div>
+    </div>
+
+    <div class="lesson-card" id="l2-2">
+      <div class="lesson-head" onclick="toggle('l2-2')">
+        <div class="lesson-icon">🍽️</div>
+        <div class="lesson-title">Lesson 2.2 — The Simple Balanced Plate</div>
+        <div class="lesson-toggle">+</div>
+      </div>
+      <div class="lesson-body">
+        <div class="lsec"><div class="lsec-label">Forget macros. Think visual.</div>
+          <ul>
+            <li>Half the plate covered in vegetables or salad</li>
+            <li>A quarter of the plate with quality protein</li>
+            <li>A quarter of the plate with a whole food carb like rice, sweet potato, or whole grain</li>
+            <li>A small amount of healthy fat drizzled over or on the side</li>
+          </ul>
+        </div>
+        <div class="lsec"><div class="lsec-label">Why this works</div><p>This combination creates blood sugar stability, keeps you full for real, supports digestion, and gives your body everything it needs without any counting or tracking. It is not a strict rule. It is a visual guide you can use anywhere, at home, at a restaurant, at your mother-in-law's house. And it works.</p></div>
+        <div class="action-box"><div class="action-label">Your Action Step</div><p>At your next dinner, look at your plate. Does it roughly match this? Do not stress about perfection. Just start noticing what is there and what might be missing.</p></div>
+      </div>
+    </div>
+
+    <div class="lesson-card" id="l2-3">
+      <div class="lesson-head" onclick="toggle('l2-3')">
+        <div class="lesson-icon">🥩</div>
+        <div class="lesson-title">Lesson 2.3 — Protein at Every Single Meal</div>
+        <div class="lesson-toggle">+</div>
+      </div>
+      <div class="lesson-body">
+        <div class="lsec"><div class="lsec-label">What to do</div><p>Every meal, every snack, should include at least one real source of protein. Not optional. Not when you remember. Every time you eat.</p></div>
+        <div class="lsec"><div class="lsec-label">Why most postpartum moms are not getting enough</div><p>Protein is the most filling nutrient you can eat. It supports your metabolism, your muscle tissue, your hormone production, your hair, your skin, and your energy. Most women eating a fairly normal diet are getting significantly less than they need, and they wonder why they are always hungry and not seeing results despite their efforts. Protein is the missing piece for so many people.</p></div>
+        <div class="lsec"><div class="lsec-label">Easy sources</div>
+          <ul>
+            <li>Eggs and cottage cheese</li>
+            <li>Greek yogurt with at least 15 grams of protein per serving</li>
+            <li>Chicken, turkey, salmon, tuna</li>
+            <li>Lentils, chickpeas, black beans</li>
+            <li>Edamame, tofu, tempeh</li>
+            <li>A protein smoothie when you are truly short on time</li>
+          </ul>
+        </div>
+        <div class="action-box"><div class="action-label">Your Action Step</div><p>Think back over yesterday. Did every meal have a protein source? If not, where could you add one easily next time?</p></div>
+      </div>
+    </div>
+
+    <div class="lesson-card" id="l2-4">
+      <div class="lesson-head" onclick="toggle('l2-4')">
+        <div class="lesson-icon">🥗</div>
+        <div class="lesson-title">Lesson 2.4 — Fiber Is Your Best Friend</div>
+        <div class="lesson-toggle">+</div>
+      </div>
+      <div class="lesson-body">
+        <div class="lsec"><div class="lsec-label">What fiber does</div><p>Fiber slows digestion down in the best possible way, keeping you full for longer and preventing the blood sugar spikes that cause cravings. It feeds your beneficial gut bacteria. It helps your body move things through and remove what it no longer needs, including excess hormones. Most women are not eating nearly enough of it.</p></div>
+        <div class="lsec"><div class="lsec-label">Easy ways to eat more fiber</div>
+          <ul>
+            <li>Add vegetables to every meal, frozen vegetables absolutely count</li>
+            <li>Choose fruit as a snack instead of crackers or something packaged</li>
+            <li>Add a spoonful of chia seeds or ground flaxseed to your smoothie or yogurt</li>
+            <li>Choose whole grain bread, wraps, or pasta when you have the option</li>
+            <li>Throw a handful of beans into soups, salads, or bowls</li>
+          </ul>
+        </div>
+        <div class="action-box"><div class="action-label">Your Action Step</div><p>Pick one fiber addition from the list above and try it this week. That is all. Just one thing. Berries in your yogurt, spinach in your eggs, a handful of black beans in your lunch bowl.</p></div>
+      </div>
+    </div>
+
+    <div class="lesson-card" id="l2-5">
+      <div class="lesson-head" onclick="toggle('l2-5')">
+        <div class="lesson-icon">🥑</div>
+        <div class="lesson-title">Lesson 2.5 — Stop Being Afraid of Fat</div>
+        <div class="lesson-toggle">+</div>
+      </div>
+      <div class="lesson-body">
+        <div class="lsec"><div class="lsec-label">The truth about fat</div><p>Dietary fat does not make you fat. That was a myth that took hold in the nineties and did a lot of damage to a lot of women's health. Your body absolutely requires healthy fat to produce hormones, absorb vitamins, maintain your brain function, keep your skin and hair healthy, and feel satisfied after meals. When women cut fat, cravings almost always get worse, not better.</p></div>
+        <div class="lsec"><div class="lsec-label">Healthy fat sources to include regularly</div>
+          <ul>
+            <li>Avocado and avocado oil</li>
+            <li>Olive oil, used generously in cooking</li>
+            <li>A small handful of nuts as a snack</li>
+            <li>Salmon and other fatty fish at least twice a week</li>
+            <li>Eggs, including the yolk</li>
+            <li>Full fat Greek yogurt</li>
+          </ul>
+        </div>
+        <div class="action-box"><div class="action-label">Your Action Step</div><p>This week, stop avoiding fat. Add half an avocado to one meal per day, or cook with olive oil instead of cooking spray. Notice how much fuller you feel afterward.</p></div>
+      </div>
+    </div>
+
+    <div class="lesson-card" id="l2-6">
+      <div class="lesson-head" onclick="toggle('l2-6')">
+        <div class="lesson-icon">🍠</div>
+        <div class="lesson-title">Lesson 2.6 — Smarter Carbs, Not No Carbs</div>
+        <div class="lesson-toggle">+</div>
+      </div>
+      <div class="lesson-body">
+        <div class="lsec"><div class="lsec-label">This is not a low carb course</div><p>Carbohydrates are your body's primary source of energy. Cutting them completely makes you feel exhausted, irritable, and even more obsessed with food. The goal is not fewer carbs. The goal is choosing carbs that give you steady, lasting fuel rather than a quick spike followed by a hard crash.</p></div>
+        <div class="lsec"><div class="lsec-label">Carbs that support your energy</div>
+          <ul>
+            <li>Sweet potato, regular potato, and other root vegetables</li>
+            <li>Oats and overnight oats</li>
+            <li>Brown rice, quinoa, and farro</li>
+            <li>Whole grain bread and sourdough</li>
+            <li>Fruit in its whole form</li>
+            <li>Lentils and legumes, which are also protein</li>
+          </ul>
+        </div>
+        <div class="action-box"><div class="action-label">Your Action Step</div><p>Swap one refined carb this week for a whole food version. White rice to brown rice or quinoa. Regular pasta to whole wheat. White toast to sourdough. One swap. That is it.</p></div>
+      </div>
+    </div>
+
+    <div class="lesson-card" id="l2-7">
+      <div class="lesson-head" onclick="toggle('l2-7')">
+        <div class="lesson-icon">💧</div>
+        <div class="lesson-title">Lesson 2.7 — Hydration Is Part of Your Nutrition</div>
+        <div class="lesson-toggle">+</div>
+      </div>
+      <div class="lesson-body">
+        <div class="lsec"><div class="lsec-label">Something most people miss</div><p>Your body uses the same pathways to signal thirst and hunger. When you are dehydrated, which most of us are more often than we realize, your brain can send what feels like a hunger signal even when what your body actually needs is water. Before you reach for a snack, especially when you just ate not that long ago, drink a glass of water first and wait ten minutes. You will be surprised how often the craving simply disappears.</p></div>
+        <div class="lsec"><div class="lsec-label">What to aim for</div><p>Around eight to ten glasses of water throughout the day. A large water bottle you refill twice is the easiest way to track it. Herbal teas and sparkling water count. Add lemon, mint, or cucumber if plain water feels boring.</p></div>
+        <div class="action-box"><div class="action-label">Your Action Step</div><p>Get a water bottle you actually like and fill it first thing each morning. When a craving hits between meals, drink a full glass of water and wait ten minutes before deciding if you are truly hungry.</p></div>
+      </div>
+    </div>
+
+  </div>
+  <div class="module-checklist">
+    <div class="checklist-title">Module 2 — The Balanced Plate at a Glance</div>
+    <div class="checklist-grid">
+      <div class="check-item"><div class="check-circle" onclick="this.classList.toggle('done')"></div><div class="check-text">Half the plate is colorful vegetables or salad</div></div>
+      <div class="check-item"><div class="check-circle" onclick="this.classList.toggle('done')"></div><div class="check-text">A quarter is quality protein</div></div>
+      <div class="check-item"><div class="check-circle" onclick="this.classList.toggle('done')"></div><div class="check-text">A quarter is a whole food carb</div></div>
+      <div class="check-item"><div class="check-circle" onclick="this.classList.toggle('done')"></div><div class="check-text">A small drizzle of healthy fat</div></div>
+      <div class="check-item"><div class="check-circle" onclick="this.classList.toggle('done')"></div><div class="check-text">A glass of water on the side always</div></div>
+      <div class="check-item"><div class="check-circle" onclick="this.classList.toggle('done')"></div><div class="check-text">One whole food swap made this week</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- MODULE 3 -->
+<section class="module" id="m3">
+  <div class="module-header"><div class="module-header-inner">
+    <div class="module-num-label">Module Three · 6 Lessons</div>
+    <div class="module-title">Digestion and Gut Support</div>
+    <div class="module-intro">Bloating, sluggishness, that constant uncomfortable fullness after meals. These are some of the most common postpartum complaints and they are almost entirely addressable with very simple habits. Your gut affects everything, your energy, your mood, your weight, your skin. Let us take care of it.</div>
+  </div></div>
+  <div class="lessons-wrap">
+
+    <div class="lesson-card" id="l3-1">
+      <div class="lesson-head" onclick="toggle('l3-1')">
+        <div class="lesson-icon">🐢</div>
+        <div class="lesson-title">Lesson 3.1 — Slow Down When You Eat</div>
+        <div class="lesson-toggle">+</div>
+      </div>
+      <div class="lesson-body">
+        <div class="lsec"><div class="lsec-label">What this means in practice</div><p>Chewing your food slowly and thoroughly before swallowing. Putting your fork down between bites. Not eating standing at the counter or while walking around. Sitting down for your meals, even for ten minutes.</p></div>
+        <div class="lsec"><div class="lsec-label">Why this changes everything</div><p>Digestion starts in your mouth, not your stomach. When you chew properly, you are breaking food into smaller pieces and mixing it with digestive enzymes that begin breaking it down before it even reaches your gut. When you rush, large chunks arrive in your digestive system before it is ready, which causes bloating, gas, and poor nutrient absorption. Slowing down is not optional for digestion. It is foundational.</p></div>
+        <div class="action-box"><div class="action-label">Your Action Step</div><p>At your next meal, sit down, take three slow breaths before you start, and put your fork down between every bite. Notice how different you feel twenty minutes after eating compared to your usual pace.</p></div>
+      </div>
+    </div>
+
+    <div class="lesson-card" id="l3-2">
+      <div class="lesson-head" onclick="toggle('l3-2')">
+        <div class="lesson-icon">🚶‍♀️</div>
+        <div class="lesson-title">Lesson 3.2 — Walk After Meals</div>
+        <div class="lesson-toggle">+</div>
+      </div>
+      <div class="lesson-body">
+        <div class="lsec"><div class="lsec-label">What this is</div><p>A gentle ten to fifteen minute walk after eating. Not a workout. Not a power walk. Just movement. A slow stroll around the block, around your yard, even laps inside your house counts when the weather is bad or the baby is asleep.</p></div>
+        <div class="lsec"><div class="lsec-label">Why this is worth doing</div><p>Post-meal movement is one of the most effective habits for supporting blood sugar balance after eating. It blunts the blood sugar spike that naturally follows a meal, which means less energy crash afterward, less intense cravings later, and over time more efficient fat metabolism. It also physically moves food through your digestive system and reduces bloating. This one habit alone, done consistently, creates noticeable changes.</p></div>
+        <div class="action-box"><div class="action-label">Your Action Step</div><p>Tomorrow after lunch or dinner, take a ten minute walk. Take the baby if you need to. Put headphones in if that helps. Make it something you look forward to, not something else on the list.</p></div>
+      </div>
+    </div>
+
+    <div class="lesson-card" id="l3-3">
+      <div class="lesson-head" onclick="toggle('l3-3')">
+        <div class="lesson-icon">🍵</div>
+        <div class="lesson-title">Lesson 3.3 — Warm Foods and Drinks for a Happy Gut</div>
+        <div class="lesson-toggle">+</div>
+      </div>
+      <div class="lesson-body">
+        <div class="lsec"><div class="lsec-label">What this looks like</div><p>Herbal teas after meals. Warm soups and stews regularly. Cooked vegetables alongside raw ones. Warm water with lemon in the morning. Just adding warmth where you can, rather than always reaching for something cold.</p></div>
+        <div class="lsec"><div class="lsec-label">Why it matters postpartum especially</div><p>Warm foods are generally easier on the digestive system than cold or raw foods. Postpartum digestion is often slower and more sensitive than it was before, and giving it less work to do can meaningfully reduce bloating and discomfort. There is also something deeply calming about a warm meal or a warm drink. Your nervous system responds to warmth.</p></div>
+        <div class="action-box"><div class="action-label">Your Action Step</div><p>Tonight after dinner, brew a cup of ginger or peppermint tea. Sit down and drink it slowly without your phone. Notice how your belly and your whole body feel twenty minutes later.</p></div>
+      </div>
+    </div>
+
+    <div class="lesson-card" id="l3-4">
+      <div class="lesson-head" onclick="toggle('l3-4')">
+        <div class="lesson-icon">🌸</div>
+        <div class="lesson-title">Lesson 3.4 — Foods That Feed Your Gut</div>
+        <div class="lesson-toggle">+</div>
+      </div>
+      <div class="lesson-body">
+        <div class="lsec"><div class="lsec-label">What gut-supportive eating means</div><p>Inside your digestive system is a community of trillions of bacteria that play a role in almost everything: your digestion, your immune system, your mood, your metabolism, even how efficiently your body processes and removes excess hormones. The food you eat either feeds the helpful bacteria or crowds them out.</p></div>
+        <div class="lsec"><div class="lsec-label">Foods to include regularly</div>
+          <ul>
+            <li>Fermented foods: Greek yogurt with live cultures, kefir, sauerkraut, kimchi, and miso</li>
+            <li>Prebiotic foods that feed your good bacteria: garlic, onion, bananas, oats, and asparagus</li>
+            <li>Anti-bloat herbs and spices: ginger, fennel, peppermint, and turmeric in cooking or as teas</li>
+            <li>High fiber produce as covered in Module 2</li>
+          </ul>
+        </div>
+        <div class="action-box"><div class="action-label">Your Action Step</div><p>Add one fermented food to your routine this week. Greek yogurt with live cultures is the easiest starting point. Check the label to make sure it says live and active cultures.</p></div>
+      </div>
+    </div>
+
+    <div class="lesson-card" id="l3-5">
+      <div class="lesson-head" onclick="toggle('l3-5')">
+        <div class="lesson-icon">😮‍💨</div>
+        <div class="lesson-title">Lesson 3.5 — What Is Actually Causing the Bloating</div>
+        <div class="lesson-toggle">+</div>
+      </div>
+      <div class="lesson-body">
+        <div class="lsec"><div class="lsec-label">You are not imagining it</div><p>Bloating is one of the most common postpartum complaints and it is almost always coming from something specific. The good news is that identifying the source makes it much more manageable than just suffering through it.</p></div>
+        <div class="lsec"><div class="lsec-label">Common causes and what to do</div>
+          <ul>
+            <li>Eating too fast: slow down and chew, as covered in Lesson 3.1</li>
+            <li>Too many raw vegetables at once: introduce cooked options alongside raw</li>
+            <li>Not drinking enough water through the day</li>
+            <li>Low gut bacteria diversity: add fermented foods daily</li>
+            <li>High stress, which directly slows and disrupts digestion</li>
+            <li>Too much caffeine, especially on an empty stomach</li>
+            <li>Eating while distracted or rushed</li>
+          </ul>
+        </div>
+        <div class="action-box"><div class="action-label">Your Action Step</div><p>Read through that list and identify your most likely trigger. Pick one thing to address this week. Just one. Bloating rarely has a single cause but it absolutely responds to these kinds of small consistent shifts.</p></div>
+      </div>
+    </div>
+
+    <div class="lesson-card" id="l3-6">
+      <div class="lesson-head" onclick="toggle('l3-6')">
+        <div class="lesson-icon">🧘‍♀️</div>
+        <div class="lesson-title">Lesson 3.6 — Your Body Cannot Digest When It Is Stressed</div>
+        <div class="lesson-toggle">+</div>
+      </div>
+      <div class="lesson-body">
+        <div class="lsec"><div class="lsec-label">This is something most people never learn</div><p>Your nervous system has two primary states. Fight or flight, which is stress mode, and rest and digest, which is calm mode. When you are in stress mode, even low-grade background stress which most postpartum moms live in constantly, your body actually diverts blood flow away from your digestive system. Digestion is not considered essential in that moment.</p></div>
+        <div class="lsec"><div class="lsec-label">What this means for you</div><p>If you are eating while stressed, distracted, rushed, or scrolling, your body is likely not digesting that food well, no matter how healthy it is. You can eat the most nourishing meal in the world and not absorb much of it if your nervous system is activated while you eat it. Sitting down, slowing down, and taking a few breaths before eating is not just a mindfulness practice. It is a physiological shift that makes digestion function properly.</p></div>
+        <div class="action-box"><div class="action-label">Your Action Step</div><p>Choose one meal per day to eat without your phone, without the television, without multitasking. Sit down. Take three slow breaths before your first bite. Even ten quiet minutes changes the environment your body digests in.</p></div>
+      </div>
+    </div>
+
+  </div>
+  <div class="module-checklist">
+    <div class="checklist-title">Module 3 Checklist — Gut Health Daily Habits</div>
+    <div class="checklist-grid">
+      <div class="check-item"><div class="check-circle" onclick="this.classList.toggle('done')"></div><div class="check-text">Sitting down and chewing slowly at least once per day</div></div>
+      <div class="check-item"><div class="check-circle" onclick="this.classList.toggle('done')"></div><div class="check-text">A ten minute walk after at least one meal</div></div>
+      <div class="check-item"><div class="check-circle" onclick="this.classList.toggle('done')"></div><div class="check-text">One cup of herbal tea after dinner</div></div>
+      <div class="check-item"><div class="check-circle" onclick="this.classList.toggle('done')"></div><div class="check-text">One fermented food included daily</div></div>
+      <div class="check-item"><div class="check-circle" onclick="this.classList.toggle('done')"></div><div class="check-text">At least one phone-free meal per day</div></div>
+      <div class="check-item"><div class="check-circle" onclick="this.classList.toggle('done')"></div><div class="check-text">Eight or more glasses of water daily</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- MODULE 4 -->
+<section class="module" id="m4">
+  <div class="module-header"><div class="module-header-inner">
+    <div class="module-num-label">Module Four · 5 Lessons</div>
+    <div class="module-title">Movement That Works Postpartum</div>
+    <div class="module-intro">More is not better. Harder is not always better. The right kind of movement for where your body is right now is gentle, consistent, and sustainable. This module will help you find that.</div>
+  </div></div>
+  <div class="lessons-wrap">
+
+    <div class="lesson-card" id="l4-1">
+      <div class="lesson-head" onclick="toggle('l4-1')">
+        <div class="lesson-icon">🚶‍♀️</div>
+        <div class="lesson-title">Lesson 4.1 — Walking Is Genuinely Enough</div>
+        <div class="lesson-toggle">+</div>
+      </div>
+      <div class="lesson-body">
+        <div class="lsec"><div class="lsec-label">I need you to believe this one</div><p>Daily walking is one of the most effective, most underrated, and most sustainable forms of movement for postpartum bodies. It is not a consolation prize for when you cannot do a real workout. It is a genuinely powerful habit that supports blood sugar balance, cortisol regulation, digestion, mood, cardiovascular health, and fat metabolism. It costs nothing, requires no equipment, and you can do it with your baby.</p></div>
+        <div class="lsec"><div class="lsec-label">What to aim for</div><p>Twenty to thirty minutes daily. It does not have to be fast. A comfortable pace where you can hold a conversation is perfect. Morning walks tend to have the best effect on mood and energy for the rest of the day, but any time works. Just get outside and move.</p></div>
+        <div class="action-box"><div class="action-label">Your Action Step</div><p>Schedule your walk for the next five days right now. Put it in your calendar like an appointment. Not an intention, an appointment. Twenty minutes minimum. Keep it.</p></div>
+      </div>
+    </div>
+
+    <div class="lesson-card" id="l4-2">
+      <div class="lesson-head" onclick="toggle('l4-2')">
+        <div class="lesson-icon">🧘‍♀️</div>
+        <div class="lesson-title">Lesson 4.2 — Pilates and Why Postpartum Bodies Love It</div>
+        <div class="lesson-toggle">+</div>
+      </div>
+      <div class="lesson-body">
+        <div class="lsec"><div class="lsec-label">What Pilates is</div><p>Pilates is a low-impact method of movement that focuses on strengthening the deep core muscles, improving posture, building body awareness, and restoring function from the inside out. It uses controlled, precise movements rather than high repetitions or heavy loads. You can do it on a mat at home with no equipment, or in a studio with a reformer machine.</p></div>
+        <div class="lsec"><div class="lsec-label">Why it is particularly well-suited for postpartum</div><p>Pregnancy and birth change the core and pelvic floor significantly. Pilates is one of the most respected forms of movement for rebuilding that deep foundation safely. It strengthens without straining. It is calming for the nervous system, which matters enormously for postpartum women. And because the movements are controlled and intentional, there is a real mind-body reconnection that happens, which many women say is exactly what they needed to start feeling at home in their bodies again.</p></div>
+        <div class="action-box"><div class="action-label">Your Action Step</div><p>Search beginner postpartum Pilates on YouTube this week and bookmark two or three videos you can rotate through. Try one this week. Start with twenty minutes and see how you feel.</p></div>
+      </div>
+    </div>
+
+    <div class="lesson-card" id="l4-3">
+      <div class="lesson-head" onclick="toggle('l4-3')">
+        <div class="lesson-icon">🏋️‍♀️</div>
+        <div class="lesson-title">Lesson 4.3 — Simple Strength Training, Twice a Week</div>
+        <div class="lesson-toggle">+</div>
+      </div>
+      <div class="lesson-body">
+        <div class="lsec"><div class="lsec-label">Why strength training matters</div><p>Muscle tissue is metabolically active. The more lean muscle you carry, the more efficiently your metabolism runs, even at rest. Strength training also supports bone density, posture, mental health, confidence, and long-term hormonal balance. You do not have to go to a gym. You do not need heavy weights. Bodyweight exercises done consistently twice a week are genuinely enough to make a meaningful difference.</p></div>
+        <div class="lsec"><div class="lsec-label">A simple beginner routine to start with</div>
+          <ul>
+            <li>Squats: 3 sets of 10 reps</li>
+            <li>Glute bridges: 3 sets of 12 reps</li>
+            <li>Modified push-ups from the knees: 3 sets of 8 reps</li>
+            <li>Bent-over rows with light dumbbells or resistance bands: 3 sets of 10</li>
+            <li>Bird-dog for core stability: 3 sets of 8 each side</li>
+          </ul>
+        </div>
+        <div class="action-box"><div class="action-label">Your Action Step</div><p>Try this routine once this week. It should take about twenty to twenty-five minutes. Schedule it like your walk. Modify everything. The goal is building the habit and gradually building strength over time.</p></div>
+      </div>
+    </div>
+
+    <div class="lesson-card" id="l4-4">
+      <div class="lesson-head" onclick="toggle('l4-4')">
+        <div class="lesson-icon">⚠️</div>
+        <div class="lesson-title">Lesson 4.4 — Why Doing Too Much Backfires</div>
+        <div class="lesson-toggle">+</div>
+      </div>
+      <div class="lesson-body">
+        <div class="lsec"><div class="lsec-label">Something I wish I had known earlier</div><p>More exercise is not always better. For postpartum women especially, training too hard too often can raise cortisol chronically, which disrupts sleep, intensifies cravings, slows metabolism, and keeps the body in a stress state that actually makes fat loss harder, not easier. If you are exercising intensely every day and not seeing results, it may not be that you need to do more. It may be that you need to do slightly less and recover more.</p></div>
+        <div class="lsec"><div class="lsec-label">Signs you might be overdoing it</div>
+          <ul>
+            <li>Feeling more tired after workouts, not energized</li>
+            <li>Intense cravings for sugar in the hours after exercise</li>
+            <li>Sleep getting worse despite more physical activity</li>
+            <li>Mood dipping after sessions rather than lifting</li>
+            <li>Dreading your workouts instead of feeling drawn to them</li>
+          </ul>
+        </div>
+        <div class="action-box"><div class="action-label">Your Action Step</div><p>Commit to the schedule: walking daily, Pilates or strength training two to three times per week, and at least two genuine rest days. Honor the rest days as much as the active ones.</p></div>
+      </div>
+    </div>
+
+    <div class="lesson-card" id="l4-5">
+      <div class="lesson-head" onclick="toggle('l4-5')">
+        <div class="lesson-icon">🛌</div>
+        <div class="lesson-title">Lesson 4.5 — Rest Is Where the Change Actually Happens</div>
+        <div class="lesson-toggle">+</div>
+      </div>
+      <div class="lesson-body">
+        <div class="lsec"><div class="lsec-label">The part nobody talks about</div><p>Your body does not change during exercise. It changes during recovery. Muscle rebuilds while you rest. Hormones rebalance while you sleep. Your nervous system resets during downtime. Without adequate rest, the work you put in during your workouts produces a fraction of the results it otherwise would. Rest is not the absence of progress. Rest is where progress happens.</p></div>
+        <div class="lsec"><div class="lsec-label">What to prioritize</div><p>Sleep as much as your life genuinely allows. Nap when the baby naps if you need it. A twenty-minute nap can reset your afternoon more effectively than another cup of coffee. Ask for help so you can rest. Protect your recovery days from the impulse to fill them with more.</p></div>
+        <div class="action-box"><div class="action-label">Your Action Step</div><p>Identify one thing this week you can let go of or hand off to someone else so you can have more rest. It does not have to be big. Even one thing creates space.</p></div>
+      </div>
+    </div>
+
+  </div>
+  <div class="module-checklist">
+    <div class="checklist-title">Module 4 — A Simple Weekly Movement Template</div>
+    <div class="checklist-grid">
+      <div class="check-item"><div class="check-circle" onclick="this.classList.toggle('done')"></div><div class="check-text">Monday: 30-min walk plus strength training</div></div>
+      <div class="check-item"><div class="check-circle" onclick="this.classList.toggle('done')"></div><div class="check-text">Tuesday: 20-min gentle walk, rest from intensity</div></div>
+      <div class="check-item"><div class="check-circle" onclick="this.classList.toggle('done')"></div><div class="check-text">Wednesday: 30-min walk plus Pilates session</div></div>
+      <div class="check-item"><div class="check-circle" onclick="this.classList.toggle('done')"></div><div class="check-text">Thursday: 20-min walk, full rest from structured exercise</div></div>
+      <div class="check-item"><div class="check-circle" onclick="this.classList.toggle('done')"></div><div class="check-text">Friday: 30-min walk plus strength training</div></div>
+      <div class="check-item"><div class="check-circle" onclick="this.classList.toggle('done')"></div><div class="check-text">Sunday: Full rest day, fully protected</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- MODULE 5 -->
+<section class="module" id="m5">
+  <div class="module-header"><div class="module-header-inner">
+    <div class="module-num-label">Module Five · 5 Lessons</div>
+    <div class="module-title">Cycle-Aware Wellness</div>
+    <div class="module-intro">Your energy, appetite, mood, and recovery all shift throughout the month. Once you understand the pattern, you stop feeling like something is wrong with you on the hard weeks and start giving yourself exactly what you need instead.</div>
+  </div></div>
+  <div class="lessons-wrap">
+
+    <div class="lesson-card" id="l5-1">
+      <div class="lesson-head" onclick="toggle('l5-1')">
+        <div class="lesson-icon">🌙</div>
+        <div class="lesson-title">Lesson 5.1 — Your Cycle in Simple Terms</div>
+        <div class="lesson-toggle">+</div>
+      </div>
+      <div class="lesson-body">
+        <div class="lsec"><div class="lsec-label">The four phases simply explained</div>
+          <ul>
+            <li>Menstrual, Days 1 to 5: Your period. Energy is low. Your body is doing significant internal work. This is a rest phase.</li>
+            <li>Follicular, Days 6 to 13: Energy begins to climb. Mood improves. Great time to tackle harder things and push a little more in workouts.</li>
+            <li>Ovulatory, Days 14 to 17: Peak energy, peak mood, peak motivation. This is your best week for strength training and higher intensity movement.</li>
+            <li>Luteal, Days 18 to 28: Energy gradually decreases. Your body needs more nourishment and more rest in this phase, not more pushing.</li>
+          </ul>
+        </div>
+        <div class="lsec"><div class="lsec-label">Why this information changes everything</div><p>When you know which phase you are in, you stop blaming yourself for having zero motivation the week before your period. You start planning for it instead. You rest when your body signals rest and push when it is ready to go. That is working with your body, not against it.</p></div>
+        <div class="action-box"><div class="action-label">Your Action Step</div><p>Download a simple period tracking app like Clue or Flo and start logging your cycle and daily energy level with one word: high, medium, or low. Do this for one full cycle and notice the pattern.</p></div>
+      </div>
+    </div>
+
+    <div class="lesson-card" id="l5-2">
+      <div class="lesson-head" onclick="toggle('l5-2')">
+        <div class="lesson-icon">⚡</div>
+        <div class="lesson-title">Lesson 5.2 — Matching Your Workouts to Your Energy</div>
+        <div class="lesson-toggle">+</div>
+      </div>
+      <div class="lesson-body">
+        <div class="lsec"><div class="lsec-label">The basic guide by phase</div>
+          <ul>
+            <li>Menstrual: Rest, gentle walks, restorative Pilates. Honor the fatigue rather than fighting it.</li>
+            <li>Follicular: Energy is rising. Great time to try a new workout or go a little longer.</li>
+            <li>Ovulatory: Your peak. This is the week for your harder strength sessions and longer walks.</li>
+            <li>Luteal: Dial back intensity gradually. Pilates, gentle strength work, and walks rather than hard cardio especially in the final days before your period.</li>
+          </ul>
+        </div>
+        <div class="lsec"><div class="lsec-label">Why this matters so much</div><p>So many women experience the luteal phase as a personal failure. Their motivation drops, their workouts feel harder, they feel more tired. They are not losing discipline. Their body is doing intensive hormonal work and genuinely needs less external demand placed on it. Reducing intensity during this phase is not quitting. It is intelligent.</p></div>
+        <div class="action-box"><div class="action-label">Your Action Step</div><p>This month, pay attention to which week feels hardest for workouts. That is almost certainly your luteal phase. Give yourself explicit permission to reduce intensity during that week.</p></div>
+      </div>
+    </div>
+
+    <div class="lesson-card" id="l5-3">
+      <div class="lesson-head" onclick="toggle('l5-3')">
+        <div class="lesson-icon">🍫</div>
+        <div class="lesson-title">Lesson 5.3 — Why Pre-Period Cravings Are Not Your Fault</div>
+        <div class="lesson-toggle">+</div>
+      </div>
+      <div class="lesson-body">
+        <div class="lsec"><div class="lsec-label">What is actually happening</div><p>In the week before your period, progesterone rises, your resting metabolic rate increases slightly, your body temperature runs a little higher, and serotonin tends to dip. Your brain then drives you toward quick carbohydrates and sugar because that is the fastest way to get a serotonin boost. Before reaching for a sweet snack, drink a full glass of water first and wait ten minutes, because dehydration can amplify luteal phase cravings significantly. The cravings are not random. They are your body communicating a real need.</p></div>
+        <div class="lsec"><div class="lsec-label">How to work with this, not against it</div>
+          <ul>
+            <li>Eat more warming, satisfying complex carbohydrates this week: sweet potato, oats, brown rice, root vegetables</li>
+            <li>Include magnesium-rich foods: pumpkin seeds, dark leafy greens, dark chocolate</li>
+            <li>Have a small piece of quality dark chocolate and fully enjoy it without guilt</li>
+            <li>Prioritize sleep even more than usual this week</li>
+          </ul>
+        </div>
+        <div class="action-box"><div class="action-label">Your Action Step</div><p>Next time your cravings feel intense, ask yourself where you are in your cycle before you judge yourself. Then respond with nourishment. Give your body what it is actually asking for.</p></div>
+      </div>
+    </div>
+
+    <div class="lesson-card" id="l5-4">
+      <div class="lesson-head" onclick="toggle('l5-4')">
+        <div class="lesson-icon">🫂</div>
+        <div class="lesson-title">Lesson 5.4 — How to Support Your Luteal Phase</div>
+        <div class="lesson-toggle">+</div>
+      </div>
+      <div class="lesson-body">
+        <div class="lsec"><div class="lsec-label">Think of this phase as your recovery week</div><p>The luteal phase, roughly days fifteen through twenty-eight, is when your body is doing significant internal work. It does not need more stress placed on it from the outside. It needs support from the inside.</p></div>
+        <div class="lsec"><div class="lsec-label">What support looks like during this phase</div>
+          <ul>
+            <li>More sleep and more rest than other weeks</li>
+            <li>Lighter movement: Pilates, walks, gentle stretching rather than intense training</li>
+            <li>Warm, nourishing food: soups, stews, roasted vegetables, slow cooked meals</li>
+            <li>Less caffeine and alcohol as both can worsen symptoms significantly</li>
+            <li>More intentional calming activities: baths, reading, time outside, creative things you enjoy</li>
+            <li>More water, as hydration needs increase during this phase</li>
+          </ul>
+        </div>
+        <div class="action-box"><div class="action-label">Your Action Step</div><p>Find the last week before your next period on your calendar and block one small self-care activity into each day of that week. Even just ten minutes. Plan for it the way you plan for everything else.</p></div>
+      </div>
+    </div>
+
+    <div class="lesson-card" id="l5-5">
+      <div class="lesson-head" onclick="toggle('l5-5')">
+        <div class="lesson-icon">🌱</div>
+        <div class="lesson-title">Lesson 5.5 — Rest Is Productive</div>
+        <div class="lesson-toggle">+</div>
+      </div>
+      <div class="lesson-body">
+        <div class="lsec"><div class="lsec-label">A reframe worth holding onto</div><p>Some phases of your cycle are designed for high output. Others are designed for restoration and renewal. Both are necessary. Both are productive. A resting body is not a lazy body. It is a body that is repairing, rebalancing, and preparing to be stronger again.</p></div>
+        <div class="lsec"><div class="lsec-label">Try replacing these thoughts</div><p>Instead of "I was lazy this week" try "I gave my body what it needed and it will be stronger for it next week." Instead of "I failed at my routine" try "I listened to my body and adjusted. That is not weakness. That is wisdom."</p></div>
+        <div class="action-box"><div class="action-label">Your Action Step</div><p>Write this somewhere you will see it regularly: Rest is not the opposite of progress. Rest is how progress happens.</p></div>
+      </div>
+    </div>
+
+  </div>
+  <div class="module-checklist">
+    <div class="checklist-title">Module 5 — Your Simple Cycle Energy Guide</div>
+    <div class="checklist-grid">
+      <div class="check-item"><div class="check-circle" onclick="this.classList.toggle('done')"></div><div class="check-text">Week 1 your period: Rest, warmth, gentle walks, nourishing food</div></div>
+      <div class="check-item"><div class="check-circle" onclick="this.classList.toggle('done')"></div><div class="check-text">Week 2 follicular: Energy is rising. Try new things. Build momentum.</div></div>
+      <div class="check-item"><div class="check-circle" onclick="this.classList.toggle('done')"></div><div class="check-text">Week 3 ovulation: Your peak week. Use it well for harder effort.</div></div>
+      <div class="check-item"><div class="check-circle" onclick="this.classList.toggle('done')"></div><div class="check-text">Week 4 luteal: Slow down intentionally. More rest. More nourishment. No guilt.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- MODULE 6 -->
+<section class="module" id="m6">
+  <div class="module-header"><div class="module-header-inner">
+    <div class="module-num-label">Module Six · 5 Lessons</div>
+    <div class="module-title">Stress, Mood and Lasting Habits</div>
+    <div class="module-intro">This is the module I wish every postpartum mom received first. Because no amount of clean eating or consistent exercise can fully overcome what chronic unmanaged stress does to your body. Nervous system care is not optional. It is the foundation of everything.</div>
+  </div></div>
+  <div class="lessons-wrap">
+
+    <div class="lesson-card" id="l6-1">
+      <div class="lesson-head" onclick="toggle('l6-1')">
+        <div class="lesson-icon">🔥</div>
+        <div class="lesson-title">Lesson 6.1 — Why Stress Is Making Everything Harder</div>
+        <div class="lesson-toggle">+</div>
+      </div>
+      <div class="lesson-body">
+        <div class="lsec"><div class="lsec-label">What chronic stress actually does to your body</div><p>When you are under ongoing stress, which describes almost every postpartum mom, your body produces elevated cortisol consistently. Cortisol is not a bad hormone. You need it. But chronically high cortisol disrupts nearly everything you are trying to support with this course. It drives intense cravings for sugar and comfort food. It signals the body to store fat, particularly around the belly. It disrupts sleep quality. It slows digestion. It affects mood, motivation, and your ability to feel calm in your own skin. This is not a personal failure. This is biology responding to real input.</p></div>
+        <div class="lsec"><div class="lsec-label">Why this information is actually hopeful</div><p>If stress is contributing to how you feel, then reducing your stress load and supporting your nervous system is one of the most powerful changes you can make. And the tools for doing this are simple, accessible, and free. That is what the rest of this module is about.</p></div>
+        <div class="action-box"><div class="action-label">Your Action Step</div><p>Take a moment to genuinely acknowledge how much you are carrying right now. Not to dwell there, but to recognize it honestly. You are not failing. You are depleted and stressed, and that is fixable with the right support.</p></div>
+      </div>
+    </div>
+
+    <div class="lesson-card" id="l6-2">
+      <div class="lesson-head" onclick="toggle('l6-2')">
+        <div class="lesson-icon">🍪</div>
+        <div class="lesson-title">Lesson 6.2 — Emotional Eating Without the Shame</div>
+        <div class="lesson-toggle">+</div>
+      </div>
+      <div class="lesson-body">
+        <div class="lsec"><div class="lsec-label">Let us be honest about this</div><p>Emotional eating is not a moral failing. It is an incredibly common and understandable response to stress, exhaustion, loneliness, and overwhelm, all of which postpartum life delivers in abundance. Food offers comfort, pleasure, and a moment of relief. Using it that way sometimes is completely human. The problem only becomes significant when it is your primary coping mechanism and it is making you feel worse, not better, over time.</p></div>
+        <div class="lsec"><div class="lsec-label">The pause practice</div><p>This is not about willpower. It is about building awareness. When a craving hits suddenly and intensely, especially not long after eating, pause for sixty seconds. Ask yourself honestly: am I physically hungry right now, or is there something else going on? Then drink a glass of water, because dehydration and emotional tension can trigger identical craving signals. Wait ten minutes. If you are still hungry after that, eat. But often you will find the urge softens once you have identified what it actually was.</p></div>
+        <div class="action-box"><div class="action-label">Your Action Step</div><p>This week, when a craving comes on suddenly, pause for sixty seconds. Drink a glass of water. Ask yourself what is actually happening. No judgment, just curiosity. You are building self-awareness, not trying to restrict yourself.</p></div>
+      </div>
+    </div>
+
+    <div class="lesson-card" id="l6-3">
+      <div class="lesson-head" onclick="toggle('l6-3')">
+        <div class="lesson-icon">🌿</div>
+        <div class="lesson-title">Lesson 6.3 — Daily Calming Habits and Gratitude</div>
+        <div class="lesson-toggle">+</div>
+      </div>
+      <div class="lesson-body">
+        <div class="lsec"><div class="lsec-label">Nervous system support is not one big thing</div><p>It is many small things done consistently. When you build little moments of calm and grounding into your day regularly, your baseline stress level genuinely comes down over time. Your body spends less time in fight-or-flight and more time in the rest-and-digest state where digestion works properly, cravings are quieter, mood is more stable, and sleep is deeper.</p></div>
+        <div class="lsec"><div class="lsec-label">Simple tools that actually work</div>
+          <ul>
+            <li>Slow breathing: four counts in through the nose, six counts out through the mouth. Do this for two minutes when you feel tension rising. The extended exhale activates your calm state almost immediately.</li>
+            <li>Grounding: when you feel overwhelmed, feel your feet on the floor, name five things you can see around you, and take three slow breaths. This interrupts the stress response quickly.</li>
+            <li>Gratitude: writing down two or three specific things you are grateful for each day genuinely shifts the nervous system toward a calmer state over time. Specific is better than general. Not just your family but the way your baby laughed this morning. That specificity is what makes it land.</li>
+            <li>Warmth: a warm bath, a heating pad, a cup of herbal tea, a warm shower at the end of the day. Warmth signals safety to your nervous system.</li>
+            <li>Phone boundaries: thirty minutes without your phone, especially in the morning and before bed. The constant scroll keeps your brain in low-grade alert mode.</li>
+            <li>Music: putting on a song you genuinely love for three minutes changes your physiological state. Use this one freely.</li>
+          </ul>
+        </div>
+        <div class="action-box"><div class="action-label">Your Action Step</div><p>Choose three of these habits and add them to your week. Morning calm ritual counts as one of them if you started that in Module 1. Gratitude journaling before bed is a powerful second. Slow breathing when stress spikes is a transformative third.</p></div>
+      </div>
+    </div>
+
+    <div class="lesson-card" id="l6-4">
+      <div class="lesson-head" onclick="toggle('l6-4')">
+        <div class="lesson-icon">📊</div>
+        <div class="lesson-title">Lesson 6.4 — Progress Beyond the Scale</div>
+        <div class="lesson-toggle">+</div>
+      </div>
+      <div class="lesson-body">
+        <div class="lsec"><div class="lsec-label">What the scale actually measures</div><p>Your relationship with gravity. That is it. It does not measure your muscle gain, your reduced inflammation, your improved digestion, your stabilized hormones, your better sleep, your increased energy, or your mental health. It is one data point and it is often a misleading one, especially postpartum, where fluid retention, hormonal shifts, and cycle timing can cause the number to swing by several pounds within a single week without any real change in body composition.</p></div>
+        <div class="lsec"><div class="lsec-label">Better ways to measure progress</div>
+          <ul>
+            <li>How is your energy in the afternoon compared to a month ago?</li>
+            <li>How is your digestion and are you experiencing less bloating?</li>
+            <li>How do your clothes fit, not just the number on the tag?</li>
+            <li>How are your moods and emotional stability throughout the day?</li>
+            <li>How are your cravings compared to when you started?</li>
+            <li>How is your skin, your hair, your nails?</li>
+            <li>How do you feel about yourself?</li>
+          </ul>
+        </div>
+        <div class="action-box"><div class="action-label">Your Action Step</div><p>Write down three non-scale markers of progress that matter to you right now. Refer back to these on any day the scale feels discouraging. Those three things are the real picture.</p></div>
+      </div>
+    </div>
+
+    <div class="lesson-card" id="l6-5">
+      <div class="lesson-head" onclick="toggle('l6-5')">
+        <div class="lesson-icon">💛</div>
+        <div class="lesson-title">Lesson 6.5 — Consistency Over Perfection, Every Time</div>
+        <div class="lesson-toggle">+</div>
+      </div>
+      <div class="lesson-body">
+        <div class="lsec"><div class="lsec-label">The most important thing I can tell you</div><p>The woman who drinks her warm water most mornings, who takes her walk most days, who eats balanced meals most of the time, who rests when her body needs it, and who keeps coming back to these habits month after month, even when she misses days, even when life gets hard, that woman gets results. Not the woman who follows everything perfectly for two weeks and then burns out because it was not sustainable.</p></div>
+        <div class="lsec"><div class="lsec-label">When you have a hard day or a hard week</div><p>You do not start over on Monday. There is no starting over. You just pick back up at the very next meal, the very next morning, the very next walk. You were never off track. You just had a harder stretch. The habit is still there. Come back to it without drama, without guilt, without the story that you have failed. Just come back. That is what consistency actually looks like in real life.</p></div>
+        <div class="action-box"><div class="action-label">Your Final Action Step</div><p>Write this somewhere you will see it and read it often: I do not need to be perfect. I just need to keep coming back. And I can always start again with the very next choice.</p></div>
+      </div>
+    </div>
+
+  </div>
+  <div class="module-checklist">
+    <div class="checklist-title">Module 6 — Weekly Non-Scale Progress Check-In</div>
+    <div class="checklist-grid">
+      <div class="check-item"><div class="check-circle" onclick="this.classList.toggle('done')"></div><div class="check-text">Energy levels this week, 1 to 10: ___</div></div>
+      <div class="check-item"><div class="check-circle" onclick="this.classList.toggle('done')"></div><div class="check-text">Sleep quality this week, 1 to 10: ___</div></div>
+      <div class="check-item"><div class="check-circle" onclick="this.classList.toggle('done')"></div><div class="check-text">Digestive comfort and bloating, 1 to 10: ___</div></div>
+      <div class="check-item"><div class="check-circle" onclick="this.classList.toggle('done')"></div><div class="check-text">Craving intensity, 1 is low and 10 is intense: ___</div></div>
+      <div class="check-item"><div class="check-circle" onclick="this.classList.toggle('done')"></div><div class="check-text">Mood and emotional steadiness, 1 to 10: ___</div></div>
+      <div class="check-item"><div class="check-circle" onclick="this.classList.toggle('done')"></div><div class="check-text">One thing I am genuinely proud of this week: ___</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- HABIT TRACKER -->
+<section class="tracker-section">
+  <div class="tracker-inner">
+    <h2>Your Daily Habit Tracker</h2>
+    <p class="tracker-sub">Click the circles to check off your habits each day. Watch your week fill in.</p>
+    <div class="tracker-box">
+      <div class="day-head">
+        <div class="day-spacer"></div>
+        <div class="day-labels">
+          <div class="day-lbl">M</div><div class="day-lbl">T</div><div class="day-lbl">W</div><div class="day-lbl">T</div><div class="day-lbl">F</div><div class="day-lbl">S</div><div class="day-lbl">S</div>
+        </div>
+      </div>
+      <div id="tracker-rows"></div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="course-footer">
+  <h3>You showed up. That matters.</h3>
+  <p>Every small choice you make in the direction of your own health is a form of love for yourself and for your family. Keep going, even slowly. Especially slowly. This is a long game and you are already playing it.</p>
+  <p class="disc">Disclaimer: This course was created by a wellness coach for educational and informational purposes only. The author is not a doctor, registered dietitian, certified healthcare professional, or medical provider of any kind. Nothing in this course constitutes medical advice, diagnosis, or treatment. Individual results will vary. Always consult your healthcare provider before making changes to your diet, exercise routine, or wellness habits, particularly if you have a postpartum health condition or are under the care of a medical professional. © 2026 Lumora Women. lumorawomen.com</p>
+</footer>
+
+<script>
+function toggle(id) {
+  const card = document.getElementById(id);
+  card.classList.toggle('open');
+}
+
+const habits = [
+  { icon: '🫗', label: 'Morning warm water before anything' },
+  { icon: '☀️', label: 'Morning sunlight or fresh air' },
+  { icon: '🍳', label: 'Protein at breakfast' },
+  { icon: '☕', label: 'Coffee came after food' },
+  { icon: '🌿', label: 'Morning calm ritual or gratitude' },
+  { icon: '🥗', label: 'Balanced plate at lunch or dinner' },
+  { icon: '💧', label: 'Eight or more glasses of water' },
+  { icon: '🚶‍♀️', label: 'Daily walk completed' },
+  { icon: '🐢', label: 'Ate slowly at one meal' },
+  { icon: '🍵', label: 'Herbal tea after dinner' },
+  { icon: '📵', label: 'Phone-free meal today' },
+  { icon: '😴', label: 'In bed by 10pm' },
+];
+
+const state = {};
+habits.forEach((h, hi) => { state[hi] = [false,false,false,false,false,false,false]; });
+
+function renderTracker() {
+  const rows = document.getElementById('tracker-rows');
+  rows.innerHTML = '';
+  habits.forEach((h, hi) => {
+    const row = document.createElement('div');
+    row.className = 't-row';
+    const label = document.createElement('div');
+    label.className = 't-habit';
+    label.textContent = h.icon + '  ' + h.label;
+    const dots = document.createElement('div');
+    dots.className = 't-dots';
+    for (let di = 0; di < 7; di++) {
+      const dot = document.createElement('div');
+      dot.className = 't-dot' + (state[hi][di] ? ' on' : '');
+      dot.textContent = state[hi][di] ? '✓' : '';
+      dot.onclick = () => { state[hi][di] = !state[hi][di]; renderTracker(); };
+      dots.appendChild(dot);
+    }
+    row.appendChild(label);
+    row.appendChild(dots);
+    rows.appendChild(row);
+  });
+}
+renderTracker();
+</script>
+</body>
+</html>

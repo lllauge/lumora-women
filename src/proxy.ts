@@ -60,6 +60,25 @@ export async function proxy(request: NextRequest) {
     }
   }
 
+  // API routes authenticate themselves in the route handler, where cookie
+  // writes persist. Skipping them here halves the auth-server traffic (the
+  // 30-second activity heartbeat alone was two getUser() calls per ping) and
+  // removes those requests from the refresh-token rotation race. Pages still
+  // go through the client below: public server components (homepage, blog)
+  // query Supabase but cannot persist a rotated token themselves — they rely
+  // on this proxy refreshing the session first.
+  if (path.startsWith('/api/')) {
+    return NextResponse.next({ request })
+  }
+
+  const isCoachingPortal =
+    path.startsWith('/coaching/onboarding') ||
+    path.startsWith('/coaching/today') ||
+    path.startsWith('/coaching/plan') ||
+    path.startsWith('/coaching/progress') ||
+    path.startsWith('/coaching/coach')
+  const isClientPortal = path.startsWith('/dashboard') || path.startsWith('/lesson') || isCoachingPortal
+
   let response = NextResponse.next({ request })
 
   const supabase = createServerClient(supabaseUrl, supabaseKey, {
@@ -76,6 +95,16 @@ export async function proxy(request: NextRequest) {
   })
 
   const { data: { user } } = await supabase.auth.getUser()
+
+  // Every redirect must carry the cookies Supabase set during this request.
+  // getUser() above may have rotated the refresh token; a redirect built from
+  // scratch drops that Set-Cookie, the browser keeps the revoked token, and
+  // the session dies on its next refresh — a random-looking mid-visit logout.
+  function redirectWithCookies(url: URL) {
+    const redirect = NextResponse.redirect(url)
+    response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie))
+    return redirect
+  }
 
   async function enforceActivity(area: SessionArea) {
     if (!user) return null
@@ -97,7 +126,7 @@ export async function proxy(request: NextRequest) {
       url.pathname = '/api/auth/idle-signout'
       url.search = ''
       url.searchParams.set('area', area)
-      return NextResponse.redirect(url)
+      return redirectWithCookies(url)
     }
     if (!activity) {
       response.cookies.set(cookieName, await createSignedActivityCookie(area, user.id), {
@@ -112,18 +141,12 @@ export async function proxy(request: NextRequest) {
   }
 
   // ── Student-side gates ────────────────────────────────────────────────────
-  const isCoachingPortal =
-    path.startsWith('/coaching/onboarding') ||
-    path.startsWith('/coaching/today') ||
-    path.startsWith('/coaching/plan') ||
-    path.startsWith('/coaching/progress') ||
-    path.startsWith('/coaching/coach')
-  if (path.startsWith('/dashboard') || path.startsWith('/lesson') || isCoachingPortal) {
+  if (isClientPortal) {
     if (!user) {
       const url = request.nextUrl.clone()
       url.pathname = '/login'
       url.searchParams.set('redirectTo', path)
-      return NextResponse.redirect(url)
+      return redirectWithCookies(url)
     }
 
     // Email verification gate — block course access for unverified accounts
@@ -132,7 +155,7 @@ export async function proxy(request: NextRequest) {
     if (!emailVerified) {
       const url = request.nextUrl.clone()
       url.pathname = '/verify-email'
-      return NextResponse.redirect(url)
+      return redirectWithCookies(url)
     }
 
     // A login is only good for the absolute session window, no matter how the
@@ -152,7 +175,7 @@ export async function proxy(request: NextRequest) {
       url.pathname = '/api/auth/idle-signout'
       url.search = ''
       url.searchParams.set('area', 'client')
-      return NextResponse.redirect(url)
+      return redirectWithCookies(url)
     }
 
     const sessionId = getSessionId(session.data.session?.access_token)
@@ -180,7 +203,7 @@ export async function proxy(request: NextRequest) {
           url.searchParams.set('area', 'client')
         }
         url.searchParams.set('redirectTo', path)
-        return NextResponse.redirect(url)
+        return redirectWithCookies(url)
       }
     }
 
@@ -193,7 +216,7 @@ export async function proxy(request: NextRequest) {
       const url = request.nextUrl.clone()
       url.pathname = '/login'
       url.searchParams.set('redirectTo', '/mfa')
-      return NextResponse.redirect(url)
+      return redirectWithCookies(url)
     }
     const requestedArea = request.nextUrl.searchParams.get('area')
     if (requestedArea === 'admin') {
@@ -206,7 +229,7 @@ export async function proxy(request: NextRequest) {
         const url = request.nextUrl.clone()
         url.pathname = '/login'
         url.search = ''
-        return NextResponse.redirect(url)
+        return redirectWithCookies(url)
       }
       const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
       if (assurance?.currentLevel === 'aal2') {
@@ -214,7 +237,7 @@ export async function proxy(request: NextRequest) {
         const safeDestination = redirectTo?.startsWith('/') && !redirectTo.startsWith('//')
           ? redirectTo
           : '/admin'
-        return NextResponse.redirect(new URL(safeDestination, request.url))
+        return redirectWithCookies(new URL(safeDestination, request.url))
       }
     } else {
       const redirectTo = request.nextUrl.searchParams.get('redirectTo')
@@ -223,7 +246,7 @@ export async function proxy(request: NextRequest) {
         : '/dashboard'
       const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
       if (assurance?.currentLevel === 'aal2') {
-        return NextResponse.redirect(new URL(safeDestination, request.url))
+        return redirectWithCookies(new URL(safeDestination, request.url))
       }
       if (assurance?.nextLevel === 'aal2') {
         // TOTP is enrolled (admin account) — the email-code endpoint rejects
@@ -233,7 +256,7 @@ export async function proxy(request: NextRequest) {
         url.searchParams.set('area', 'admin')
         url.searchParams.set('mode', 'challenge')
         url.searchParams.set('redirectTo', safeDestination)
-        return NextResponse.redirect(url)
+        return redirectWithCookies(url)
       }
       const session = await supabase.auth.getSession()
       const sessionId = getSessionId(session.data.session?.access_token)
@@ -245,7 +268,7 @@ export async function proxy(request: NextRequest) {
           )
         : false
       if (emailMfaVerified) {
-        return NextResponse.redirect(new URL(safeDestination, request.url))
+        return redirectWithCookies(new URL(safeDestination, request.url))
       }
     }
   }
@@ -259,7 +282,7 @@ export async function proxy(request: NextRequest) {
       if (!isLoginPage) {
         const url = request.nextUrl.clone()
         url.pathname = ADMIN_LOGIN_PATH
-        return NextResponse.redirect(url)
+        return redirectWithCookies(url)
       }
       return response
     }
@@ -278,7 +301,7 @@ export async function proxy(request: NextRequest) {
         const url = request.nextUrl.clone()
         url.pathname = ADMIN_LOGIN_PATH
         url.searchParams.set('error', 'unauthorized')
-        return NextResponse.redirect(url)
+        return redirectWithCookies(url)
       }
       return response
     }
@@ -293,7 +316,7 @@ export async function proxy(request: NextRequest) {
         const url = request.nextUrl.clone()
         url.pathname = ADMIN_LOGIN_PATH
         url.searchParams.set('error', 'session_expired')
-        const redirect = NextResponse.redirect(url)
+        const redirect = redirectWithCookies(url)
         redirect.cookies.delete(adminSessionCookies.loginAt)
         redirect.cookies.delete(adminSessionCookies.pending)
         redirect.cookies.delete(adminSessionCookies.mfa)
@@ -312,7 +335,7 @@ export async function proxy(request: NextRequest) {
       url.searchParams.set('area', 'admin')
       url.searchParams.set('mode', assurance?.nextLevel === 'aal2' ? 'challenge' : 'enroll')
       url.searchParams.set('redirectTo', '/admin')
-      return NextResponse.redirect(url)
+      return redirectWithCookies(url)
     }
 
     if (isLoginPage && !mfaVerified) {
@@ -322,14 +345,14 @@ export async function proxy(request: NextRequest) {
       url.searchParams.set('area', 'admin')
       url.searchParams.set('mode', assurance?.nextLevel === 'aal2' ? 'challenge' : 'enroll')
       url.searchParams.set('redirectTo', '/admin')
-      return NextResponse.redirect(url)
+      return redirectWithCookies(url)
     }
 
     if (isLoginPage && mfaVerified) {
       const url = request.nextUrl.clone()
       url.pathname = '/admin'
       url.search = ''
-      return NextResponse.redirect(url)
+      return redirectWithCookies(url)
     }
 
     if (mfaVerified) {

@@ -34,6 +34,7 @@ export default function IdleSessionGuard() {
   const area = sessionArea(pathname)
   const lastActivityRef = useRef(0)
   const lastHeartbeatRef = useRef(0)
+  const failedHeartbeatsRef = useRef(0)
   const signingOutRef = useRef(false)
   const [secondsRemaining, setSecondsRemaining] = useState<number | null>(null)
 
@@ -61,9 +62,21 @@ export default function IdleSessionGuard() {
       body: JSON.stringify({ area: activeArea }),
       credentials: 'same-origin',
     }).catch(() => null)
-    if (response?.status === 401 || response?.status === 403 || response?.status === 440) {
+    if (response?.status === 440) {
+      // The server says the session timers expired — definitive, sign out.
       signOutForInactivity(activeArea)
+      return
     }
+    if (response?.status === 401 || response?.status === 403) {
+      // A lone auth failure can be a transient token-refresh race, and
+      // signing out here would turn that blip into a real logout. Only give
+      // up after consecutive failures; a genuinely dead session gets bounced
+      // to the login page by the proxy on the next navigation anyway.
+      failedHeartbeatsRef.current += 1
+      if (failedHeartbeatsRef.current >= 3) signOutForInactivity(activeArea)
+      return
+    }
+    if (response?.ok) failedHeartbeatsRef.current = 0
   }, [signOutForInactivity])
 
   useEffect(() => {

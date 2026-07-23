@@ -97,11 +97,20 @@ function prepareCourseHtml(rawHtml: string): string {
   return neutralized + IFRAME_HEIGHT_SHIM
 }
 
+// Guides can contain video embed slots. YouTube's player will not run inside
+// the sandboxed guide iframe (no allow-same-origin), so the guide posts each
+// slot's position and we float a real player exactly over it. Only this
+// origin may be embedded.
+const VIDEO_EMBED_ORIGIN = 'https://www.youtube-nocookie.com/embed/'
+
+type VideoSlot = { src: string; title: string; top: number; left: number; width: number; height: number }
+
 function HtmlEmbed({ url, title, lessonId }: { url: string; title: string; lessonId: string }) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [srcDoc, setSrcDoc] = useState<string>('')
   const [height, setHeight] = useState<number>(600)
+  const [videoSlots, setVideoSlots] = useState<VideoSlot[]>([])
   // Habit trackers inside the guide (see TRACKER_SCRIPT in
   // scripts/postpartum-course/helpers.mjs). The iframe announces readiness,
   // we push the user's saved ticks in, and every toggle comes back out here
@@ -209,8 +218,28 @@ function HtmlEmbed({ url, title, lessonId }: { url: string; title: string; lesso
         __lumoraHtmlHeight?: number
         __lumoraTrackerReady?: boolean
         __lumoraTrackerSave?: { key?: unknown; days?: unknown }
+        __lumoraVideoSlots?: unknown[]
       } | null
       if (!data) return
+      if (Array.isArray(data.__lumoraVideoSlots)) {
+        const safe: VideoSlot[] = data.__lumoraVideoSlots.flatMap((raw) => {
+          const s = raw as Partial<VideoSlot>
+          const numbersOk = [s.top, s.left, s.width, s.height].every(
+            (n) => typeof n === 'number' && Number.isFinite(n)
+          )
+          if (typeof s.src !== 'string' || !s.src.startsWith(VIDEO_EMBED_ORIGIN) || !numbersOk) return []
+          return [{
+            src: s.src,
+            title: typeof s.title === 'string' ? s.title : 'Video',
+            top: s.top as number,
+            left: s.left as number,
+            width: s.width as number,
+            height: s.height as number,
+          }]
+        })
+        setVideoSlots(safe)
+        iframeRef.current?.contentWindow?.postMessage({ __lumoraVideoAck: true }, '*')
+      }
       if (typeof data.__lumoraHtmlHeight === 'number') {
         const next = Math.min(Math.max(data.__lumoraHtmlHeight, 400), 20000)
         setHeight(next)
@@ -273,6 +302,27 @@ function HtmlEmbed({ url, title, lessonId }: { url: string; title: string; lesso
           }}
         />
       )}
+      {status === 'ready' && videoSlots.map((s, i) => (
+        <iframe
+          key={`${s.src}-${i}`}
+          src={s.src}
+          title={s.title}
+          allow="fullscreen; picture-in-picture"
+          allowFullScreen
+          referrerPolicy="no-referrer"
+          style={{
+            position: 'absolute',
+            top: `${s.top}px`,
+            left: `${s.left}px`,
+            width: `${s.width}px`,
+            height: `${s.height}px`,
+            border: 'none',
+            borderRadius: '12px',
+            background: '#000',
+            zIndex: 2,
+          }}
+        />
+      ))}
     </div>
   )
 }

@@ -126,6 +126,78 @@ export const TRACKER_SCRIPT = `
 </script>
 `
 
+/**
+ * Video embed slots. YouTube's player cannot run inside the lesson page's
+ * sandboxed iframe (no allow-same-origin, deliberately), so in that context
+ * the guide only reserves the box: it measures each [data-video-src] slot and
+ * posts the coordinates to the parent, which overlays a real player exactly
+ * on top (see HtmlEmbed in src/app/lesson/[lessonId]/page.tsx) and acks.
+ * Opened standalone (downloaded copy), no ack arrives and the guide embeds
+ * the player itself, which works in a full browser context.
+ */
+export const VIDEO_SCRIPT = `
+<script>
+(function () {
+  var slots = Array.prototype.slice.call(document.querySelectorAll('[data-video-src]'));
+  if (!slots.length) return;
+  var handledByParent = false;
+  var postTimer = null;
+
+  function measure() {
+    return slots.map(function (el, i) {
+      var r = el.getBoundingClientRect();
+      return {
+        index: i,
+        src: el.getAttribute('data-video-src'),
+        title: el.getAttribute('data-video-title') || 'Video',
+        top: r.top + window.scrollY,
+        left: r.left + window.scrollX,
+        width: r.width,
+        height: r.height
+      };
+    });
+  }
+  function post() {
+    if (postTimer) return;
+    postTimer = setTimeout(function () {
+      postTimer = null;
+      window.parent.postMessage({ __lumoraVideoSlots: measure() }, '*');
+    }, 100);
+  }
+
+  window.addEventListener('message', function (e) {
+    if (e.data && e.data.__lumoraVideoAck) {
+      handledByParent = true;
+      slots.forEach(function (el) { el.classList.add('is-remote'); });
+    }
+  });
+
+  function hydrateLocal() {
+    if (handledByParent) return;
+    slots.forEach(function (el) {
+      if (el.querySelector('iframe')) return;
+      var f = document.createElement('iframe');
+      f.src = el.getAttribute('data-video-src');
+      f.title = el.getAttribute('data-video-title') || 'Video';
+      f.setAttribute('allow', 'fullscreen; picture-in-picture');
+      f.setAttribute('allowfullscreen', '');
+      el.innerHTML = '';
+      el.appendChild(f);
+    });
+  }
+
+  window.addEventListener('load', function () {
+    post();
+    setTimeout(hydrateLocal, 1200);
+  });
+  window.addEventListener('resize', post);
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(post).observe(document.documentElement);
+  }
+})();
+</script>
+`
+
 /** Workout day table. dayTitle e.g. "Day 1 · Lower Body", rows = [[name, sets, reps], ...] */
 export function dayTable(dayTitle, rows) {
   const body = rows
@@ -185,7 +257,8 @@ export const DAILY_DOSE = `
     <li>Start lying down; graduate to sitting, then standing as it gets easier.</li>
     <li>Keep it up for <strong>at least three months</strong>. Attach it to a feed, a shower, or brushing your teeth.</li>
   </ul>
-  <p><a class="video-link" href="https://www.youtube.com/watch?v=-1lViRMMdJg" target="_blank" rel="noopener">&#9654;&nbsp; Watch: real-time guided pelvic floor training (8 min)</a><br><span style="font-size:13px; color:rgba(200,220,192,0.8);">Follow along with pelvic floor physiotherapist Michelle Kenway until the movement feels familiar. Opens in a new tab.</span></p>
+  <div class="video-embed" data-video-src="https://www.youtube-nocookie.com/embed/-1lViRMMdJg" data-video-title="Real-time guided pelvic floor training with pelvic floor physiotherapist Michelle Kenway"><p class="video-embed-loading">Loading video player…</p></div>
+  <p style="font-size:13px; color:rgba(200,220,192,0.8); margin-top:6px;">Follow along in real time with pelvic floor physiotherapist Michelle Kenway (8 min) until the movement feels familiar. Player not loading? <a class="video-link" href="https://www.youtube.com/watch?v=-1lViRMMdJg" target="_blank" rel="noopener" style="font-size:13px;">Watch it on YouTube</a>.</p>
   <p style="margin-bottom:0;"><strong>Plus a daily walk:</strong> start where you are (even 10 minutes) and build gradually toward 30 minutes at a pace where you can talk but you know you're moving.</p>
 </div>`
 

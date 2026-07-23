@@ -11,7 +11,8 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https://www.google.com https://www.gstatic.com https://*.r2.dev https://*.cloudflare.com https://customer-*.cloudflarestream.com",
       "font-src 'self' data:",
-      "frame-src https://www.google.com https://recaptcha.google.com https://js.stripe.com https://*.stripe.com https://customer-*.cloudflarestream.com",
+      // youtube-nocookie.com: guided exercise videos embedded in course lesson guides.
+      "frame-src https://www.google.com https://recaptcha.google.com https://js.stripe.com https://*.stripe.com https://customer-*.cloudflarestream.com https://www.youtube-nocookie.com",
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://www.google.com https://recaptcha.google.com https://api.stripe.com https://upload.imagedelivery.net https://customer-*.cloudflarestream.com",
       // *.b-cdn.net: YMove exercise demo videos redirect to Bunny CDN.
       "media-src 'self' https://*.r2.dev https://customer-*.cloudflarestream.com https://*.b-cdn.net blob:",

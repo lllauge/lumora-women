@@ -11,7 +11,7 @@
  */
 import fs from 'node:fs'
 import path from 'node:path'
-import { LEAF_DIVIDER, TRACKER_SCRIPT } from './helpers.mjs'
+import { LEAF_DIVIDER, TRACKER_SCRIPT, VIDEO_SCRIPT } from './helpers.mjs'
 import { LESSON_GUIDES } from './lessons.mjs'
 
 const OUT_DIR = path.join(process.cwd(), 'docs', 'course-content', 'postpartum-reset')
@@ -54,6 +54,10 @@ const BASE_CSS = `
   .card.dark h3, .card.dark strong { color: #FFFFFF; }
   .video-link { display: inline-block; margin-top: 4px; font-weight: 700; color: var(--gold-soft); text-decoration: underline; text-underline-offset: 3px; }
   .video-link:hover { color: #FFFFFF; }
+  .video-embed { aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; margin: 14px 0 4px; background: #000; display: flex; align-items: center; justify-content: center; }
+  .video-embed iframe { width: 100%; height: 100%; border: none; display: block; }
+  .video-embed-loading { color: rgba(200,220,192,0.6); font-size: 13px; }
+  .video-embed.is-remote .video-embed-loading { visibility: hidden; }
 
   .medallion { display: flex; align-items: center; gap: 14px; margin: 26px 0 8px; }
   .medallion svg { flex-shrink: 0; }
@@ -124,6 +128,7 @@ ${BASE_CSS}
   </footer>
 </div>
 ${TRACKER_SCRIPT}
+${VIDEO_SCRIPT}
 </body>
 </html>`
 }

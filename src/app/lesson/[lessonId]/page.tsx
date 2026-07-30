@@ -103,6 +103,32 @@ function prepareCourseHtml(rawHtml: string): string {
 // origin may be embedded.
 const VIDEO_EMBED_ORIGIN = 'https://www.youtube-nocookie.com/embed/'
 
+// Lesson video_url may be a YouTube link pasted straight from the browser in
+// any of its shapes (watch, youtu.be share, shorts, embed). Resolve it to the
+// privacy-enhanced embed player; CSP only allows youtube-nocookie.com frames.
+function youTubeEmbedUrl(url: string): string | null {
+  let parsed: URL
+  try {
+    parsed = new URL(url)
+  } catch {
+    return null
+  }
+  const host = parsed.hostname.replace(/^(www|m)\./, '')
+  let id: string | null = null
+  if (host === 'youtu.be') {
+    id = parsed.pathname.split('/')[1] ?? null
+  } else if (host === 'youtube.com' || host === 'youtube-nocookie.com') {
+    if (parsed.pathname === '/watch') {
+      id = parsed.searchParams.get('v')
+    } else {
+      const match = parsed.pathname.match(/^\/(?:embed|shorts|live)\/([^/?]+)/)
+      id = match ? match[1] : null
+    }
+  }
+  if (!id || !/^[\w-]{6,}$/.test(id)) return null
+  return `${VIDEO_EMBED_ORIGIN}${id}`
+}
+
 type VideoSlot = { src: string; title: string; top: number; left: number; width: number; height: number }
 
 function HtmlEmbed({ url, title, lessonId }: { url: string; title: string; lessonId: string }) {
@@ -597,6 +623,15 @@ export default function LessonPage({
               <iframe
                 key={lesson.video_url}
                 src={`https://iframe.videodelivery.net/${lesson.video_url.slice(7)}`}
+                style={{ width: '100%', height: '100%', border: 'none' }}
+                allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+                allowFullScreen
+                title={lesson.title}
+              />
+            ) : lesson?.video_url && youTubeEmbedUrl(lesson.video_url) ? (
+              <iframe
+                key={lesson.video_url}
+                src={youTubeEmbedUrl(lesson.video_url)!}
                 style={{ width: '100%', height: '100%', border: 'none' }}
                 allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
                 allowFullScreen

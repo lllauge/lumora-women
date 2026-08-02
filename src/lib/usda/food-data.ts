@@ -462,15 +462,25 @@ export async function searchFoodsForPicker(query: string, apiKey: string): Promi
   const url = new URL(USDA_SEARCH_URL)
   url.searchParams.set('api_key', apiKey)
 
-  const queryTokensRaw = query
+  const allTokens = query
     .toLowerCase()
     .split(/\s+/)
     .map((t) => t.replace(/[^a-z0-9]/g, ''))
+  const queryTokensRaw = allTokens
     .filter((t) => t.length > 2 && t !== 'and' && t !== 'the' && t !== 'with')
+
+  // Two-letter brand names ("Hu") die in the length filter above. Collect
+  // them separately: they join the Branded sub-search and score only on
+  // whole-word matches — substring matching on two letters is pure noise.
+  const SHORT_STOP_WORDS = new Set(['of', 'in', 'on', 'to', 'or', 'no', 'oz', 'lb', 'ml', 'fl'])
+  const shortBrandTokens = allTokens.filter((t) => t.length === 2 && !/\d/.test(t) && !SHORT_STOP_WORDS.has(t))
 
   // Likely brand-name tokens get a parallel Branded-only search — USDA's main
   // relevance ranker buries small brands under thousands of generic matches.
-  const brandLikeTokens = queryTokensRaw.filter((t) => t.length >= 4 && !COMMON_FOOD_WORDS.has(t))
+  const brandLikeTokens = [
+    ...shortBrandTokens,
+    ...queryTokensRaw.filter((t) => t.length >= 4 && !COMMON_FOOD_WORDS.has(t)),
+  ]
 
   const fetchSearch = (body: object) => fetch(url, {
     method: 'POST',
@@ -549,7 +559,9 @@ export async function searchFoodsForPicker(query: string, apiKey: string): Promi
 
   const scored = foods
     .map((food) => {
-      const description = food.description.toLowerCase()
+      // Apostrophes drop out of query tokens during tokenization, so strip
+      // them here too — "angies" must match "Angie's".
+      const description = food.description.toLowerCase().replace(/['’]/g, '')
       const tokenScore = queryTokens.reduce((s, t) => s + (description.includes(t) ? 4 : 0), 0)
       const isCookedInDescription = cookWords.some((w) => description.includes(w))
       const cookedScore = wantsCooked && isCookedInDescription ? 10 : 0
@@ -564,19 +576,26 @@ export async function searchFoodsForPicker(query: string, apiKey: string): Promi
       const oilPenalty = !queryTokens.includes('oil') && /\boil\b/.test(description) ? -30 : 0
       // Lab-analyzed generics outrank label-reported branded products in ties.
       const dataTypeScore = food.dataType === 'Foundation' ? 3 : food.dataType === 'SR Legacy' ? 2 : food.dataType === 'Branded' ? 0 : 1
-      const brandTokens = `${food.brandName ?? ''} ${food.brandOwner ?? ''}`.toLowerCase()
+      const brandTokens = `${food.brandName ?? ''} ${food.brandOwner ?? ''}`.toLowerCase().replace(/['’]/g, '')
       // Strong brand boost so a typed brand name (e.g. "truvani") promotes the
       // branded match above generic SR Legacy / Foundation rows.
       const brandScore = food.dataType === 'Branded'
         ? queryTokens.reduce((s, t) => s + (brandTokens.includes(t) ? 8 : 0), 0)
         : 0
+      // Short brand tokens ("hu") count only as whole words: in the brand
+      // fields they're as strong a signal as a long brand name; in the
+      // description they're a weaker hint.
+      const shortBrandScore = shortBrandTokens.reduce((s, t) => {
+        const word = new RegExp(`\\b${t}\\b`)
+        return s + (word.test(brandTokens) ? 12 : word.test(description) ? 6 : 0)
+      }, 0)
       const tangentialPenalty = !wantsTangential && TANGENTIAL_CATEGORY.test(description) ? -15 : 0
       // USDA's descriptions follow "<noun>, <descriptor>..." pattern, where
       // the leading noun IS the food (e.g. "Rice, brown, long-grain, raw").
       // When that leading noun is one of the query tokens, it's almost
       // certainly the core food — promote it above derivatives.
       const corePrefixBonus = queryTokens.some((t) => description.startsWith(`${t},`)) ? 6 : 0
-      const score = tokenScore + brandScore + cookedScore + notCookedPenalty + rawPenalty + dryPenalty + processedPenalty + groundPenalty + oilPenalty + tangentialPenalty + corePrefixBonus + dataTypeScore
+      const score = tokenScore + brandScore + shortBrandScore + cookedScore + notCookedPenalty + rawPenalty + dryPenalty + processedPenalty + groundPenalty + oilPenalty + tangentialPenalty + corePrefixBonus + dataTypeScore
       const macros = macrosPer100g(food)
       return { food, score, macros }
     })

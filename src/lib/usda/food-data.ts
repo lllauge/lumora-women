@@ -344,7 +344,10 @@ function gramsPerFlOz(description: string): number {
 // Fill in tsp/Tbsp/cup from whichever volume measure we do have, so a recipe
 // written in teaspoons doesn't force the user to convert by hand.
 function augmentVolumeMeasures(measures: UsdaFoodMeasure[], description = ''): UsdaFoodMeasure[] {
-  const has = (re: RegExp) => measures.some((m) => re.test(m.label))
+  const derived: UsdaFoodMeasure[] = []
+  // Check derived too — a food with both Tbsp and cup measures would
+  // otherwise derive "1 tsp" twice (once from each).
+  const has = (re: RegExp) => measures.some((m) => re.test(m.label)) || derived.some((m) => re.test(m.label))
   const find = (re: RegExp) => measures.find((m) => re.test(m.label))
 
   const tbsp = find(/^1\s*(tbsp|tablespoon)\b/i)
@@ -352,13 +355,15 @@ function augmentVolumeMeasures(measures: UsdaFoodMeasure[], description = ''): U
   const cup = find(/^1\s*cup\b/i)
   const flOz = find(/^1\s*fl\.?\s*oz\b/i)
 
-  const derived: UsdaFoodMeasure[] = []
+  const TSP = /^1\s*(tsp|teaspoon)\b/i
+  const TBSP = /^1\s*(tbsp|tablespoon)\b/i
+  const CUP = /^1\s*cup\b/i
   // 1 Tbsp = 3 tsp, 1 cup = 16 Tbsp = 48 tsp
-  if (tbsp && !tsp) derived.push({ label: '1 tsp', grams: Math.round((tbsp.grams / 3) * 10) / 10 })
-  if (tsp && !tbsp) derived.push({ label: '1 Tbsp', grams: Math.round(tsp.grams * 3 * 10) / 10 })
-  if (tbsp && !cup) derived.push({ label: '1 cup', grams: Math.round(tbsp.grams * 16 * 10) / 10 })
-  if (cup && !tbsp) derived.push({ label: '1 Tbsp', grams: Math.round((cup.grams / 16) * 10) / 10 })
-  if (cup && !has(/^1\s*(tsp|teaspoon)\b/i)) derived.push({ label: '1 tsp', grams: Math.round((cup.grams / 48) * 10) / 10 })
+  if (tbsp && !has(TSP)) derived.push({ label: '1 tsp', grams: Math.round((tbsp.grams / 3) * 10) / 10 })
+  if (tsp && !has(TBSP)) derived.push({ label: '1 Tbsp', grams: Math.round(tsp.grams * 3 * 10) / 10 })
+  if (tbsp && !has(CUP)) derived.push({ label: '1 cup', grams: Math.round(tbsp.grams * 16 * 10) / 10 })
+  if (cup && !has(TBSP)) derived.push({ label: '1 Tbsp', grams: Math.round((cup.grams / 16) * 10) / 10 })
+  if (cup && !has(TSP)) derived.push({ label: '1 tsp', grams: Math.round((cup.grams / 48) * 10) / 10 })
 
   // Liquids should also expose fl oz. Prefer USDA-derived (cup ÷ 8 or Tbsp × 2)
   // when a volume measure exists; fall back to per-liquid density otherwise.

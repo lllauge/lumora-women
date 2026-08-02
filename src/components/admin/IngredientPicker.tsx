@@ -127,16 +127,18 @@ export default function IngredientPicker({ onAdd }: Props) {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // Whole eggs are counted, never weighed — USDA doesn't always return a
-  // per-each measure, so synthesize one. Egg whites/yolks are separated and
-  // weighed, so we leave them on grams.
+  // Whole eggs are counted, never weighed — always put a per-egg option
+  // first so it wins the default and reads as "each" (a "1 large" buried
+  // under tbsp/cup measures is easy to miss). Egg whites/yolks are separated
+  // and weighed, so we leave them on grams.
   function ensureEggCountMeasure(food: UsdaFoodOption): UsdaFoodOption {
     const desc = food.description.toLowerCase()
     if (!/\begg(s|\b)/.test(desc)) return food
     if (/white|yolk/.test(desc)) return food
     const measures = food.measures ?? []
-    if (measures.some((m) => /^1\s+(large|medium|small|extra large|jumbo)\b/i.test(m.label))) return food
-    return { ...food, measures: [{ label: '1 large', grams: 50 }, ...measures] }
+    if (measures.some((m) => /^1\s+egg\b/i.test(m.label))) return food
+    const perEach = measures.find((m) => /^1\s+(large|medium|small|extra large|jumbo|whole)\b/i.test(m.label))
+    return { ...food, measures: [{ label: '1 egg', grams: perEach?.grams ?? 50 }, ...measures] }
   }
 
   // Whole fruits should always offer a per-each option. Some are eaten whole

@@ -164,7 +164,7 @@ export default function IngredientPicker({ onAdd }: Props) {
       return
     }
     // Count-style measures ("1 large", "1 medium") default to counting.
-    const countMeasure = (food.measures ?? []).findIndex((m) => /^1\s+(large|medium|small|extra large|jumbo|slice|piece|egg|banana|apple|whole|berry|pitted|scoop)\b/i.test(m.label))
+    const countMeasure = (food.measures ?? []).findIndex((m) => /^1\s+(large|medium|small|extra large|jumbo|slice|piece|egg|banana|apple|whole|berry|pitted|scoop|cake|cracker|cookie|patty|bar|link|wrap|tortilla)\b/i.test(m.label))
     setMeasureIdx(countMeasure)
     const defaultAmount = countMeasure >= 0 ? '1' : ''
     setAmount(defaultAmount)

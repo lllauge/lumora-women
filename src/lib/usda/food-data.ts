@@ -376,6 +376,39 @@ function augmentVolumeMeasures(measures: UsdaFoodMeasure[], description = ''): U
   return [...measures, ...derived]
 }
 
+// Weight/volume words that must never be treated as a countable piece —
+// "2 Tbsp (30g)" should not derive a "1 Tbsp" here (augmentVolumeMeasures
+// owns spoon/cup math), and "28 g" is not 28 pieces.
+const NON_PIECE_UNIT = /^(g|gram|grams|oz|ounce|ounces|lb|lbs|pound|pounds|ml|l|liter|liters|litre|litres|tsp|teaspoon|teaspoons|tbsp|tablespoon|tablespoons|cup|cups|fl|floz|pint|pints|quart|quarts)$/i
+
+// Plurals where stripping the trailing "s" misspells the singular.
+const PIECE_SINGULARS: Record<string, string> = {
+  berries: 'berry', cherries: 'cherry', patties: 'patty', pastries: 'pastry',
+}
+
+// Branded serving labels often bundle a count ("3 cakes (30g)", "17 crackers
+// (30g)") — derive the per-piece unit so the coach can enter "2 cakes"
+// instead of converting to grams by hand.
+function perPieceMeasures(measures: UsdaFoodMeasure[]): UsdaFoodMeasure[] {
+  const derived: UsdaFoodMeasure[] = []
+  for (const m of measures) {
+    const match = m.label.trim().match(/^(\d+)\s+([a-z]+)/i)
+    if (!match) continue
+    const count = Number(match[1])
+    if (!Number.isInteger(count) || count < 2) continue
+    const noun = match[2].toLowerCase()
+    if (NON_PIECE_UNIT.test(noun)) continue
+    const singular = PIECE_SINGULARS[noun] ?? noun.replace(/s$/, '')
+    const label = `1 ${singular}`
+    const grams = Math.round((m.grams / count) * 10) / 10
+    if (grams <= 0) continue
+    const exists = [...measures, ...derived]
+      .some((x) => x.label.toLowerCase().startsWith(label.toLowerCase()))
+    if (!exists) derived.push({ label, grams })
+  }
+  return derived
+}
+
 // Household measures ("1 large", "1 cup, sliced") so count-based foods like
 // eggs and bananas can be entered as "2 each" instead of weighed.
 function foodMeasureOptions(food: FoodSearchResult): UsdaFoodMeasure[] {
@@ -402,7 +435,7 @@ function foodMeasureOptions(food: FoodSearchResult): UsdaFoodMeasure[] {
     })
   }
 
-  return augmentVolumeMeasures(measures, food.description)
+  return augmentVolumeMeasures([...measures, ...perPieceMeasures(measures)], food.description)
 }
 
 // Common food vocabulary — tokens in this set are NOT treated as brand names,
@@ -636,7 +669,8 @@ export async function getFoodMeasuresById(fdcId: number, apiKey: string): Promis
     }
   }
 
-  return augmentVolumeMeasures(measures.slice(0, 8), String(data.description ?? ''))
+  const sliced = measures.slice(0, 8)
+  return augmentVolumeMeasures([...sliced, ...perPieceMeasures(sliced)], String(data.description ?? ''))
 }
 
 async function fetchFoodById(fdcId: number, apiKey: string): Promise<FoodSearchResult | null> {

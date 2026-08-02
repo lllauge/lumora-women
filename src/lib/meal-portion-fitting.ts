@@ -87,6 +87,11 @@ function median(values: number[]) {
 // whole (or nearly whole) family recipe priced as one client serving.
 const MAX_FAMILY_SHARE = 0.9
 const MAX_INDIVIDUAL_MULTIPLIER = 4
+// Hard floor for a carve, and the threshold below which a stored carve is
+// treated as collapsed rather than deliberate: 1% of a recipe is never a real
+// serving of a meal.
+const MIN_MULTIPLIER = 0.001
+const COLLAPSED_MULTIPLIER = 0.01
 
 /**
  * Fit recipe portions to the client's daily calories and macros while keeping
@@ -175,8 +180,16 @@ export function fitRecipeServingMultipliers(
         if (!recipe) continue
         const familyCount = firstNumber(recipe.familyServings || recipe.servings)
         const isFamily = !individualPlanStyle && familyCount > 1
-        const baseline = firstNumber(recipe.clientServingMultiplier)
-          || declaredServingMultiplier(familyCount, isFamily)
+        const stored = firstNumber(recipe.clientServingMultiplier)
+        // A collapsed carve cannot heal through the slot scale: its card
+        // macros are near zero, so a slot that another recipe already fills
+        // keeps a scale near 1 and `baseline * scale` stays at the floor
+        // forever. Re-seed from the declared serving share (a fifth of a
+        // serves-5 pot, regardless of plan style) so the fit re-derives a
+        // real portion on the next pass.
+        const baseline = stored > COLLAPSED_MULTIPLIER
+          ? stored
+          : declaredServingMultiplier(familyCount, familyCount > 1)
         // The portion chases the client's macro targets alone; the declared
         // serving count never bounds it. Only hard practical caps apply — a
         // family portion is never the (nearly) whole pot priced as one
@@ -186,7 +199,7 @@ export function fitRecipeServingMultipliers(
         // on the target-driven share regardless of where the carve started.
         const maxShare = isFamily ? MAX_FAMILY_SHARE : MAX_INDIVIDUAL_MULTIPLIER
         const unbounded = baseline * scale * dayCorrection
-        const desired = Math.round(Math.min(maxShare, Math.max(0.001, unbounded)) * 1000) / 1000
+        const desired = Math.round(Math.min(maxShare, Math.max(MIN_MULTIPLIER, unbounded)) * 1000) / 1000
         const values = candidates.get(name) ?? []
         values.push(desired)
         candidates.set(name, values)

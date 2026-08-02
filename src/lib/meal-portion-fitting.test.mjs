@@ -268,6 +268,46 @@ test('individual-style plans scale exact-gram recipes to slot targets, not famil
   )
 })
 
+test('a collapsed carve re-seeds to a real portion instead of sticking at the floor', () => {
+  // Mirrors the 2026-08-02 incident: a serves-5 pot whose carve collapsed to
+  // the 0.001 floor (a 2-cal dinner card). The slot's other recipe already
+  // covers the target, so the shared slot scale stays near 1 and the old
+  // fitter returned 0.001 forever. The fit must re-seed from the declared
+  // share and hand back a genuine portion.
+  const plan = {
+    macroTargets: { calories: '1575', protein: '120g', carbs: '139g', fats: '60g' },
+    mealPlan: [{
+      day: 'Monday',
+      breakfast: meal(['Custom breakfast (d1-breakfast)']),
+      lunch: meal(['Custom lunch (d1-lunch)']),
+      dinner: meal(['Crispy Chicken Thighs', 'Custom dinner (d1-dinner)', 'Roasted Sweet Potato']),
+      snacks: [meal(['Custom Snack (d1-snack0)'])],
+    }],
+    recipes: [
+      recipe({ name: 'Custom breakfast (d1-breakfast)', calories: '470', protein: '38g', carbs: '40g', fats: '16g' }),
+      recipe({ name: 'Custom lunch (d1-lunch)', calories: '520', protein: '42g', carbs: '46g', fats: '18g' }),
+      recipe({ name: 'Custom dinner (d1-dinner)', calories: '92', protein: '8g', carbs: '8g', fats: '3g' }),
+      recipe({ name: 'Custom Snack (d1-snack0)', calories: '157', protein: '15g', carbs: '13g', fats: '5g' }),
+      recipe({
+        name: 'Crispy Chicken Thighs',
+        familyServings: '5',
+        clientServingMultiplier: '0.001',
+        calories: '2', protein: '0.3g', carbs: '0g', fats: '0.1g',
+      }),
+      recipe({
+        name: 'Roasted Sweet Potato',
+        familyServings: '6',
+        clientServingMultiplier: '0.345',
+        calories: '358', protein: '5.3g', carbs: '64g', fats: '9.7g',
+      }),
+    ],
+  }
+  const fitted = fitRecipeServingMultipliers(plan, { ...percentages, mealPlanStyle: 'individual_only' })
+  const chicken = fitted.get('Crispy Chicken Thighs')
+  assert.ok(chicken !== undefined)
+  assert.ok(chicken >= 0.05, `expected a re-seeded real portion, got ${chicken}`)
+})
+
 test('returns nothing without a calorie target', () => {
   const plan = incidentPlan({
     sweetPotato: { clientServingMultiplier: '0.25', calories: '259' },

@@ -55,26 +55,6 @@ function isAdjustableRecipe(name: string, recipes: CoachingPlanDraft['recipes'])
   return !recipes.find((recipe) => recipe.name === name)?.portionPinned
 }
 
-function macroAwareScale(current: Nutrients, target: Nutrients) {
-  // Calories and protein carry the most weight. Carbs and fats still shape the
-  // result, but cannot pull a serving far away from the client's energy goal.
-  const entries: Array<[keyof Nutrients, number]> = [
-    ['calories', 8],
-    ['protein', 4],
-    ['carbs', 2],
-    ['fats', 2],
-  ]
-  let numerator = 0
-  let denominator = 0
-  for (const [key, weight] of entries) {
-    if (current[key] <= 0 || target[key] <= 0) continue
-    const ratio = current[key] / target[key]
-    numerator += weight * ratio
-    denominator += weight * ratio * ratio
-  }
-  return denominator > 0 ? numerator / denominator : 1
-}
-
 function median(values: number[]) {
   const sorted = [...values].sort((a, b) => a - b)
   const middle = Math.floor(sorted.length / 2)
@@ -97,9 +77,10 @@ const COLLAPSED_MULTIPLIER = 0.01
 
 /**
  * Fit recipe portions to the client's daily calories and macros while keeping
- * the chosen foods unchanged. Meal percentages guide distribution; a final
- * daily calorie correction handles small macro-ratio compromises when the
- * selected recipes contain enough food to reach the target.
+ * the chosen foods unchanged. Meal percentages are calorie budgets: every
+ * adjustable slot is fitted directly to its calorie target. Protein, carbs,
+ * and fats remain the natural result of the selected foods rather than being
+ * allowed to pull a meal away from its calorie budget.
  *
  * This runs both at draft generation and again on every plan save (library
  * edits re-synced into a plan change recipe nutrition, and the portions must
@@ -163,17 +144,11 @@ export function fitRecipeServingMultipliers(
         adjustableNames,
         adjustable,
         fixed,
-        scale: macroAwareScale(adjustable, adjustableTarget),
+        scale: adjustable.calories > 0
+          ? adjustableTarget.calories / adjustable.calories
+          : 1,
       }
     })
-    const fixedCalories = fitted.reduce((sum, slot) => sum + slot.fixed.calories, 0)
-    const predictedAdjustableCalories = fitted.reduce(
-      (sum, slot) => sum + slot.adjustable.calories * slot.scale,
-      0,
-    )
-    const dayCorrection = predictedAdjustableCalories > 0
-      ? Math.max(0, dailyTarget.calories - fixedCalories) / predictedAdjustableCalories
-      : 1
 
     const individualPlanStyle = isIndividualPlanStyle(percentages.mealPlanStyle)
     for (const { adjustableNames, scale } of fitted) {
@@ -198,7 +173,7 @@ export function fitRecipeServingMultipliers(
         // card macros scale with the baseline, so `baseline * scale` lands
         // on the target-driven share regardless of where the carve started.
         const maxMultiplier = isFamily ? MAX_FAMILY_MULTIPLIER : MAX_INDIVIDUAL_MULTIPLIER
-        const unbounded = baseline * scale * dayCorrection
+        const unbounded = baseline * scale
         const desired = Math.round(Math.min(maxMultiplier, Math.max(MIN_MULTIPLIER, unbounded)) * 1000) / 1000
         const values = candidates.get(name) ?? []
         values.push(desired)

@@ -214,6 +214,32 @@ test('the 1775-calorie four-recipe day never rewrites its library recipes', () =
   }
 })
 
+test('meal percentages stay authoritative when a selected recipe is too light', () => {
+  const plan = {
+    macroTargets: { calories: '1775', protein: '140g', carbs: '150g', fats: '70g' },
+    mealPlan: [{
+      day: 'Monday',
+      breakfast: meal(['Frittata Egg Muffins']),
+      lunch: meal(['Baked Chicken Breast']),
+      dinner: meal(['Crispy Chicken Thighs']),
+      snacks: [meal(['Roasted Sweet Potato'])],
+    }],
+    recipes: [
+      recipe({ name: 'Frittata Egg Muffins', familyServings: '6', clientServingMultiplier: '1', calories: '496' }),
+      recipe({ name: 'Baked Chicken Breast', familyServings: '4', clientServingMultiplier: '1', calories: '322' }),
+      recipe({ name: 'Crispy Chicken Thighs', familyServings: '4', clientServingMultiplier: '1', calories: '444' }),
+      recipe({ name: 'Roasted Sweet Potato', familyServings: '4', clientServingMultiplier: '1', calories: '248' }),
+    ],
+  }
+  const fitted = fitRecipeServingMultipliers(plan, {
+    breakfastPct: '30', lunchPct: '35', dinnerPct: '25', snackPct: '10',
+  })
+  assert.equal(fitted.get('Frittata Egg Muffins'), 1)
+  assert.equal(fitted.get('Baked Chicken Breast'), 1)
+  assert.ok(Math.abs(fitted.get('Crispy Chicken Thighs') - 443.75 / 444) < 0.002)
+  assert.ok(Math.abs(fitted.get('Roasted Sweet Potato') - 177.5 / 248) < 0.002)
+})
+
 test('custom slot foods are never resized', () => {
   const plan = incidentPlan({
     sweetPotato: {

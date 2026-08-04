@@ -59,6 +59,58 @@ function mealMacroLabel(meal: CoachingPlanDraft['mealPlan'][number]['breakfast']
   return `${Math.round(totals.calories)} cal, ${round1(totals.protein)}g protein, ${round1(totals.carbs)}g carbs, ${round1(totals.fats)}g fats, ${round1(totals.fiber)}g fiber`
 }
 
+type MealBudgetShortfall = {
+  day: string
+  slot: string
+  actual: number
+  target: number
+}
+
+function mealBudgetShortfalls(plan: CoachingPlanDraft, planningInputs: Record<string, string>) {
+  const dailyCalories = firstNumber(plan.macroTargets.calories)
+  if (dailyCalories <= 0) return []
+  const percentages = {
+    breakfast: firstNumber(planningInputs.breakfastPct) || 35,
+    lunch: firstNumber(planningInputs.lunchPct) || 30,
+    dinner: firstNumber(planningInputs.dinnerPct) || 25,
+    snack: firstNumber(planningInputs.snackPct) || 10,
+  }
+  const totalPercentage = Object.values(percentages).reduce((sum, value) => sum + value, 0) || 100
+  const shortfalls: MealBudgetShortfall[] = []
+  const mealCalories = (meal: CoachingPlanDraft['mealPlan'][number]['breakfast']) => (
+    mealRecipeNames(meal).reduce((total, name) => {
+      const recipe = plan.recipes.find((candidate) => candidate.name === name)
+      return total + (recipe ? firstNumber(recipe.calories) : 0)
+    }, 0)
+  )
+
+  for (const [dayIndex, day] of plan.mealPlan.entries()) {
+    const slots = [
+      { slot: 'breakfast', meal: day.breakfast, percentage: percentages.breakfast },
+      { slot: 'lunch', meal: day.lunch, percentage: percentages.lunch },
+      { slot: 'dinner', meal: day.dinner, percentage: percentages.dinner },
+      ...day.snacks.map((meal, index) => ({
+        slot: day.snacks.length > 1 ? `snack ${index + 1}` : 'snack',
+        meal,
+        percentage: percentages.snack / Math.max(1, day.snacks.length),
+      })),
+    ]
+    for (const { slot, meal, percentage } of slots) {
+      const target = dailyCalories * percentage / totalPercentage
+      const actual = mealCalories(meal)
+      if (target - actual > Math.max(10, target * 0.03)) {
+        shortfalls.push({
+          day: day.day || `Day ${dayIndex + 1}`,
+          slot,
+          actual: Math.round(actual),
+          target: Math.round(target),
+        })
+      }
+    }
+  }
+  return shortfalls
+}
+
 async function addUsdaServingMathToDraft(plan: CoachingPlanDraft, planningInputs: Record<string, string>) {
   const apiKey = getUsdaApiKey()
   if (apiKey.source === 'DEMO_KEY') {
@@ -301,36 +353,61 @@ export async function POST(req: NextRequest) {
     'Set familyServings from the library recipe\'s family_servings field.',
     'If a recipe in the library has no ingredients, still use it — USDA post-processing will be skipped for that recipe.',
     draftStyle === 'individual_only'
-      ? 'Fill all 3 days of the meal plan, repeating recipes per the meal-prep scheduling guidance below.'
-      : 'Fill all 3 days of the meal plan. Vary the recipes across days so the client is not eating the same thing every day.',
+      ? 'Fill all 7 days of the meal plan, repeating recipes per the meal-prep scheduling guidance below.'
+      : 'Fill all 7 days of the meal plan. Vary the recipes across days so the client is not eating the same thing every day.',
     'If the library does not have enough recipes for a meal type (e.g. no breakfast recipes), leave that slot empty rather than inventing a recipe.',
   ] : [
     'No recipe library was provided. Generate practical draft recipes from the client onboarding data and macro targets. Laura must review them before publishing.',
     'For every recipe, write ingredient lines with measurable weights whenever practical, such as "150g cooked chicken breast", "200g cooked rice", "2 oz cheddar cheese", or "100g avocado". Avoid vague amounts like "1 bowl" or "to taste".',
   ]
 
-  let draft: unknown
-  try {
-    draft = await requestOpenAiJson<unknown>({
+  const aiInstructions = [
+    'You are assisting Laura from Lumora Women with drafting a 1:1 coaching macro and meal plan.',
+    'Create a practical, non-clinical, non-medical draft that Laura will manually review before sending to the client.',
+    'Do not claim to diagnose, treat, prescribe, manage, heal, reverse, or replace medical care.',
+    'Never tell the client they have PCOS, insulin resistance, hormonal dysfunction, thyroid disease, diabetes, or any other condition. Only reference medical context if the client self-reported it, and keep that context in adminNotes as something Laura may want to review or refer out for.',
+    'Use the client onboarding data only. If information is missing, make conservative assumptions and mention what Laura should verify in adminNotes.',
+    'If adminCorrectedPlanningInputs or calculatedMacroStartingPoint are provided, treat them as higher priority than the original onboarding fields.',
+    'Keep macro targets close to calculatedMacroStartingPoint unless the onboarding data clearly requires Laura to review a different approach.',
+    'Use the admin-selected planGoal. Recomposition should be near maintenance with a small deficit, not an aggressive cut.',
+    ...libraryInstructions,
+    'If mealPlanStyle is family_dinners, dinners are full family recipes. Set familyServings to the total family yield. Leave clientServingMultiplier and clientServingBreakdown blank — USDA post-processing will calculate them.',
+    'If mealPlanStyle is individual_only or individual_fresh, set familyServings to "not applicable", clientServing to the full individual serving, and clientServingMultiplier to "1".',
+    ...styleScheduling,
+    'Do not add fields outside the schema.',
+    'When a meal in mealPlan uses a recipe, set recipeName exactly equal to that recipe\'s name so USDA-calculated macros flow back into the meal.',
+    'Default to high-protein, high-fiber meals with moderate healthy fats and mostly minimally processed carbohydrates.',
+    'Return only valid structured JSON matching the schema.',
+  ].join('\n')
+  const aiInput = {
+    client: {
+      firstName: client.first_name,
+      lastName: client.last_name,
+      email: client.email,
+    },
+    onboarding: onboarding.form_data,
+    adminCorrectedPlanningInputs: parsed.data.planningInputs ?? null,
+    calculatedMacroStartingPoint: calculatedMacros,
+    recipeLibrary: hasLibrary ? libraryRecipes.map(r => ({
+      name: r.name,
+      mealType: r.meal_type,
+      familyServings: r.family_servings,
+      ingredients: r.ingredients,
+      instructions: r.instructions,
+      notes: r.notes,
+      calories: r.calories,
+      protein: r.protein,
+      carbs: r.carbs,
+      fats: r.fats,
+      fiber: r.fiber,
+    })) : undefined,
+    request: hasLibrary
+      ? 'Draft macro targets and a full 7-day meal plan (Day 1 through Day 7) using only the recipes from recipeLibrary. Each day must have breakfast, lunch, dinner, and optionally a snack. Rotate recipes across days so the client is not eating the same meal every day — aim for variety while staying within the library. Build a consolidated grocery list from all selected recipes. Add admin review notes and client-facing notes.'
+      : 'Draft macro targets, a full 7-day meal plan (Day 1 through Day 7), at least 10 recipes with cooking instructions, a grocery list, admin review notes, and client-facing notes. Each day must have breakfast, lunch, dinner, and a snack. For family_dinners, dinners must include a full family recipe. USDA post-processing will calculate the client serving size and client-serving macros.',
+  }
+  const generateDraft = (correction?: Record<string, unknown>) => requestOpenAiJson<unknown>({
       apiKey: openAiKey,
-      instructions: [
-        'You are assisting Laura from Lumora Women with drafting a 1:1 coaching macro and meal plan.',
-        'Create a practical, non-clinical, non-medical draft that Laura will manually review before sending to the client.',
-        'Do not claim to diagnose, treat, prescribe, manage, heal, reverse, or replace medical care.',
-        'Never tell the client they have PCOS, insulin resistance, hormonal dysfunction, thyroid disease, diabetes, or any other condition. Only reference medical context if the client self-reported it, and keep that context in adminNotes as something Laura may want to review or refer out for.',
-        'Use the client onboarding data only. If information is missing, make conservative assumptions and mention what Laura should verify in adminNotes.',
-        'If adminCorrectedPlanningInputs or calculatedMacroStartingPoint are provided, treat them as higher priority than the original onboarding fields.',
-        'Keep macro targets close to calculatedMacroStartingPoint unless the onboarding data clearly requires Laura to review a different approach.',
-        'Use the admin-selected planGoal. Recomposition should be near maintenance with a small deficit, not an aggressive cut.',
-        ...libraryInstructions,
-        'If mealPlanStyle is family_dinners, dinners are full family recipes. Set familyServings to the total family yield. Leave clientServingMultiplier and clientServingBreakdown blank — USDA post-processing will calculate them.',
-        'If mealPlanStyle is individual_only or individual_fresh, set familyServings to "not applicable", clientServing to the full individual serving, and clientServingMultiplier to "1".',
-        ...styleScheduling,
-        'Do not add fields outside the schema.',
-        'When a meal in mealPlan uses a recipe, set recipeName exactly equal to that recipe\'s name so USDA-calculated macros flow back into the meal.',
-        'Default to high-protein, high-fiber meals with moderate healthy fats and mostly minimally processed carbohydrates.',
-        'Return only valid structured JSON matching the schema.',
-      ].join('\n'),
+      instructions: aiInstructions,
       schemaName: 'coaching_plan_draft',
       schema: CoachingPlanAiJsonSchema,
       maxOutputTokens: 9000,
@@ -340,37 +417,16 @@ export async function POST(req: NextRequest) {
           content: [
             {
               type: 'input_text',
-              text: JSON.stringify({
-                client: {
-                  firstName: client.first_name,
-                  lastName: client.last_name,
-                  email: client.email,
-                },
-                onboarding: onboarding.form_data,
-                adminCorrectedPlanningInputs: parsed.data.planningInputs ?? null,
-                calculatedMacroStartingPoint: calculatedMacros,
-                recipeLibrary: hasLibrary ? libraryRecipes.map(r => ({
-                  name: r.name,
-                  mealType: r.meal_type,
-                  familyServings: r.family_servings,
-                  ingredients: r.ingredients,
-                  instructions: r.instructions,
-                  notes: r.notes,
-                  calories: r.calories,
-                  protein: r.protein,
-                  carbs: r.carbs,
-                  fats: r.fats,
-                  fiber: r.fiber,
-                })) : undefined,
-                request: hasLibrary
-                  ? 'Draft macro targets and a full 7-day meal plan (Day 1 through Day 7) using only the recipes from recipeLibrary. Each day must have breakfast, lunch, dinner, and optionally a snack. Rotate recipes across days so the client is not eating the same meal every day — aim for variety while staying within the library. Build a consolidated grocery list from all selected recipes. Add admin review notes and client-facing notes.'
-                  : 'Draft macro targets, a full 7-day meal plan (Day 1 through Day 7), at least 10 recipes with cooking instructions, a grocery list, admin review notes, and client-facing notes. Each day must have breakfast, lunch, dinner, and a snack. For family_dinners, dinners must include a full family recipe. USDA post-processing will calculate the client serving size and client-serving macros.',
-              }),
+              text: JSON.stringify({ ...aiInput, correction }),
             },
           ],
         },
       ],
     })
+
+  let draft: unknown
+  try {
+    draft = await generateDraft()
   } catch (error) {
     if (error instanceof OpenAiResponsesError) {
       console.error('[coaching plan ai] OpenAI error:', error.message)
@@ -383,7 +439,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'AI draft returned an invalid shape.' }, { status: 502 })
   }
 
-  const plan = CoachingPlanSchema.safeParse({ ...draft, generatedByAi: true, status: 'draft' })
+  let plan = CoachingPlanSchema.safeParse({ ...draft, generatedByAi: true, status: 'draft' })
   if (!plan.success) {
     console.error('[coaching plan ai] schema mismatch:', plan.error.issues)
     const issues = plan.error.issues
@@ -393,7 +449,40 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `AI draft did not match the plan format: ${issues}` }, { status: 502 })
   }
 
-  const planWithUsdaServingMath = await addUsdaServingMathToDraft(plan.data, parsed.data.planningInputs ?? {})
+  const planningInputValues = parsed.data.planningInputs ?? {}
+  let planWithUsdaServingMath = await addUsdaServingMathToDraft(plan.data, planningInputValues)
+  let shortfalls = mealBudgetShortfalls(planWithUsdaServingMath, planningInputValues)
+
+  if (hasLibrary && shortfalls.length > 0) {
+    try {
+      const correctedDraft = await generateDraft({
+        problem: 'The previous draft did not contain enough recipe calories to meet these meal budgets.',
+        shortfalls,
+        previousDraft: planWithUsdaServingMath,
+        requiredFix: 'Return a complete revised plan. Keep the existing compatible selections and add one or more additional compatible library recipes to each short meal using recipeNames. Do not enlarge or alter any library recipe.',
+      })
+      if (!correctedDraft || typeof correctedDraft !== 'object' || Array.isArray(correctedDraft)) {
+        throw new Error('The corrected draft was not a plan object.')
+      }
+      plan = CoachingPlanSchema.safeParse({ ...correctedDraft, generatedByAi: true, status: 'draft' })
+      if (!plan.success) throw new Error('The corrected draft did not match the plan format.')
+      planWithUsdaServingMath = await addUsdaServingMathToDraft(plan.data, planningInputValues)
+      shortfalls = mealBudgetShortfalls(planWithUsdaServingMath, planningInputValues)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown correction error.'
+      console.error('[coaching plan ai] budget correction failed:', message)
+      return NextResponse.json({ error: `Could not build a plan that meets every meal calorie budget: ${message}` }, { status: 502 })
+    }
+  }
+
+  if (shortfalls.length > 0) {
+    const summary = shortfalls.slice(0, 4).map((item) => (
+      `${item.day} ${item.slot}: ${item.actual} of ${item.target} cal`
+    )).join('; ')
+    return NextResponse.json({
+      error: `The available recipes could not fill every calorie budget without changing the recipes. ${summary}. Add more compatible recipes to the library and generate again.`,
+    }, { status: 422 })
+  }
 
   return NextResponse.json({ plan: planWithUsdaServingMath })
 }

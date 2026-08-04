@@ -369,7 +369,7 @@ function RecipeDetail({
           <p style={{ ...bodyText, fontSize: '0.8125rem', fontStyle: 'italic', marginBottom: '0.5rem' }}>
             {freshCook && !wholeRecipePortion
               ? 'The full written recipe, for reference — cook with your single-portion amounts above instead. Your grocery list is already scaled to them.'
-              : 'Amounts to buy and prep — raw, before cooking, unless a line says cooked weight.'}
+              : 'Amounts to buy and prep are raw ingredients, before cooking, unless a line says cooked weight.'}
             {freshCook && !wholeRecipePortion
               ? ''
               : isFamily

@@ -212,8 +212,8 @@ export default function MealPrepPlanner({
             setValue={setPeopleEating}
           />
           <MealPrepStepper
-            label="How many portions to save for her?"
-            hint="Add the extra meal-prep containers she wants after this meal."
+            label="How many days do you want to meal prep this for?"
+            hint="Each day adds one extra container using her planned portion."
             value={prepPortions}
             min={0}
             max={7}
@@ -231,29 +231,34 @@ export default function MealPrepPlanner({
               </p>
             )}
             {lines.length > 0 && (
-              <ul style={{ listStyle: 'none', margin: '0.625rem 0 0', padding: 0, display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                {lines.map((line, index) => (
-                  <li key={`${line.name}-${index}`} style={{ display: 'flex', alignItems: 'baseline', gap: '0.625rem' }}>
-                    {line.amount && (
-                      <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', fontWeight: 800, color: '#3F6936', minWidth: '3.75rem', textAlign: 'right' }}>
-                        {line.amount}
+              <>
+                <p style={{ ...helpText, marginTop: '0.625rem' }}>
+                  Prep these raw ingredient amounts unless a line says cooked weight.
+                </p>
+                <ul style={{ listStyle: 'none', margin: '0.625rem 0 0', padding: 0, display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                  {lines.map((line, index) => (
+                    <li key={`${line.name}-${index}`} style={{ display: 'flex', alignItems: 'baseline', gap: '0.625rem' }}>
+                      {line.amount && (
+                        <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', fontWeight: 800, color: '#3F6936', minWidth: '3.75rem', textAlign: 'right' }}>
+                          {line.amount}
+                        </span>
+                      )}
+                      <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                        {line.name}
+                        {'easyAmount' in line && line.easyAmount && !line.amount.includes('tsp') && !line.amount.includes('tbsp') && (
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}> · about {line.easyAmount}</span>
+                        )}
+                        {line.state === 'raw' && (
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic' }}> · raw ingredient</span>
+                        )}
+                        {line.state === 'cooked' && (
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic' }}> · cooked weight</span>
+                        )}
                       </span>
-                    )}
-                    <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                      {line.name}
-                      {'easyAmount' in line && line.easyAmount && !line.amount.includes('tsp') && !line.amount.includes('tbsp') && (
-                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}> · about {line.easyAmount}</span>
-                      )}
-                      {line.state === 'raw' && (
-                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic' }}> · raw</span>
-                      )}
-                      {line.state === 'cooked' && (
-                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic' }}> · cooked weight</span>
-                      )}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+                    </li>
+                  ))}
+                </ul>
+              </>
             )}
           </div>
         </div>

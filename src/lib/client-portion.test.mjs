@@ -7,6 +7,7 @@ import {
   clientPortionLines,
   portionFraction,
   portionSummaryLine,
+  scaledIngredientAmounts,
 } from './client-portion.ts'
 import { resolvedServingMultiplier } from './nutrition-math.ts'
 
@@ -142,6 +143,21 @@ test('no-scale fraction carries the division for multi-part shares', () => {
   // Non-unit fractions tell her how many of the equal portions are hers.
   assert.deepEqual(portionFraction(2 / 3), { label: '⅔', qualifier: null, parts: 3, take: 2 })
   assert.deepEqual(portionFraction(0.38), { label: '⅜', qualifier: null, parts: 8, take: 3 })
+})
+
+test('raw ingredient weights scale with a larger-than-written fitted batch', () => {
+  assert.deepEqual(
+    scaledIngredientAmounts([
+      '[fdc:1] 258g Eggs, raw',
+      '8g Olive oil',
+      'Salt, to taste',
+    ], 1.25),
+    [
+      '[fdc:1] 322.5g Eggs, raw',
+      '10g Olive oil',
+      'Salt, to taste',
+    ],
+  )
 })
 
 test('a pinned recipe is always the whole recipe, whatever the stored carve says', () => {

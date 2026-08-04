@@ -516,6 +516,7 @@ export default function CoachingPlanEditor({
           ingredients: recipe.ingredients,
           servings: recipe.servings,
           familyServings: recipe.familyServings,
+          portionPinned: recipe.portionPinned,
         })),
       libraryMacros: libraryRecipes
         .filter((recipe) => assignedNames.has(recipe.name))

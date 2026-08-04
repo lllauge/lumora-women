@@ -160,10 +160,10 @@ test('a light family pot can exceed its declared equal share', () => {
   )
 })
 
-test('a family portion is never the whole pot as one serving', () => {
-  // Even when the targets ask for more food than the pot holds, the portion
-  // caps at 90% — a family recipe priced as (more than) the entire pot for
-  // one client is never valid.
+test('a light family recipe scales the written batch up to reach the meal target', () => {
+  // A multiplier above 1 means scale the raw ingredients and make a larger
+  // batch. It must not leave the day under target merely because the selected
+  // written recipe is smaller than the client's planned meal.
   const plan = {
     macroTargets: { calories: '2000', protein: '150g', carbs: '175g', fats: '78g' },
     mealPlan: [{
@@ -187,7 +187,37 @@ test('a family portion is never the whole pot as one serving', () => {
   const fitted = fitRecipeServingMultipliers(plan, percentages)
   const portion = fitted.get('Tiny Pot')
   assert.ok(portion !== undefined)
-  assert.ok(portion <= 0.9 + 1e-9, `expected at most 0.9 of the pot, got ${portion}`)
+  assert.ok(portion > 1, `expected the written batch to scale above 1, got ${portion}`)
+  const dayTotal = dayCaloriesAfterFit(plan, fitted)
+  assert.ok(
+    Math.abs(dayTotal - 2000) / 2000 < 0.025,
+    `expected day near 2000 cal, got ${Math.round(dayTotal)}`,
+  )
+})
+
+test('the 1775-calorie four-recipe day does not remain 315 calories under', () => {
+  const plan = {
+    macroTargets: { calories: '1775', protein: '137g', carbs: '150g', fats: '70g' },
+    mealPlan: [{
+      day: 'Monday',
+      breakfast: meal(['Frittata Egg Muffins']),
+      lunch: meal(['Baked Chicken Breast']),
+      dinner: meal(['Crispy Chicken Thighs']),
+      snacks: [meal(['Roasted Sweet Potato'])],
+    }],
+    recipes: [
+      recipe({ name: 'Frittata Egg Muffins', familyServings: '6', clientServingMultiplier: '1', calories: '446', protein: '32.4g', carbs: '10.8g', fats: '30g' }),
+      recipe({ name: 'Baked Chicken Breast', familyServings: '4', clientServingMultiplier: '1', calories: '322', protein: '57g', carbs: '0g', fats: '7g' }),
+      recipe({ name: 'Crispy Chicken Thighs', familyServings: '4', clientServingMultiplier: '1', calories: '444', protein: '42.8g', carbs: '6.3g', fats: '31g' }),
+      recipe({ name: 'Roasted Sweet Potato', familyServings: '4', clientServingMultiplier: '1', calories: '248', protein: '5g', carbs: '40g', fats: '5.7g' }),
+    ],
+  }
+  const fitted = fitRecipeServingMultipliers(plan, percentages)
+  const dayTotal = dayCaloriesAfterFit(plan, fitted)
+  assert.ok(
+    Math.abs(dayTotal - 1775) / 1775 < 0.025,
+    `expected day near 1775 cal, got ${Math.round(dayTotal)}`,
+  )
 })
 
 test('custom slot foods are never resized', () => {

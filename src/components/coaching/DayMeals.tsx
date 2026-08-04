@@ -1,7 +1,7 @@
 import { ChevronDown } from 'lucide-react'
 import {
   cleanIngredientText, clientPortionFactor, clientPortionLines, isClientReadable, portionFraction,
-  clientRecipeNotes, shoppingPrepLines, displayRecipeName, withGrams,
+  clientRecipeNotes, shoppingPrepLines, displayRecipeName, scaledIngredientAmounts, withGrams,
 } from '@/lib/coaching-engagement'
 import { seasoningSpoonAmount } from '@/lib/household-measure'
 import InstructionSteps from '@/components/coaching/InstructionSteps'
@@ -222,8 +222,13 @@ function RecipeDetail({
   // meals, while the portion block holds the single-meal amounts — the same
   // amounts she'd cook if making it fresh that day instead of batching.
   const soloBatch = !isFamily && !wholeRecipePortion && !freshCook
+  const portionFactor = clientPortionFactor(recipe, individualPlanStyle)
+  const scaledAboveWrittenRecipe = portionFactor > 1.005
   const portionLines = clientPortionLines(recipe, individualPlanStyle).filter((line) => line.grams !== null)
-  const detailFraction = portionFraction(clientPortionFactor(recipe, individualPlanStyle))
+  const detailFraction = portionFraction(portionFactor)
+  const prepIngredients = scaledAboveWrittenRecipe
+    ? scaledIngredientAmounts(recipe.ingredients, portionFactor)
+    : recipe.ingredients
   // For family recipes the headline is "¼ of the recipe" (human-friendly),
   // with the gram total kept as small subtext. For individual recipes the
   // gram weight IS the meaningful headline, so we show it as before.
@@ -265,7 +270,7 @@ function RecipeDetail({
               {headline.join(' · ')}
             </p>
           )}
-          {!isFamily && !wholeRecipePortion && portionLines.length > 0 && (
+          {(!isFamily || scaledAboveWrittenRecipe) && !wholeRecipePortion && portionLines.length > 0 && (
             <div style={{ marginTop: '0.5rem' }}>
               <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
                 {freshCook ? 'Cook with just these amounts — they make one portion, yours:' : 'Cook with these exact amounts — they make one serving:'}
@@ -366,16 +371,22 @@ function RecipeDetail({
         <>
           <h3 style={sectionTitle}>
             {isFamily
-              ? 'Cooking & prep (full family recipe)'
+              ? scaledAboveWrittenRecipe
+                ? 'Cooking & prep (scaled to your portion)'
+                : 'Cooking & prep (full family recipe)'
               : soloBatch
                 ? 'Cooking & prep (to prep multiple meals for the week)'
                 : 'Cooking & prep'}
           </h3>
           <p style={{ ...bodyText, fontSize: '0.8125rem', fontStyle: 'italic', marginBottom: '0.5rem' }}>
-            {freshCook && !wholeRecipePortion
+            {scaledAboveWrittenRecipe
+              ? 'These are the raw ingredient amounts for your planned portion, before cooking, unless a line says cooked weight.'
+              : freshCook && !wholeRecipePortion
               ? 'The full written recipe, for reference — cook with your single-portion amounts above instead. Your grocery list is already scaled to them.'
               : 'Amounts to buy and prep are raw ingredients, before cooking, unless a line says cooked weight.'}
-            {freshCook && !wholeRecipePortion
+            {scaledAboveWrittenRecipe
+              ? ''
+              : freshCook && !wholeRecipePortion
               ? ''
               : isFamily
                 ? ' Your serving is portioned from the finished dish, after cooking.'
@@ -383,7 +394,7 @@ function RecipeDetail({
                   ? ' Make the full amounts below — the whole recipe is your serving.'
                   : ' When you weigh your serving above, use the food as it’s listed there: cooked unless marked otherwise.'}
           </p>
-          <PrepIngredientList lines={shoppingPrepLines(recipe.ingredients)} />
+          <PrepIngredientList lines={shoppingPrepLines(prepIngredients)} />
         </>
       )}
 

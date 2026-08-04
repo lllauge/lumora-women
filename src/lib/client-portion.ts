@@ -118,6 +118,18 @@ export function clientPortionLines(
     .filter((line) => line.name)
 }
 
+/** Scale the written ingredient weights to the actual batch the client needs. */
+export function scaledIngredientAmounts(ingredients: string[], factor: number): string[] {
+  if (!Number.isFinite(factor) || factor <= 0 || Math.abs(factor - 1) < 0.005) return ingredients
+  return ingredients.map((ingredient) => ingredient.replace(
+    /^(\s*(?:\[(?:fdc:\d+|curated:[a-z0-9-]+)\]\s*)?)(\d+(?:\.\d+)?)(\s*g\b)/i,
+    (_match, prefix: string, amount: string, unit: string) => {
+      const scaled = Math.round(Number(amount) * factor * 10) / 10
+      return `${prefix}${scaled}${unit}`
+    },
+  ))
+}
+
 /** Compact one-line weigh-out summary: "3 large eggs · 50g sweet potato (cooked)". */
 export function portionSummaryLine(
   recipe: CoachingPlanDraft['recipes'][number],

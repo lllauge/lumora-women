@@ -3,7 +3,6 @@ import type {
   PlanMeal,
 } from './coaching-plan-schema'
 import { declaredServingMultiplier } from './nutrition-math.ts'
-import { isIndividualPlanStyle } from './cooking-style.ts'
 
 type Nutrients = {
   calories: number
@@ -83,10 +82,11 @@ function median(values: number[]) {
     : (sorted[middle - 1] + sorted[middle]) / 2
 }
 
-// A family recipe portion must stay a genuine share of the pot — never a
-// whole (or nearly whole) family recipe priced as one client serving.
-const MAX_FAMILY_SHARE = 0.9
-const MAX_INDIVIDUAL_MULTIPLIER = 4
+// A fitted portion can require more than one written batch when the selected
+// recipe is lighter than the client's meal target. The client and grocery
+// views scale the raw ingredients by this same multiplier, so a value above 1
+// means "make a larger batch", not "take an impossible share of one".
+const MAX_RECIPE_MULTIPLIER = 4
 // Hard floor for a carve, and the threshold below which a stored carve is
 // treated as collapsed rather than deliberate: 1% of a recipe is never a real
 // serving of a meal.
@@ -173,13 +173,11 @@ export function fitRecipeServingMultipliers(
       ? Math.max(0, dailyTarget.calories - fixedCalories) / predictedAdjustableCalories
       : 1
 
-    const individualPlanStyle = isIndividualPlanStyle(percentages.mealPlanStyle)
     for (const { adjustableNames, scale } of fitted) {
       for (const name of adjustableNames) {
         const recipe = plan.recipes.find((candidate) => candidate.name === name)
         if (!recipe) continue
         const familyCount = firstNumber(recipe.familyServings || recipe.servings)
-        const isFamily = !individualPlanStyle && familyCount > 1
         const stored = firstNumber(recipe.clientServingMultiplier)
         // A collapsed carve cannot heal through the slot scale: its card
         // macros are near zero, so a slot that another recipe already fills
@@ -191,15 +189,12 @@ export function fitRecipeServingMultipliers(
           ? stored
           : declaredServingMultiplier(familyCount, familyCount > 1)
         // The portion chases the client's macro targets alone; the declared
-        // serving count never bounds it. Only hard practical caps apply — a
-        // family portion is never the (nearly) whole pot priced as one
-        // serving, and an individual dish never scales past 4x. A stale or
-        // corrupt stored carve still can't survive a refit: the recipe's
+        // serving count never bounds it. A stale or corrupt stored carve still
+        // can't survive a refit: the recipe's
         // card macros scale with the baseline, so `baseline * scale` lands
         // on the target-driven share regardless of where the carve started.
-        const maxShare = isFamily ? MAX_FAMILY_SHARE : MAX_INDIVIDUAL_MULTIPLIER
         const unbounded = baseline * scale * dayCorrection
-        const desired = Math.round(Math.min(maxShare, Math.max(MIN_MULTIPLIER, unbounded)) * 1000) / 1000
+        const desired = Math.round(Math.min(MAX_RECIPE_MULTIPLIER, Math.max(MIN_MULTIPLIER, unbounded)) * 1000) / 1000
         const values = candidates.get(name) ?? []
         values.push(desired)
         candidates.set(name, values)

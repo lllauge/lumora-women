@@ -42,6 +42,24 @@ export type CalculatedMacroTargets = {
   workoutTarget: string
 }
 
+export type MacroCalculationAudit = {
+  inputs: {
+    age: number
+    heightCm: number
+    weightLb: number
+    weightKg: number
+    targetWeightLb: number | null
+  }
+  factors: {
+    lifestyle: number
+    exercise: number
+    activity: number
+    goalAdjustment: number
+  }
+  equations: Array<{ label: string; formula: string; result: number; unit: string }>
+  targets: CalculatedMacroTargets
+}
+
 // TDEE model follows the RSN certification template: BMR × (lifestyle + exercise).
 // Lifestyle covers daily non-exercise movement (0.6 desk-bound → 0.9 rarely sits);
 // exercise covers structured training (0.55 none → 0.85 five-plus days).
@@ -125,21 +143,17 @@ function inferWorkoutTarget(inputs: MacroCalculationInputs) {
   return '2-3 strength sessions per week'
 }
 
-function inferActivityMultiplier(inputs: MacroCalculationInputs) {
+function activityFactorParts(inputs: MacroCalculationInputs) {
   let lifestyle = lifestyleFactors[inputs.activityLevel] ?? lifestyleFactors.light_daily_movement
   const steps = parseStepCount(inputs.steps)
-
-  // High step counts describe daily movement, so they floor the lifestyle factor.
   if (steps && steps >= 10000) lifestyle = Math.max(lifestyle, 0.8)
   else if (steps && steps >= 8000) lifestyle = Math.max(lifestyle, 0.75)
   else if (steps && steps >= 6000) lifestyle = Math.max(lifestyle, 0.7)
-
   const exercise = exerciseFactors[inputs.strengthTraining] ?? exerciseFactors.none
-
-  return lifestyle + exercise
+  return { lifestyle, exercise, activity: lifestyle + exercise }
 }
 
-export function calculateMacroTargets(inputs: MacroCalculationInputs): CalculatedMacroTargets | null {
+export function calculateMacroAudit(inputs: MacroCalculationInputs): MacroCalculationAudit | null {
   const age = firstNumber(inputs.age)
   const heightCm = parseHeightCentimeters(inputs.height)
   const weightLb = parseWeightPounds(inputs.weight)
@@ -148,32 +162,24 @@ export function calculateMacroTargets(inputs: MacroCalculationInputs): Calculate
 
   const weightKg = weightLb / 2.20462
   const bmr = 10 * weightKg + 6.25 * heightCm - 5 * age - 161
-  const activity = inferActivityMultiplier(inputs)
+  const { lifestyle, exercise, activity } = activityFactorParts(inputs)
   const maintenanceCalories = bmr * activity
   const adjustment = goalCalorieAdjustments[inputs.planGoal] ?? goalCalorieAdjustments.recomposition
-  const calories = roundToNearest(Math.max(1200, maintenanceCalories * (1 + adjustment)), 25)
-
-  // Protein: 1g per lb of goal weight (or current weight if no lower goal),
-  // with a 30% of calories floor — important for insulin sensitivity and
-  // lean-mass retention in a deficit. Capped at 40% of calories.
+  const adjustedCalories = Math.max(1200, maintenanceCalories * (1 + adjustment))
+  const calories = roundToNearest(adjustedCalories, 25)
   const targetWeightLb = parseWeightPounds(inputs.targetWeight)
   const proteinReferenceLb = targetWeightLb && targetWeightLb < weightLb ? targetWeightLb : weightLb
   const proteinFloor = (calories * 0.3) / 4
   const proteinCap = (calories * 0.4) / 4
   const protein = roundToNearest(Math.min(Math.max(proteinFloor, proteinReferenceLb), proteinCap), 5)
-
-  // Fat: 35% of calories, never below 50g. Higher-fat default keeps carbs
-  // moderate for the insulin-resistant profile most coaching clients present with.
-  const fats = roundToNearest(Math.max(50, (calories * 0.35) / 9), 5)
-
-  // Carbs are the exact remainder so 4·protein + 4·carbs + 9·fat = calories.
-  const carbs = Math.max(0, Math.round((calories - protein * 4 - fats * 9) / 4))
-
-  // ~14g fiber per 1,000 calories (Dietary Guidelines), kept in a practical range.
-  const fiber = Math.min(38, Math.max(20, Math.round((calories * 14) / 1000)))
+  const fatBeforeRounding = Math.max(50, (calories * 0.35) / 9)
+  const fats = roundToNearest(fatBeforeRounding, 5)
+  const carbsBeforeRounding = Math.max(0, (calories - protein * 4 - fats * 9) / 4)
+  const carbs = Math.round(carbsBeforeRounding)
+  const fiberBeforeBounds = (calories * 14) / 1000
+  const fiber = Math.min(38, Math.max(20, Math.round(fiberBeforeBounds)))
   const steps = inputs.steps.trim() || (inputs.activityLevel === 'mostly_sedentary' ? '6,000-8,000/day' : '8,000-10,000/day')
-
-  return {
+  const targets = {
     calories: `${calories}`,
     protein: `${protein}g`,
     carbs: `${carbs}g`,
@@ -183,4 +189,23 @@ export function calculateMacroTargets(inputs: MacroCalculationInputs): Calculate
     steps,
     workoutTarget: inferWorkoutTarget(inputs),
   }
+
+  return {
+    inputs: { age, heightCm, weightLb, weightKg, targetWeightLb },
+    factors: { lifestyle, exercise, activity, goalAdjustment: adjustment },
+    equations: [
+      { label: 'BMR', formula: `10 x ${weightKg.toFixed(2)}kg + 6.25 x ${heightCm.toFixed(1)}cm - 5 x ${age} - 161`, result: bmr, unit: 'cal' },
+      { label: 'Maintenance calories', formula: `${bmr.toFixed(1)} BMR x (${lifestyle} lifestyle + ${exercise} exercise)`, result: maintenanceCalories, unit: 'cal' },
+      { label: 'Calorie target', formula: `max(1,200, ${maintenanceCalories.toFixed(1)} x (1 + ${adjustment})) then round to nearest 25`, result: calories, unit: 'cal' },
+      { label: 'Protein target', formula: `clamp(${proteinReferenceLb.toFixed(1)}g reference, ${proteinFloor.toFixed(1)}g floor, ${proteinCap.toFixed(1)}g cap) then round to nearest 5`, result: protein, unit: 'g' },
+      { label: 'Fat target', formula: `max(50g, ${calories} x 35% / 9) then round to nearest 5`, result: fats, unit: 'g' },
+      { label: 'Carb target', formula: `(${calories} - ${protein} x 4 - ${fats} x 9) / 4 then round`, result: carbs, unit: 'g' },
+      { label: 'Fiber target', formula: `${calories} x 14 / 1,000, constrained to 20-38g`, result: fiber, unit: 'g' },
+    ],
+    targets,
+  }
+}
+
+export function calculateMacroTargets(inputs: MacroCalculationInputs): CalculatedMacroTargets | null {
+  return calculateMacroAudit(inputs)?.targets ?? null
 }

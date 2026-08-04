@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowLeft, CheckCircle, CircleAlert } from 'lucide-react'
+import { ArrowLeft, Calculator, CheckCircle, CircleAlert } from 'lucide-react'
 import CoachingPlanEditor from '@/components/admin/CoachingPlanEditor'
 import CoachingProgressTracker from '@/components/admin/CoachingProgressTracker'
 import CoachReviewComposer from '@/components/admin/CoachReviewComposer'
@@ -309,6 +309,17 @@ export default async function AdminCoachingClientPage({ params }: PageProps) {
               }}
             >
               See her portal →
+            </Link>
+            <Link
+              href={`/admin/coaching/${client.id}/calculations`}
+              className="inline-flex items-center gap-2"
+              style={{
+                fontFamily: 'var(--font-hanken)', fontSize: '0.875rem', fontWeight: 600,
+                color: 'var(--botanical-green)', textDecoration: 'none',
+              }}
+            >
+              <Calculator size={15} />
+              Calculation log →
             </Link>
           </span>
         </div>

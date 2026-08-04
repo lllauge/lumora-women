@@ -92,9 +92,14 @@ export default function DayMeals({
               const isAutoCustom = /^Custom\s+/i.test(recipeLabel)
               const factor = clientPortionFactor(recipe, individualPlanStyle)
               const fraction = portionFraction(factor)
+              const isFamilyRecipe = !individualPlanStyle && parseFloat(recipe.familyServings) > 1 && !recipe.portionPinned
               const portion = fraction && fraction.label !== 'the whole recipe'
                 ? `${fraction.label} of recipe`
-                : 'The whole recipe is your portion'
+                : isFamilyRecipe
+                  ? recipe.clientServingGrams.trim()
+                    ? `${withGrams(recipe.clientServingGrams)} portion`
+                    : 'Family recipe portion'
+                  : 'The whole recipe is your portion'
               const badge = prepBadges?.get(`${dayIndex}:${name}`)
               const customIngredients = isAutoCustom
                 ? recipe.ingredients.map((ingredient) => {

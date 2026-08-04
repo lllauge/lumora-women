@@ -527,12 +527,21 @@ export default function CoachingPlanEditor({
           fats: recipe.fats,
           fiber: recipe.fiber,
         })),
+      macroTargets: plan.macroTargets,
+      mealPercentages: {
+        breakfastPct: planningInputs.breakfastPct,
+        lunchPct: planningInputs.lunchPct,
+        dinnerPct: planningInputs.dinnerPct,
+        snackPct: planningInputs.snackPct,
+      },
       mealPlanStyle: 'family_dinners',
     })
   }, [
     libraryRecipes,
     plan.mealPlan,
+    plan.macroTargets,
     plan.recipes,
+    planningInputs,
   ])
 
   useEffect(() => {
@@ -561,10 +570,18 @@ export default function CoachingPlanEditor({
       setLiveNutritionPending(true)
       setLiveNutritionError('')
       const individualPlanStyle = false
+      type RecipePatch = Partial<CoachingPlanDraft['recipes'][number]>
 
-      const results = await Promise.all(activeRecipes.map(async (recipe) => {
+      const derivePreviewPatch = async (
+        recipe: CoachingPlanDraft['recipes'][number],
+        explicitMultiplier?: number,
+      ): Promise<{ patch: RecipePatch | null; failed: boolean }> => {
         const familyCount = firstNumber(recipe.familyServings || recipe.servings)
         const isFamily = !individualPlanStyle && familyCount > 1 && !recipe.portionPinned
+        const multiplier = recipe.portionPinned
+          ? 1
+          : explicitMultiplier
+            ?? resolvedServingMultiplier(recipe.clientServingMultiplier, familyCount, isFamily)
         const isCustomSlot = /\(d\d+-(?:breakfast|lunch|dinner|snack\d+)\)$/.test(recipe.name)
         const libraryRecipe = isCustomSlot
           ? undefined
@@ -582,7 +599,6 @@ export default function CoachingPlanEditor({
             0,
           )
           return {
-            name: recipe.name,
             patch: scalePasteRecipe({
               recipeCalories: libraryRecipe.calories,
               recipeProtein: libraryRecipe.protein ?? 0,
@@ -593,18 +609,14 @@ export default function CoachingPlanEditor({
               ingredients: recipe.ingredients,
               isFamily,
               familyServings: familyCount,
-              servingMultiplier: recipe.portionPinned ? 1 : resolvedServingMultiplier(
-                recipe.clientServingMultiplier,
-                familyCount,
-                isFamily,
-              ),
+              servingMultiplier: multiplier,
             }),
             failed: false,
           }
         }
 
         if (recipe.ingredients.length === 0) {
-          return { name: recipe.name, patch: null, failed: false }
+          return { patch: null, failed: false }
         }
 
         try {
@@ -613,11 +625,7 @@ export default function CoachingPlanEditor({
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               ingredients: recipe.ingredients,
-              clientServingMultiplier: `${recipe.portionPinned ? 1 : resolvedServingMultiplier(
-                recipe.clientServingMultiplier,
-                familyCount,
-                isFamily,
-              )}`,
+              clientServingMultiplier: `${multiplier}`,
               familyServings: recipe.familyServings || recipe.servings,
             }),
             signal: controller.signal,
@@ -625,10 +633,9 @@ export default function CoachingPlanEditor({
           const data = await response.json().catch(() => ({} as UsdaNutritionResponse)) as UsdaNutritionResponse
           const nutrition = data.nutrition
           if (!response.ok || !nutrition || nutrition.ingredients.length === 0 || !nutrition.totalRecipe.calories) {
-            return { name: recipe.name, patch: null, failed: true }
+            return { patch: null, failed: true }
           }
           return {
-            name: recipe.name,
             patch: {
               clientServingMultiplier: `${nutrition.clientServingMultiplier}`,
               clientServingGrams: `${nutrition.clientServingGrams}g`,
@@ -644,12 +651,46 @@ export default function CoachingPlanEditor({
             failed: false,
           }
         } catch {
-          return { name: recipe.name, patch: null, failed: !controller.signal.aborted }
+          return { patch: null, failed: !controller.signal.aborted }
         }
+      }
+
+      const results = await Promise.all(activeRecipes.map(async (recipe) => {
+        const result = await derivePreviewPatch(recipe)
+        return { name: recipe.name, ...result }
       }))
 
       if (cancelled) return
-      const patches = new Map(results.filter((result) => result.patch).map((result) => [result.name, result.patch!]))
+      const firstPassPatches = new Map(results.filter((result) => result.patch).map((result) => [result.name, result.patch!]))
+      const firstPassRecipes = plan.recipes.map((recipe) => {
+        const patch = firstPassPatches.get(recipe.name)
+        return patch ? { ...recipe, ...patch } : recipe
+      })
+      const failedNames = new Set(results.filter((result) => result.failed).map((result) => result.name))
+      const fittedMultipliers = fitRecipeServingMultipliers(
+        { ...plan, recipes: firstPassRecipes },
+        planningInputs,
+      )
+      const refitResults = await Promise.all([...fittedMultipliers].map(async ([name, fitted]) => {
+        const recipe = firstPassRecipes.find((candidate) => candidate.name === name)
+        if (!recipe || recipe.ingredients.length === 0 || failedNames.has(recipe.name)) {
+          return { name, patch: null as RecipePatch | null, failed: false }
+        }
+        const current = parseFloat(recipe.clientServingMultiplier)
+        if (Number.isFinite(current) && current > 0 && Math.abs(fitted - current) / current < 0.005) {
+          return { name, patch: null as RecipePatch | null, failed: false }
+        }
+        const result = await derivePreviewPatch(recipe, fitted)
+        return { name, ...result }
+      }))
+      if (cancelled) return
+      const patches = new Map<string, RecipePatch>()
+      for (const result of results) {
+        if (result.patch) patches.set(result.name, result.patch)
+      }
+      for (const result of refitResults) {
+        if (result.patch) patches.set(result.name, result.patch)
+      }
       setPlan((current) => {
         const recipes = current.recipes.map((recipe) => {
           const patch = patches.get(recipe.name)
@@ -670,11 +711,11 @@ export default function CoachingPlanEditor({
           })),
         }
       })
-      const failedNames = results
+      const failedRecipeNames = results
         .filter((result) => result.failed)
         .map((result) => stripSlotRecipeSuffixes(result.name))
-      setLiveNutritionError(failedNames.length > 0
-        ? `Could not preview calories for: ${failedNames.join(', ')}.`
+      setLiveNutritionError(failedRecipeNames.length > 0
+        ? `Could not preview calories for: ${failedRecipeNames.join(', ')}.`
         : '')
       setLiveNutritionPending(false)
     }, 250)

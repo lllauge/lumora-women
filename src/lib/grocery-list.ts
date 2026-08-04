@@ -4,6 +4,7 @@
 // Explicit .ts extensions so this module also loads under `node --test
 // --experimental-strip-types`, which resolves relative imports literally.
 import { cookedGramsToRaw } from './cooked-to-raw.ts'
+import { clientPortionFactor } from './client-portion.ts'
 import { typedMeasureToGrams } from './household-measure.ts'
 import { resolvedServingMultiplier } from './nutrition-math.ts'
 import { mealRecipeNames, type CoachingPlanDraft } from './coaching-plan-schema.ts'
@@ -130,6 +131,13 @@ function shoppableLabel(label: string): string | null {
 
 export type GroceryListOptions = {
   /**
+   * Client portal baseline: buy exactly her plan portions for each scheduled
+   * meal unless a recipe-card Meal prep selection overrides that occurrence.
+   */
+  clientPortionsOnly?: boolean
+  /** Per recipe-card cooked amount, keyed `${dayIndex}:${recipeName}`. */
+  portionOverrides?: Record<string, number>
+  /**
    * Individual-plan client cooking only for herself: repeats of the same
    * recipe are leftovers from one batch, not fresh cooks, so the list buys
    * batches instead of meal slots.
@@ -168,6 +176,10 @@ export function soloBatchCount(
   return Math.max(1, Math.ceil(slotUses * soloPortion(recipe) - BATCH_SLACK))
 }
 
+export function mealPrepOccurrenceKey(dayIndex: number, mealKey: string, recipeName: string) {
+  return `${dayIndex}:${mealKey}:${recipeName}`
+}
+
 /**
  * How much of each dish actually gets cooked this plan, in whole or
  * fractional recipes. Family plans cook the full dish for every meal-slot
@@ -177,14 +189,31 @@ export function soloBatchCount(
  */
 export function recipeCookCounts(plan: CoachingPlanDraft, options: GroceryListOptions = {}): Map<string, number> {
   const cookCounts = new Map<string, number>()
-  for (const day of plan.mealPlan) {
-    for (const meal of [day.breakfast, day.lunch, day.dinner, ...day.snacks]) {
+  for (const [dayIndex, day] of plan.mealPlan.entries()) {
+    const meals = [
+      { key: 'breakfast', meal: day.breakfast },
+      { key: 'lunch', meal: day.lunch },
+      { key: 'dinner', meal: day.dinner },
+      ...day.snacks.map((meal, snackIndex) => ({ key: `snack${snackIndex}`, meal })),
+    ]
+    for (const { key, meal } of meals) {
       for (const name of mealRecipeNames(meal)) {
-        cookCounts.set(name, (cookCounts.get(name) ?? 0) + 1)
+        if (options.clientPortionsOnly || options.portionOverrides) {
+          const recipe = plan.recipes.find((r) => r.name === name)
+          const override = options.portionOverrides?.[mealPrepOccurrenceKey(dayIndex, key, name)]
+          const portion: number = typeof override === 'number' && Number.isFinite(override) && override > 0
+            ? override
+            : recipe
+              ? clientPortionFactor(recipe, false)
+              : 1
+          cookCounts.set(name, (cookCounts.get(name) ?? 0) + portion)
+        } else {
+          cookCounts.set(name, (cookCounts.get(name) ?? 0) + 1)
+        }
       }
     }
   }
-  if (options.soloClient) {
+  if (!options.clientPortionsOnly && !options.portionOverrides && options.soloClient) {
     for (const [name, slotUses] of cookCounts) {
       const recipe = plan.recipes.find((r) => r.name === name)
       if (!recipe) continue

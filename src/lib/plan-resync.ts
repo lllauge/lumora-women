@@ -18,7 +18,6 @@ import {
   normalizeReferencedPlanNutrition,
 } from './normalize-plan-nutrition'
 import { buildGroceryList, mergeGroceryList } from './grocery-list'
-import { groceryListOptions } from './cooking-style'
 
 type AdminClient = Awaited<ReturnType<typeof createAdminClient>>
 
@@ -120,14 +119,14 @@ export async function resyncPlansForRecipes({
       // declared servings changed were reset to one declared serving).
       next = await normalizeReferencedPlanNutrition({
         plan: next,
-        mealPlanStyle: planningInputs.mealPlanStyle,
+        mealPlanStyle: 'family_dinners',
         libraryRecipes: library,
         apiKey,
       })
       // Re-carve portions to the client's macro targets, then re-price the
       // cards whose portion actually moved (>0.5%, same threshold the
       // editor uses so repeat syncs settle instead of churning).
-      const fitted = fitRecipeServingMultipliers(next, planningInputs)
+      const fitted = fitRecipeServingMultipliers(next, { ...planningInputs, mealPlanStyle: 'family_dinners' })
       let refit = false
       const recipes = next.recipes.map((recipe) => {
         const target = fitted.get(recipe.name)
@@ -142,7 +141,7 @@ export async function resyncPlansForRecipes({
       if (refit) {
         next = await normalizeReferencedPlanNutrition({
           plan: { ...next, recipes },
-          mealPlanStyle: planningInputs.mealPlanStyle,
+          mealPlanStyle: 'family_dinners',
           libraryRecipes: library,
           apiKey,
         })
@@ -151,7 +150,7 @@ export async function resyncPlansForRecipes({
         ...next,
         groceryList: mergeGroceryList(
           next.groceryList,
-          buildGroceryList(next, groceryListOptions(planningInputs.mealPlanStyle)),
+          buildGroceryList(next, { clientPortionsOnly: true }),
         ),
       }
 

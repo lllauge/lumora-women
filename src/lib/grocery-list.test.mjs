@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { buildGroceryList, canonicalGroceryKey, mergeGroceryList } from './grocery-list.ts'
+import { buildGroceryList, canonicalGroceryKey, mealPrepOccurrenceKey, mergeGroceryList } from './grocery-list.ts'
 
 function plan({ recipes, days }) {
   return {
@@ -142,6 +142,26 @@ test('list comes back alphabetized by food name', () => {
     days: [['A']],
   }))
   assert.deepEqual(list, ['100g asparagus', '100g capers', '100g mushrooms'])
+})
+
+test('client portal groceries start with her portions and apply meal-prep overrides', () => {
+  const chicken = {
+    name: 'Chicken Bowl',
+    clientServingMultiplier: '0.25',
+    ingredients: ['[fdc:1] 1000g Chicken breast, boneless skinless, raw'],
+  }
+  const menu = plan({ recipes: [chicken], days: [['Chicken Bowl']] })
+  assert.deepEqual(
+    buildGroceryList(menu, { clientPortionsOnly: true }),
+    ['250g Chicken breast, boneless skinless, raw'],
+  )
+  assert.deepEqual(
+    buildGroceryList(menu, {
+      clientPortionsOnly: true,
+      portionOverrides: { [mealPrepOccurrenceKey(0, 'dinner', 'Chicken Bowl')]: 1.5 },
+    }),
+    ['1500g Chicken breast, boneless skinless, raw'],
+  )
 })
 
 test('solo client: repeats of a multi-serving recipe are leftovers from one batch', () => {

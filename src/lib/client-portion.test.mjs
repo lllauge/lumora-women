@@ -47,27 +47,27 @@ test('family recipe with a carved multiplier weighs out exactly the saved share'
   assert.deepEqual(lines.map((l) => l.grams), [120, 60])
 })
 
-test('family recipe defaults to an equal share when the multiplier is blank or the whole pot', () => {
-  for (const stored of ['', '1', 'not a number']) {
+test('family recipe defaults to an equal share only when the multiplier is blank or invalid', () => {
+  for (const stored of ['', 'not a number']) {
     const r = recipe({ familyServings: '4', clientServingMultiplier: stored })
     assert.equal(clientPortionFactor(r), 0.25, `stored="${stored}"`)
   }
 })
 
-test('individual-style plans weigh out exact entered grams even with declared family servings', () => {
+test('a saved whole-recipe multiplier wins even with declared family servings', () => {
   // Recipe Library rows default family_servings to "4". Under an
-  // individual-only plan the grams are exactly what the client eats, so the
-  // portal must not carve them into quarters while the macros show the whole
-  // recipe.
+  // individually portioned recipe, the grams are exactly what the client eats,
+  // so the portal must not carve them into quarters while the macros show the
+  // whole recipe.
   const r = recipe({
     familyServings: '4',
     clientServingMultiplier: '1',
     ingredients: ['[fdc:1] 150g chicken breast, cooked', '[fdc:2] 90g quinoa, cooked'],
   })
-  assert.equal(clientPortionFactor(r, true), 1)
-  assert.deepEqual(clientPortionLines(r, true).map((l) => l.grams), [150, 90])
+  assert.equal(clientPortionFactor(r), 1)
+  assert.deepEqual(clientPortionLines(r).map((l) => l.grams), [150, 90])
   assert.equal(
-    portionSummaryLine(r, true),
+    portionSummaryLine(r),
     '150g chicken breast, cooked · 90g quinoa, cooked',
   )
 })

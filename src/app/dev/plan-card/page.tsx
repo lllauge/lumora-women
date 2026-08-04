@@ -4,7 +4,6 @@ import DayMeals from '@/components/coaching/DayMeals'
 import GroceryChecklist from '@/components/coaching/GroceryChecklist'
 import { buildGroceryList } from '@/lib/grocery-list'
 import { getClientPortalPreview, groceryDisplay } from '@/lib/coaching-engagement'
-import { isFamilyMealPrepStyle, isFreshCookStyle, isIndividualPlanStyle } from '@/lib/cooking-style'
 import { createAdminClient } from '@/lib/supabase/server'
 import { CoachingPlanSchema, MealDaySchema, RecipeSchema } from '@/lib/coaching-plan-schema'
 
@@ -14,18 +13,15 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 // portion display and mobile layout can be checked without a client login.
 // Pass ?client=<coaching_clients.id> (or a first name, dev convenience) to
 // render a real client's published plan through the same components the
-// portal uses; add &style=family_dinners|individual_only|individual_fresh to
-// preview her plan under a different cooking style without changing her
-// saved plan. 404s in production.
+// portal uses. 404s in production.
 export default async function PlanCardPreview({
   searchParams,
 }: {
-  searchParams: Promise<{ client?: string; style?: string }>
+  searchParams: Promise<{ client?: string }>
 }) {
   if (process.env.NODE_ENV === 'production') notFound()
 
   let { client: clientId } = await searchParams
-  const { style } = await searchParams
   if (clientId && !UUID.test(clientId)) {
     const admin = await createAdminClient()
     const { data } = await admin
@@ -48,9 +44,6 @@ export default async function PlanCardPreview({
           <ClientPlanView
             client={{ id: preview.client.id }}
             plan={preview.plan}
-            individualPlanStyle={style ? isIndividualPlanStyle(style) : preview.individualPlanStyle}
-            freshCookStyle={style ? isFreshCookStyle(style) : preview.freshCookStyle}
-            familyPrepStyle={style ? isFamilyMealPrepStyle(style) : preview.familyPrepStyle}
             mealPlanStartDate={preview.mealPlanStartDate}
             previewMode
           />
@@ -250,7 +243,6 @@ export default async function PlanCardPreview({
               exercises: [{ name: 'Goblet squat', sets: '3', reps: '10', rest: '60s', videoUrl: '', notes: '' }],
             }],
           })}
-          individualPlanStyle={false}
           mealPlanStartDate=""
           previewMode
         />

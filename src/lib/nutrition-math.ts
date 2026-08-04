@@ -44,11 +44,9 @@ export function declaredServingMultiplier(familyServings: number, isFamily: bool
  * Keep a deliberately fitted client portion through preview and persistence.
  * Invalid or legacy blank values fall back to one declared recipe serving.
  *
- * Family recipes additionally require a carved share (0 < m < 1): a stored
- * multiplier of 1 or more would price the whole family pot as one client
- * serving, which the portion fitter never produces — it appears only when a
- * plan drafted in individual style is switched to family style, and must fall
- * back to an equal declared share like the client portal does.
+ * A saved multiplier wins because recipe cards now choose family/meal-prep
+ * behavior per recipe. Blank legacy family recipes still fall back to one
+ * declared serving.
  */
 export function resolvedServingMultiplier(
   storedMultiplier: string | undefined,
@@ -56,9 +54,7 @@ export function resolvedServingMultiplier(
   isFamily: boolean,
 ) {
   const stored = Number.parseFloat(String(storedMultiplier ?? '').trim())
-  const validStored = Number.isFinite(stored) && stored > 0 && stored <= 4
-    && (!isFamily || stored < 1)
-  return validStored
+  return Number.isFinite(stored) && stored > 0 && stored <= 4
     ? stored
     : declaredServingMultiplier(familyServings, isFamily)
 }

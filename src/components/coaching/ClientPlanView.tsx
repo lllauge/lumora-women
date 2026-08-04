@@ -6,11 +6,10 @@ import Link from 'next/link'
 import { Leaf, ShoppingBasket, CalendarDays, ChevronDown, Check, Dumbbell, PlayCircle } from 'lucide-react'
 import {
   todayMealDayIndex, withGrams,
-  getDailyLogs, coachingToday, groceryDisplay,
+  getDailyLogs, coachingToday,
 } from '@/lib/coaching-engagement'
-import GroceryChecklist from '@/components/coaching/GroceryChecklist'
+import DynamicGroceryChecklist from '@/components/coaching/DynamicGroceryChecklist'
 import { buildGroceryList, clientGroceryList } from '@/lib/grocery-list'
-import { familyPrepBadges, mealPrepBadges } from '@/lib/cooking-style'
 import { mealPlanBlocks, mealPlanSchedule, friendlyBlockDate } from '@/lib/meal-plan-schedule'
 import DayMeals from '@/components/coaching/DayMeals'
 import { type CoachingPlanDraft } from '@/lib/coaching-plan-schema'
@@ -55,9 +54,6 @@ function exerciseDemoHref(exercise: CoachingPlanDraft['workoutPlan'][number]['ex
 export default async function ClientPlanView({
   client,
   plan,
-  individualPlanStyle,
-  freshCookStyle = false,
-  familyPrepStyle = false,
   mealPlanStartDate,
   selectedDayIndex = NaN,
   selectedMealIndex = NaN,
@@ -66,10 +62,10 @@ export default async function ClientPlanView({
 }: {
   client: { id: string }
   plan: CoachingPlanDraft
-  individualPlanStyle: boolean
-  /** Solo client who cooks fresh each time instead of batching leftovers. */
+  individualPlanStyle?: boolean
+  /** Deprecated: meal prep is now chosen per recipe card. */
   freshCookStyle?: boolean
-  /** Family plan where repeated dinners are double-batched, not re-cooked. */
+  /** Deprecated: meal prep is now chosen per recipe card. */
   familyPrepStyle?: boolean
   mealPlanStartDate: string
   selectedDayIndex?: number
@@ -112,29 +108,24 @@ export default async function ClientPlanView({
   // master list stays complete even when the stored plan.groceryList is
   // stale from an older save. When the two-week schedule is active, each
   // block gets its own list covering just those days.
-  const groceryOptions = { soloClient: individualPlanStyle, freshCook: freshCookStyle }
+  const groceryOptions = { clientPortionsOnly: true }
+  const currentPlan = schedule.active ? { ...plan, mealPlan: currentDays.map(({ day }) => day) } : plan
+  const nextPlan = nextDays.length > 0 ? { ...plan, mealPlan: nextDays.map(({ day }) => day) } : null
   const groceryItems = clientGroceryList(
-    schedule.active ? { ...plan, mealPlan: currentDays.map(({ day }) => day) } : plan,
+    currentPlan,
     groceryOptions,
   )
   const nextGroceryItems = nextDays.length > 0
-    ? buildGroceryList({ ...plan, mealPlan: nextDays.map(({ day }) => day) }, groceryOptions)
+    ? buildGroceryList(nextPlan!, groceryOptions)
     : []
 
-  // Cook-day / leftover badges for solo meal-prep menus, and double-batch /
-  // reheat badges for family meal-prep menus — computed per visible menu so
-  // they always agree with that menu's grocery list.
-  const batchStyle = individualPlanStyle && !freshCookStyle
-  const badgesFor = (days: typeof currentDays) => batchStyle
-    ? mealPrepBadges(days, plan.recipes)
-    : familyPrepStyle
-      ? familyPrepBadges(days)
-      : new Map()
-  const prepBadges = badgesFor(currentDays)
-  const nextPrepBadges = nextDays.length > 0 ? badgesFor(nextDays) : new Map()
   const groceryStorageKey = schedule.active
     ? `lumora-grocery-${client.id}-b${schedule.currentBlock}`
     : `lumora-grocery-${client.id}`
+  const mealPrepStorageKey = `${groceryStorageKey}-meal-prep`
+  const nextMealPrepStorageKey = schedule.active
+    ? `lumora-grocery-${client.id}-b${schedule.currentBlock + 1}-meal-prep`
+    : `${groceryStorageKey}-next-meal-prep`
 
   const macros = [
     t.protein.trim() && { label: 'Protein', value: withGrams(t.protein) },
@@ -274,9 +265,9 @@ export default async function ClientPlanView({
                     day={day}
                     dayIndex={i}
                     recipes={plan.recipes}
-                    individualPlanStyle={individualPlanStyle}
-                    freshCook={freshCookStyle}
-                    prepBadges={prepBadges}
+                    individualPlanStyle={false}
+                    mealPrepStorageKey={mealPrepStorageKey}
+                    mealPrepDayIndex={pos}
                     selectedMealIndex={i === selectedDayIndex ? selectedMealIndex : -1}
                     selectedRecipeIndex={i === selectedDayIndex ? selectedRecipeIndex : -1}
                   />
@@ -423,21 +414,16 @@ export default async function ClientPlanView({
               // The list buys batches (or exact portions), not meal slots —
               // without this line a menu that repeats a recipe looks
               // under-shopped to the client.
-              freshCookStyle
-                ? 'Amounts are scaled to your portions — you cook fresh each time, so this buys exactly what you\'ll eat.'
-                : individualPlanStyle
-                  ? 'Meals that repeat during the week come from one batch, so this buys just what you need.'
-                  : familyPrepStyle
-                    ? 'Repeated dinners are double-batched — this buys enough for every night, you just cook once.'
-                    : '',
+              'Use each recipe\'s Meal prep button when you want to scale a meal for family portions or saved containers.',
             ].filter(Boolean).join(' ')}
           />
           <div className="portal-card">
             <div className="portal-gold-line" aria-hidden="true" />
             <div style={{ padding: '1rem 1.25rem' }}>
-              <GroceryChecklist
-                items={groceryItems.map((item) => groceryDisplay(item))}
+              <DynamicGroceryChecklist
+                plan={currentPlan}
                 storageKey={groceryStorageKey}
+                mealPrepStorageKey={mealPrepStorageKey}
               />
             </div>
           </div>
@@ -476,9 +462,9 @@ export default async function ClientPlanView({
                     day={day}
                     dayIndex={i}
                     recipes={plan.recipes}
-                    individualPlanStyle={individualPlanStyle}
-                    freshCook={freshCookStyle}
-                    prepBadges={nextPrepBadges}
+                    individualPlanStyle={false}
+                    mealPrepStorageKey={nextMealPrepStorageKey}
+                    mealPrepDayIndex={pos}
                     selectedMealIndex={i === selectedDayIndex ? selectedMealIndex : -1}
                     selectedRecipeIndex={i === selectedDayIndex ? selectedRecipeIndex : -1}
                   />
@@ -496,9 +482,11 @@ export default async function ClientPlanView({
               <div className="portal-card">
                 <div className="portal-gold-line" aria-hidden="true" />
                 <div style={{ padding: '1rem 1.25rem' }}>
-                  <GroceryChecklist
-                    items={nextGroceryItems.map((item) => groceryDisplay(item))}
+                  <DynamicGroceryChecklist
+                    plan={nextPlan!}
                     storageKey={`lumora-grocery-${client.id}-b${schedule.currentBlock + 1}`}
+                    mealPrepStorageKey={nextMealPrepStorageKey}
+                    includeStaples={false}
                   />
                 </div>
               </div>

@@ -24,7 +24,6 @@ import {
   type LibraryExercise,
 } from '@/lib/workout-generator'
 import { buildGroceryList, cleanIngredientLine, mergeGroceryList } from '@/lib/grocery-list'
-import { groceryListOptions, isIndividualPlanStyle } from '@/lib/cooking-style'
 import { blockWeeksLabel, mealPlanBlocks, startDateWeekdayWarning, BLOCK_MENU_DAYS } from '@/lib/meal-plan-schedule'
 import { isExcludedNutritionIngredient } from '@/lib/nutrition-ingredient'
 import { resolvedServingMultiplier } from '@/lib/nutrition-math'
@@ -528,13 +527,12 @@ export default function CoachingPlanEditor({
           fats: recipe.fats,
           fiber: recipe.fiber,
         })),
-      mealPlanStyle: planningInputs.mealPlanStyle,
+      mealPlanStyle: 'family_dinners',
     })
   }, [
     libraryRecipes,
     plan.mealPlan,
     plan.recipes,
-    planningInputs.mealPlanStyle,
   ])
 
   useEffect(() => {
@@ -562,7 +560,7 @@ export default function CoachingPlanEditor({
 
       setLiveNutritionPending(true)
       setLiveNutritionError('')
-      const individualPlanStyle = isIndividualPlanStyle(planningInputs.mealPlanStyle)
+      const individualPlanStyle = false
 
       const results = await Promise.all(activeRecipes.map(async (recipe) => {
         const familyCount = firstNumber(recipe.familyServings || recipe.servings)
@@ -1124,7 +1122,7 @@ export default function CoachingPlanEditor({
     }
 
     // Auto-calculate USDA macros for any recipe that has ingredients
-    const individualPlanStyle = isIndividualPlanStyle(planningInputs.mealPlanStyle)
+    const individualPlanStyle = false
     const referencedRecipeNames = new Set(
       nextPlan.mealPlan.flatMap((day) => [
         ...mealRecipeNames(day.breakfast),
@@ -1322,7 +1320,7 @@ export default function CoachingPlanEditor({
     // Rebuild the grocery list from the meal plan on every save so recipe
     // additions and swaps always reach the client's master list. Coach-typed
     // staples are carried over by mergeGroceryList.
-    const generatedGroceries = buildGroceryList(nextPlan, groceryListOptions(planningInputs.mealPlanStyle))
+    const generatedGroceries = buildGroceryList(nextPlan, { clientPortionsOnly: true })
     if (generatedGroceries.length > 0) {
       nextPlan = { ...nextPlan, groceryList: mergeGroceryList(nextPlan.groceryList, generatedGroceries) }
     }
@@ -1500,15 +1498,6 @@ export default function CoachingPlanEditor({
                 <option value="build_muscle">Build Muscle</option>
                 <option value="maintenance">Maintenance</option>
                 <option value="performance">Performance Support</option>
-              </select>
-            </label>
-            <label className="space-y-1">
-              <span className="admin-label">Meal Plan Style</span>
-              <select className="admin-input" value={planningInputs.mealPlanStyle} onChange={(e) => updatePlanningInput('mealPlanStyle', e.target.value)}>
-                <option value="family_dinners">Family Dinners + Her Servings</option>
-                <option value="family_meal_prep">Family Dinners + Her Servings — Meal Prep (double-batch)</option>
-                <option value="individual_only">Individual — Meal Prep (batch + leftovers)</option>
-                <option value="individual_fresh">Individual — Cooks Fresh (scaled portions)</option>
               </select>
             </label>
             <label className="space-y-1">

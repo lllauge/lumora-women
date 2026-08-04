@@ -65,13 +65,9 @@ export type PortionLine = {
  * server's resolvedServingMultiplier so displayed weights always match the
  * saved serving macros.
  *
- * Family plans (familyServings > 1, not individual style): a missing, 1.0, or
- * out-of-range multiplier means "default to equal share" — no client eats a
- * whole family pot. Only an actually carved share (0 < m < 1) is used as-is.
- *
- * Individual-style plans treat recipes as exact grams as entered: the saved
- * multiplier (or 1) applies even when the recipe declares family servings,
- * because that declaration is ignored by the plan's nutrition math.
+ * A saved clientServingMultiplier is the recipe's truth. Blank legacy family
+ * recipes still fall back to one declared serving, but a saved multiplier of
+ * 1 means the coach deliberately made the written recipe her portion.
  */
 export function clientPortionFactor(
   recipe: CoachingPlanDraft['recipes'][number],
@@ -81,13 +77,13 @@ export function clientPortionFactor(
   // stored carve says (the pin may predate the next save's re-pricing).
   if (recipe.portionPinned) return 1
   const multiplier = parseFloat(recipe.clientServingMultiplier)
+  if (Number.isFinite(multiplier) && multiplier > 0 && multiplier <= 4) return multiplier
   const familyServings = parseFloat(recipe.familyServings)
   const isFamily = !individualPlanStyle && Number.isFinite(familyServings) && familyServings > 1
   if (isFamily) {
-    if (Number.isFinite(multiplier) && multiplier > 0 && multiplier < 1) return multiplier
     return 1 / familyServings
   }
-  return Number.isFinite(multiplier) && multiplier > 0 && multiplier <= 4 ? multiplier : 1
+  return 1
 }
 
 /**

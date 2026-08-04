@@ -5,9 +5,11 @@ import {
 } from '@/lib/coaching-engagement'
 import { seasoningSpoonAmount } from '@/lib/household-measure'
 import InstructionSteps from '@/components/coaching/InstructionSteps'
+import MealPrepPlanner from '@/components/coaching/MealPrepPlanner'
 import PrepIngredientList from '@/components/coaching/PrepIngredientList'
 import { mealRecipeNames, type CoachingPlanDraft } from '@/lib/coaching-plan-schema'
 import type { MealPrepBadge } from '@/lib/cooking-style'
+import { mealPrepOccurrenceKey } from '@/lib/grocery-list'
 
 export default function DayMeals({
   day,
@@ -16,6 +18,8 @@ export default function DayMeals({
   individualPlanStyle,
   freshCook = false,
   prepBadges,
+  mealPrepStorageKey,
+  mealPrepDayIndex,
   selectedMealIndex,
   selectedRecipeIndex,
 }: {
@@ -27,14 +31,19 @@ export default function DayMeals({
   freshCook?: boolean
   /** Cook-day / leftover badges keyed `${dayIndex}:${recipeName}` (solo meal-prep menus). */
   prepBadges?: Map<string, MealPrepBadge>
+  /** LocalStorage key shared with the grocery list for per-card prep choices. */
+  mealPrepStorageKey?: string
+  /** Visible day position within this grocery block. Defaults to dayIndex. */
+  mealPrepDayIndex?: number
   selectedMealIndex: number
   selectedRecipeIndex: number
 }) {
+  const groceryDayIndex = mealPrepDayIndex ?? dayIndex
   const rows = [
-    { slot: 'Breakfast', meal: day.breakfast },
-    { slot: 'Lunch', meal: day.lunch },
-    { slot: 'Dinner', meal: day.dinner },
-    ...day.snacks.map((snack, i) => ({ slot: day.snacks.length > 1 ? `Snack ${i + 1}` : 'Snack', meal: snack })),
+    { slot: 'Breakfast', mealKey: 'breakfast', meal: day.breakfast },
+    { slot: 'Lunch', mealKey: 'lunch', meal: day.lunch },
+    { slot: 'Dinner', mealKey: 'dinner', meal: day.dinner },
+    ...day.snacks.map((snack, i) => ({ slot: day.snacks.length > 1 ? `Snack ${i + 1}` : 'Snack', mealKey: `snack${i}`, meal: snack })),
   ].filter((r) => r.meal.name.trim() || r.meal.description.trim())
 
   return (
@@ -121,6 +130,12 @@ export default function DayMeals({
                           </li>
                         ))}
                       </ul>
+                      <MealPrepPlanner
+                        recipe={recipe}
+                        individualPlanStyle={individualPlanStyle}
+                        storageKey={mealPrepStorageKey}
+                        occurrenceKey={mealPrepOccurrenceKey(groceryDayIndex, row.mealKey, name)}
+                      />
                     </div>
                   ) : (
                     <details open={selectedRecipeIndex === recipeIndex}>
@@ -143,7 +158,13 @@ export default function DayMeals({
                         </span>
                       </summary>
                       <div style={{ borderTop: '1px solid rgba(200,220,192,0.6)', padding: '0 0.875rem 0.875rem' }}>
-                        <RecipeDetail recipe={recipe} individualPlanStyle={individualPlanStyle} freshCook={freshCook} />
+                        <RecipeDetail
+                          recipe={recipe}
+                          individualPlanStyle={individualPlanStyle}
+                          freshCook={freshCook}
+                          mealPrepStorageKey={mealPrepStorageKey}
+                          mealPrepOccurrenceKey={mealPrepOccurrenceKey(groceryDayIndex, row.mealKey, name)}
+                        />
                       </div>
                     </details>
                   )}
@@ -167,10 +188,14 @@ function RecipeDetail({
   recipe,
   individualPlanStyle,
   freshCook = false,
+  mealPrepStorageKey,
+  mealPrepOccurrenceKey: occurrenceKey,
 }: {
   recipe: CoachingPlanDraft['recipes'][number]
   individualPlanStyle: boolean
   freshCook?: boolean
+  mealPrepStorageKey?: string
+  mealPrepOccurrenceKey?: string
 }) {
   const sectionTitle: React.CSSProperties = {
     fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', fontWeight: 700,
@@ -308,6 +333,13 @@ function RecipeDetail({
           })()}
         </div>
       )}
+
+      <MealPrepPlanner
+        recipe={recipe}
+        individualPlanStyle={individualPlanStyle}
+        storageKey={mealPrepStorageKey}
+        occurrenceKey={occurrenceKey}
+      />
 
       <p style={{ ...bodyText, marginTop: '0.75rem' }}>
         {[

@@ -1840,7 +1840,7 @@ export default function CoachingPlanEditor({
                         {total.calories} cal{dailyTarget ? ` of ${dailyTarget} target` : ''} · {total.protein}g protein · {total.carbs}g carbs · {total.fats}g fat
                         {offTarget && (
                           <span style={{ color: '#B42318', fontWeight: 700 }}>
-                            {' '}· {diff > 0 ? `${diff} over` : `${Math.abs(diff)} under`}
+                            {' '}· {diff > 0 ? `${diff} over` : `${Math.abs(diff)} under · add another recipe`}
                           </span>
                         )}
                       </div>

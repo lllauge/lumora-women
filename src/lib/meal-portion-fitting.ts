@@ -3,6 +3,7 @@ import type {
   PlanMeal,
 } from './coaching-plan-schema'
 import { declaredServingMultiplier } from './nutrition-math.ts'
+import { isIndividualPlanStyle } from './cooking-style.ts'
 
 type Nutrients = {
   calories: number
@@ -82,11 +83,12 @@ function median(values: number[]) {
     : (sorted[middle - 1] + sorted[middle]) / 2
 }
 
-// A fitted portion can require more than one written batch when the selected
-// recipe is lighter than the client's meal target. The client and grocery
-// views scale the raw ingredients by this same multiplier, so a value above 1
-// means "make a larger batch", not "take an impossible share of one".
-const MAX_RECIPE_MULTIPLIER = 4
+// Family recipes are immutable library recipes: fitting may carve the client's
+// share down, but it must never silently enlarge or rewrite the saved batch.
+// Individual recipes can still scale because their written amounts describe
+// the client's dish rather than a shared family recipe.
+const MAX_FAMILY_MULTIPLIER = 1
+const MAX_INDIVIDUAL_MULTIPLIER = 4
 // Hard floor for a carve, and the threshold below which a stored carve is
 // treated as collapsed rather than deliberate: 1% of a recipe is never a real
 // serving of a meal.
@@ -96,8 +98,8 @@ const COLLAPSED_MULTIPLIER = 0.01
 /**
  * Fit recipe portions to the client's daily calories and macros while keeping
  * the chosen foods unchanged. Meal percentages guide distribution; a final
- * daily calorie correction prevents small macro-ratio compromises from
- * leaving the day materially above or below target.
+ * daily calorie correction handles small macro-ratio compromises when the
+ * selected recipes contain enough food to reach the target.
  *
  * This runs both at draft generation and again on every plan save (library
  * edits re-synced into a plan change recipe nutrition, and the portions must
@@ -173,11 +175,13 @@ export function fitRecipeServingMultipliers(
       ? Math.max(0, dailyTarget.calories - fixedCalories) / predictedAdjustableCalories
       : 1
 
+    const individualPlanStyle = isIndividualPlanStyle(percentages.mealPlanStyle)
     for (const { adjustableNames, scale } of fitted) {
       for (const name of adjustableNames) {
         const recipe = plan.recipes.find((candidate) => candidate.name === name)
         if (!recipe) continue
         const familyCount = firstNumber(recipe.familyServings || recipe.servings)
+        const isFamily = !individualPlanStyle && familyCount > 1
         const stored = firstNumber(recipe.clientServingMultiplier)
         // A collapsed carve cannot heal through the slot scale: its card
         // macros are near zero, so a slot that another recipe already fills
@@ -193,8 +197,9 @@ export function fitRecipeServingMultipliers(
         // can't survive a refit: the recipe's
         // card macros scale with the baseline, so `baseline * scale` lands
         // on the target-driven share regardless of where the carve started.
+        const maxMultiplier = isFamily ? MAX_FAMILY_MULTIPLIER : MAX_INDIVIDUAL_MULTIPLIER
         const unbounded = baseline * scale * dayCorrection
-        const desired = Math.round(Math.min(MAX_RECIPE_MULTIPLIER, Math.max(MIN_MULTIPLIER, unbounded)) * 1000) / 1000
+        const desired = Math.round(Math.min(maxMultiplier, Math.max(MIN_MULTIPLIER, unbounded)) * 1000) / 1000
         const values = candidates.get(name) ?? []
         values.push(desired)
         candidates.set(name, values)

@@ -15,7 +15,6 @@ export {
   ingredientWeighState,
   portionFraction,
   portionSummaryLine,
-  scaledIngredientAmounts,
   shortIngredientName,
   type PortionFraction,
   type PortionLine,

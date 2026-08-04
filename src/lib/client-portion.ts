@@ -77,9 +77,11 @@ export function clientPortionFactor(
   // stored carve says (the pin may predate the next save's re-pricing).
   if (recipe.portionPinned) return 1
   const multiplier = parseFloat(recipe.clientServingMultiplier)
-  if (Number.isFinite(multiplier) && multiplier > 0 && multiplier <= 4) return multiplier
   const familyServings = parseFloat(recipe.familyServings)
   const isFamily = !individualPlanStyle && Number.isFinite(familyServings) && familyServings > 1
+  if (Number.isFinite(multiplier) && multiplier > 0 && multiplier <= 4) {
+    return isFamily ? Math.min(multiplier, 1) : multiplier
+  }
   if (isFamily) {
     return 1 / familyServings
   }
@@ -116,18 +118,6 @@ export function clientPortionLines(
       }
     })
     .filter((line) => line.name)
-}
-
-/** Scale the written ingredient weights to the actual batch the client needs. */
-export function scaledIngredientAmounts(ingredients: string[], factor: number): string[] {
-  if (!Number.isFinite(factor) || factor <= 0 || Math.abs(factor - 1) < 0.005) return ingredients
-  return ingredients.map((ingredient) => ingredient.replace(
-    /^(\s*(?:\[(?:fdc:\d+|curated:[a-z0-9-]+)\]\s*)?)(\d+(?:\.\d+)?)(\s*g\b)/i,
-    (_match, prefix: string, amount: string, unit: string) => {
-      const scaled = Math.round(Number(amount) * factor * 10) / 10
-      return `${prefix}${scaled}${unit}`
-    },
-  ))
 }
 
 /** Compact one-line weigh-out summary: "3 large eggs · 50g sweet potato (cooked)". */

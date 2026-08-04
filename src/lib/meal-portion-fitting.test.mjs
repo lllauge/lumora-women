@@ -160,10 +160,9 @@ test('a light family pot can exceed its declared equal share', () => {
   )
 })
 
-test('a light family recipe scales the written batch up to reach the meal target', () => {
-  // A multiplier above 1 means scale the raw ingredients and make a larger
-  // batch. It must not leave the day under target merely because the selected
-  // written recipe is smaller than the client's planned meal.
+test('a light family recipe never grows beyond the saved library batch', () => {
+  // A calorie gap requires another planned food. The fitter may carve this
+  // recipe down, but must never rewrite its ingredient amounts above 100%.
   const plan = {
     macroTargets: { calories: '2000', protein: '150g', carbs: '175g', fats: '78g' },
     mealPlan: [{
@@ -187,15 +186,10 @@ test('a light family recipe scales the written batch up to reach the meal target
   const fitted = fitRecipeServingMultipliers(plan, percentages)
   const portion = fitted.get('Tiny Pot')
   assert.ok(portion !== undefined)
-  assert.ok(portion > 1, `expected the written batch to scale above 1, got ${portion}`)
-  const dayTotal = dayCaloriesAfterFit(plan, fitted)
-  assert.ok(
-    Math.abs(dayTotal - 2000) / 2000 < 0.025,
-    `expected day near 2000 cal, got ${Math.round(dayTotal)}`,
-  )
+  assert.equal(portion, 1)
 })
 
-test('the 1775-calorie four-recipe day does not remain 315 calories under', () => {
+test('the 1775-calorie four-recipe day never rewrites its library recipes', () => {
   const plan = {
     macroTargets: { calories: '1775', protein: '137g', carbs: '150g', fats: '70g' },
     mealPlan: [{
@@ -213,11 +207,11 @@ test('the 1775-calorie four-recipe day does not remain 315 calories under', () =
     ],
   }
   const fitted = fitRecipeServingMultipliers(plan, percentages)
-  const dayTotal = dayCaloriesAfterFit(plan, fitted)
-  assert.ok(
-    Math.abs(dayTotal - 1775) / 1775 < 0.025,
-    `expected day near 1775 cal, got ${Math.round(dayTotal)}`,
-  )
+  for (const name of ['Frittata Egg Muffins', 'Baked Chicken Breast', 'Crispy Chicken Thighs', 'Roasted Sweet Potato']) {
+    const portion = fitted.get(name)
+    assert.ok(portion !== undefined)
+    assert.ok(portion <= 1, `${name}: expected no more than the saved batch, got ${portion}`)
+  }
 })
 
 test('custom slot foods are never resized', () => {

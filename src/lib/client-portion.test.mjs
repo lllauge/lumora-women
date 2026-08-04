@@ -7,7 +7,6 @@ import {
   clientPortionLines,
   portionFraction,
   portionSummaryLine,
-  scaledIngredientAmounts,
 } from './client-portion.ts'
 import { resolvedServingMultiplier } from './nutrition-math.ts'
 
@@ -73,12 +72,23 @@ test('a saved whole-recipe multiplier wins even with declared family servings', 
   )
 })
 
+test('a family recipe can never exceed the saved library batch', () => {
+  const r = recipe({
+    familyServings: '6',
+    clientServingMultiplier: '1.25',
+    ingredients: ['[fdc:1] 258g eggs', '[fdc:2] 22.5g spinach'],
+  })
+  assert.equal(clientPortionFactor(r), 1)
+  assert.deepEqual(clientPortionLines(r).map((line) => line.grams), [258, 23])
+})
+
 test('portal portion factor always matches the server serving multiplier', () => {
   const cases = [
     { stored: '0.25', familyServings: '4', individual: false },
     { stored: '0.218', familyServings: '4', individual: false },
     { stored: '', familyServings: '6', individual: false },
     { stored: '1', familyServings: '4', individual: false },
+    { stored: '1.25', familyServings: '6', individual: false },
     { stored: '1', familyServings: '4', individual: true },
     { stored: '1.3', familyServings: '', individual: false },
     { stored: '', familyServings: '', individual: false },
@@ -143,21 +153,6 @@ test('no-scale fraction carries the division for multi-part shares', () => {
   // Non-unit fractions tell her how many of the equal portions are hers.
   assert.deepEqual(portionFraction(2 / 3), { label: '⅔', qualifier: null, parts: 3, take: 2 })
   assert.deepEqual(portionFraction(0.38), { label: '⅜', qualifier: null, parts: 8, take: 3 })
-})
-
-test('raw ingredient weights scale with a larger-than-written fitted batch', () => {
-  assert.deepEqual(
-    scaledIngredientAmounts([
-      '[fdc:1] 258g Eggs, raw',
-      '8g Olive oil',
-      'Salt, to taste',
-    ], 1.25),
-    [
-      '[fdc:1] 322.5g Eggs, raw',
-      '10g Olive oil',
-      'Salt, to taste',
-    ],
-  )
 })
 
 test('a pinned recipe is always the whole recipe, whatever the stored carve says', () => {

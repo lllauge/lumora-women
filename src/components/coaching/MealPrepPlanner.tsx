@@ -217,16 +217,21 @@ export default function MealPrepPlanner({
           <UtensilsCrossed size={14} aria-hidden="true" />
           Meal prep
         </button>
-        <button
-          type="button"
-          aria-expanded={openMode === 'family'}
-          aria-pressed={savedMode === 'family'}
-          onClick={openFamily}
-          style={{ ...buttonStyle(openMode === 'family' || savedMode === 'family'), display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
-        >
-          <UsersRound size={14} aria-hidden="true" />
-          Cook for family
-        </button>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.2rem' }}>
+          <button
+            type="button"
+            aria-expanded={openMode === 'family'}
+            aria-pressed={savedMode === 'family'}
+            onClick={openFamily}
+            style={{ ...buttonStyle(openMode === 'family' || savedMode === 'family'), display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+          >
+            <UsersRound size={14} aria-hidden="true" />
+            Cook for family
+          </button>
+          <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.68rem', color: 'var(--text-muted)', lineHeight: 1.3 }}>
+            Typically makes 4-5 servings.
+          </span>
+        </div>
       </div>
 
       {openMode && (

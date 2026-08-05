@@ -98,6 +98,24 @@ export default function CheckInForm({ due }: { due: boolean }) {
             placeholder="Wins, struggles, anything Laura should know…"
             style={{ ...inputStyle, resize: 'vertical' }}
           />
+          <label
+            style={{
+              display: 'flex', alignItems: 'flex-start', gap: '0.625rem',
+              marginTop: '0.75rem', padding: '0.75rem', borderRadius: '0.5rem',
+              background: 'var(--section-tint)', fontFamily: 'var(--font-sans)',
+              fontSize: '0.8125rem', lineHeight: 1.45, color: 'var(--text-secondary)',
+            }}
+          >
+            <input
+              type="checkbox"
+              name="workoutProgression"
+              value="ready"
+              style={{ marginTop: '0.15rem', accentColor: 'var(--botanical-green)' }}
+            />
+            <span>
+              I completed my workouts with clean form, no doming/coning, leaking, pelvic pressure, or pain. Progress my workouts automatically.
+            </span>
+          </label>
           {error && (
             <p role="alert" style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: '#A32D2D', marginTop: '0.5rem' }}>
               {error}

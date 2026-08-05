@@ -6,6 +6,8 @@ import { createAdminClient, createClient } from '@/lib/supabase/server'
 import { coachingToday, findCoachingClientForUser } from '@/lib/coaching-engagement'
 import { sendClientMessageNotification } from '@/lib/coaching-email'
 import { sendAdminSms } from '@/lib/admin-sms'
+import { parseCoachingPlan } from '@/lib/coaching-plan-schema'
+import { applyProgressiveOverload } from '@/lib/workout-progression'
 
 type ActionResult = { ok: boolean; error?: string }
 
@@ -72,6 +74,7 @@ const CheckInSchema = z.object({
   waist: z.string().trim().max(40).optional(),
   hips: z.string().trim().max(40).optional(),
   note: z.string().trim().max(1000).optional(),
+  workoutProgression: z.enum(['ready']).optional(),
 })
 
 export async function submitCheckIn(formData: FormData): Promise<ActionResult> {
@@ -80,11 +83,12 @@ export async function submitCheckIn(formData: FormData): Promise<ActionResult> {
     waist: String(formData.get('waist') ?? ''),
     hips: String(formData.get('hips') ?? ''),
     note: String(formData.get('note') ?? ''),
+    workoutProgression: formData.get('workoutProgression') === 'ready' ? 'ready' : undefined,
   })
   if (!parsed.success) return { ok: false, error: 'Please check the form and try again.' }
 
-  const { weight, waist, hips, note } = parsed.data
-  if (!weight && !waist && !hips && !note) {
+  const { weight, waist, hips, note, workoutProgression } = parsed.data
+  if (!weight && !waist && !hips && !note && !workoutProgression) {
     return { ok: false, error: 'Add at least one measurement or a note.' }
   }
 
@@ -105,11 +109,48 @@ export async function submitCheckIn(formData: FormData): Promise<ActionResult> {
     })
   if (logError) return { ok: false, error: 'Could not save your check-in. Please try again.' }
 
+  let workoutProgressed = false
+  if (workoutProgression === 'ready') {
+    const { data: planRow } = await admin
+      .from('coaching_plans')
+      .select('macro_targets, meal_plan, recipes, workout_plan, grocery_list, admin_notes, client_notes, status, generated_by_ai')
+      .eq('coaching_client_id', client.id)
+      .maybeSingle()
+
+    if (planRow) {
+      const currentPlan = parseCoachingPlan({
+        macroTargets: planRow.macro_targets,
+        mealPlan: planRow.meal_plan,
+        recipes: planRow.recipes,
+        workoutPlan: planRow.workout_plan,
+        groceryList: planRow.grocery_list,
+        adminNotes: planRow.admin_notes ?? '',
+        clientNotes: planRow.client_notes ?? '',
+        status: planRow.status,
+        generatedByAi: planRow.generated_by_ai,
+      })
+      const progressed = applyProgressiveOverload(currentPlan.workoutPlan)
+      if (progressed.plan.length > 0) {
+        const { error: progressionError } = await admin
+          .from('coaching_plans')
+          .update({
+            workout_plan: progressed.plan,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('coaching_client_id', client.id)
+        workoutProgressed = !progressionError
+      }
+    }
+  }
+
   const summary = [
     'Weekly check-in',
     weight ? `Weight: ${weight}` : null,
     waist ? `Waist: ${waist}` : null,
     hips ? `Hips: ${hips}` : null,
+    workoutProgression === 'ready'
+      ? `Workout progression: ${workoutProgressed ? 'applied automatically' : 'requested, but no workout plan was updated'}`
+      : null,
     note ? `"${note}"` : null,
   ].filter(Boolean).join('\n')
 
@@ -126,6 +167,8 @@ export async function submitCheckIn(formData: FormData): Promise<ActionResult> {
   await notifyCoach(admin, client, `${client.first_name ?? 'A client'} submitted a weekly check-in.`)
 
   revalidatePath('/coaching/coach')
+  revalidatePath('/coaching/plan')
+  revalidatePath('/coaching/today')
   revalidatePath('/coaching/progress')
   return { ok: true }
 }

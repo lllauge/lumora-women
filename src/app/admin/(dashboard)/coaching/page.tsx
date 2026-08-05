@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 import CoachingCheckoutForm from '@/components/admin/CoachingCheckoutForm'
 import CoachingCompInviteForm from '@/components/admin/CoachingCompInviteForm'
 import DeleteCoachingClientButton from '@/components/admin/DeleteCoachingClientButton'
+import ResendCoachingOnboardingButton from '@/components/admin/ResendCoachingOnboardingButton'
 import { formatCurrency, formatShortDate } from '@/utils/format'
 
 export const metadata: Metadata = {
@@ -98,6 +99,9 @@ export default async function AdminCoachingPage() {
                         <Link href={`/admin/coaching/${client.id}`} className="admin-btn-secondary" style={{ padding: '0.45rem 0.85rem' }}>
                           View Onboarding
                         </Link>
+                        {client.onboarding_status !== 'submitted' && (
+                          <ResendCoachingOnboardingButton clientId={client.id} />
+                        )}
                         <DeleteCoachingClientButton id={client.id} label={name} />
                       </div>
                     </td>

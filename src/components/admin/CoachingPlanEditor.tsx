@@ -23,6 +23,7 @@ import {
   parseDaysPerWeek,
   type LibraryExercise,
 } from '@/lib/workout-generator'
+import { applyProgressiveOverload } from '@/lib/workout-progression'
 import { buildGroceryList, cleanIngredientLine, mergeGroceryList } from '@/lib/grocery-list'
 import { blockWeeksLabel, mealPlanBlocks, startDateWeekdayWarning, BLOCK_MENU_DAYS } from '@/lib/meal-plan-schedule'
 import { resolvedServingMultiplier } from '@/lib/nutrition-math'
@@ -502,9 +503,9 @@ export default function CoachingPlanEditor({
   const [liveNutritionError, setLiveNutritionError] = useState('')
   const [libraryExercises, setLibraryExercises] = useState<LibraryExercise[]>([])
   const [workoutDays, setWorkoutDays] = useState<2 | 3 | 4 | 5>(() => parseDaysPerWeek(stringField(asRecord(onboardingData.lifestyle), 'strengthTraining')))
-  const [workoutMinutes, setWorkoutMinutes] = useState<number>(45)
+  const [workoutMinutes, setWorkoutMinutes] = useState<number>(30)
   const [workoutLevel, setWorkoutLevel] = useState<'beginner' | 'intermediate' | 'advanced'>('beginner')
-  const [workoutEquipment, setWorkoutEquipment] = useState<string[]>(['bodyweight', 'dumbbells', 'cable', 'machine'])
+  const [workoutEquipment, setWorkoutEquipment] = useState<string[]>(['bodyweight', 'dumbbells'])
   const lastNutritionInputKey = useRef<string | null>(null)
 
   useEffect(() => {
@@ -1122,6 +1123,15 @@ export default function CoachingPlanEditor({
     })
     setPlan(current => ({ ...current, workoutPlan: next }))
     setMessage(`Generated ${next.length}-day workout plan.`)
+  }
+
+  function progressWorkoutPlan() {
+    setPlan(current => {
+      const progressed = applyProgressiveOverload(current.workoutPlan)
+      return { ...current, workoutPlan: progressed.plan }
+    })
+    setError('')
+    setMessage('Applied progressive overload to the workout plan.')
   }
 
   function updateWorkoutDay(dayIndex: number, patch: Partial<CoachingPlanDraft['workoutPlan'][number]>) {
@@ -2036,7 +2046,7 @@ export default function CoachingPlanEditor({
         <div style={sHeader}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <SectionNum n={5} done={plan.workoutPlan.length > 0} />
-            <SectionTitle title="Workout Plan" subtitle="Generate a structured week from your Exercise Library, then swap or tweak per client" />
+            <SectionTitle title="Workout Plan" subtitle="Generate evidence-based strength work with progressive overload and postpartum deep-core recovery" />
           </div>
           <button
             type="button"
@@ -2047,6 +2057,16 @@ export default function CoachingPlanEditor({
             <Sparkles size={14} style={{ marginRight: 6 }} />
             Generate from Library
           </button>
+          {plan.workoutPlan.length > 0 && (
+            <button
+              type="button"
+              className="admin-btn-secondary"
+              style={{ flexShrink: 0 }}
+              onClick={progressWorkoutPlan}
+            >
+              Apply Progressive Overload
+            </button>
+          )}
         </div>
         <div style={sBody}>
           {/* Generator inputs */}
@@ -2083,7 +2103,7 @@ export default function CoachingPlanEditor({
                 className="admin-input"
                 value={workoutEquipment.join(', ')}
                 onChange={e => setWorkoutEquipment(e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
-                placeholder="bodyweight, dumbbells, cable"
+                placeholder="bodyweight, dumbbells"
               />
             </label>
           </div>

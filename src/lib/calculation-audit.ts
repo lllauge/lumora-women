@@ -6,7 +6,6 @@ import {
 import { mealRecipeNames, type CoachingPlanDraft, type PlanMeal } from './coaching-plan-schema'
 import { clientPortionFactor } from './client-portion'
 import { buildGroceryList, cleanIngredientLine, recipeCookCounts } from './grocery-list'
-import { isExcludedNutritionIngredient } from './nutrition-ingredient'
 import {
   declaredServingMultiplier,
   resolvedServingMultiplier,
@@ -41,7 +40,7 @@ export type RecipeCalculationAudit = {
   status: AuditStatus
   issues: string[]
   source: 'Recipe Library' | 'Plan custom recipe'
-  nutritionSource: 'Recipe Library totals' | 'Live USDA ingredient calculation'
+  nutritionSource: 'Live USDA ingredient calculation'
   planIngredients: string[]
   sourceIngredients: string[]
   ingredientsMatch: boolean | null
@@ -227,26 +226,9 @@ async function auditRecipe({
     calculationError = error instanceof Error ? error.message : 'Live USDA calculation failed.'
   }
 
-  const canUseLibraryTotals = Boolean(
-    library?.calories && library.calories > 0 && ingredientsMatch
-    && !sourceIngredients.some(isExcludedNutritionIngredient),
-  )
-  const fullRecipe: Nutrition = canUseLibraryTotals && library
-    ? {
-      calories: library.calories ?? 0,
-      protein: library.protein ?? 0,
-      carbs: library.carbs ?? 0,
-      fats: library.fats ?? 0,
-      fiber: library.fiber ?? 0,
-    }
-    : usdaFullRecipe
+  const fullRecipe: Nutrition = usdaFullRecipe
   const recomputedServing = scaleFullRecipeNutrition({ ...fullRecipe, multiplier: effectiveMultiplier })
-  const sourceVsUsdaDiffers = canUseLibraryTotals && usdaFullRecipe.calories > 0
-    ? nutritionDiffers(fullRecipe, usdaFullRecipe)
-    : false
-  if (sourceVsUsdaDiffers) {
-    issues.push('Recipe Library totals differ materially from a fresh USDA sum of the raw ingredients.')
-  }
+  const sourceVsUsdaDiffers = false
   if (!calculationError && nutritionDiffers(savedServing, recomputedServing)) {
     issues.push('Saved serving calories or macros do not match the current source x effective multiplier.')
   }
@@ -256,7 +238,7 @@ async function auditRecipe({
     status: auditStatus(issues, calculationError),
     issues,
     source: library ? 'Recipe Library' : 'Plan custom recipe',
-    nutritionSource: canUseLibraryTotals ? 'Recipe Library totals' : 'Live USDA ingredient calculation',
+    nutritionSource: 'Live USDA ingredient calculation',
     planIngredients: recipe.ingredients,
     sourceIngredients,
     ingredientsMatch,

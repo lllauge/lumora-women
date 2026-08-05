@@ -51,7 +51,7 @@ type ImportedUrlRecipe = {
   totals: { calories: number; protein: number; carbs: number; fats: number; fiber: number; grams: number }
   originalTotals: { calories: number; protein: number; carbs: number; fats: number; fiber: number; grams: number } | null
   calculatedTotals: { calories: number; protein: number; carbs: number; fats: number; fiber: number; grams: number }
-  nutritionSource: 'website' | 'calculated'
+  nutritionSource: 'calculated'
 }
 
 const URL_IMPORT_CACHE_KEY = 'lumora.recipeUrlImports.v2'
@@ -448,19 +448,16 @@ function RecipeIngredientsSection({
   const [importNotice, setImportNotice] = useState('')
   const [pendingImport, setPendingImport] = useState<ImportedUrlRecipe | null>(null)
 
-  function applyImportedRecipe(r: ImportedUrlRecipe, nutritionChoice: 'original' | 'calculated', fromCache = false) {
-    const selectedTotals = nutritionChoice === 'original' && r.originalTotals
-      ? r.originalTotals
-      : r.calculatedTotals ?? r.totals
+  function applyImportedRecipe(r: ImportedUrlRecipe, fromCache = false) {
     const patch: Partial<typeof EMPTY_RECIPE> = {
       ingredients: r.ingredients.map((i) => i.line),
       instructions: r.instructions.length > 0 && draft.instructions.length === 0 ? r.instructions : draft.instructions,
-      calories: selectedTotals.calories,
-      protein: selectedTotals.protein,
-      carbs: selectedTotals.carbs,
-      fats: selectedTotals.fats,
-      fiber: selectedTotals.fiber,
-      total_recipe_grams: selectedTotals.grams,
+      calories: null,
+      protein: null,
+      carbs: null,
+      fats: null,
+      fiber: null,
+      total_recipe_grams: null,
     }
     if (!draft.name && r.title) patch.name = r.title
     if (r.servings) patch.family_servings = String(r.servings)
@@ -478,11 +475,11 @@ function RecipeIngredientsSection({
       setImportNotice('')
     } else if (fromCache) {
       setImportError('')
-      setImportNotice(`Restored from saved import using ${nutritionChoice === 'original' ? 'website/original' : 'USDA calculated'} values. No nutrition API call was used.`)
+      setImportNotice('Restored the saved ingredient import. USDA will calculate recipe nutrition from these reviewed ingredients.')
     } else {
       setImportUrl('')
       setImportError('')
-      setImportNotice(`Imported using ${nutritionChoice === 'original' ? 'website/original' : 'USDA calculated'} values.`)
+      setImportNotice('Imported ingredients and instructions. USDA will calculate recipe nutrition from these reviewed ingredients.')
     }
     setMode('url')
   }
@@ -508,7 +505,7 @@ function RecipeIngredientsSection({
     const saved = cachedImport(url)
     if (saved) {
       setPendingImport(saved)
-      applyImportedRecipe(saved, saved.originalTotals ? 'original' : 'calculated', true)
+      applyImportedRecipe(saved, true)
       return
     }
 
@@ -529,7 +526,7 @@ function RecipeIngredientsSection({
       const r = data.recipe as ImportedUrlRecipe
       storeCachedImport(r)
       setPendingImport(r)
-      applyImportedRecipe(r, r.originalTotals ? 'original' : 'calculated')
+      applyImportedRecipe(r)
     } catch (err) {
       setImportError(err instanceof Error ? err.message : 'Could not import that recipe.')
     } finally {
@@ -623,7 +620,7 @@ function RecipeIngredientsSection({
       ) : mode === 'url' ? (
         <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 10 }}>
           <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.8rem', color: 'var(--admin-on-surface-variant)', margin: 0 }}>
-            Paste a recipe URL. When the page provides nutrition, imported recipes use the website/original values by default. USDA-calculated values are available as an intentional alternate choice after import.
+            Paste a recipe URL. We import ingredients and instructions, then calculate nutrition from USDA-matched ingredient weights.
           </p>
           <div style={{ display: 'flex', gap: 8 }}>
             <input
@@ -663,42 +660,16 @@ function RecipeIngredientsSection({
                   {pendingImport.title || 'Imported recipe'}
                 </p>
                 <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.78rem', color: 'var(--admin-on-surface-variant)', margin: '2px 0 0' }}>
-                  The current saved values are used in client prescriptions. Switch only if you intentionally want the alternate calculation.
+                  Website calorie values are not saved. Client prescriptions use the USDA calculation from the reviewed ingredient list.
                 </p>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <div style={{ border: '1px solid var(--admin-outline-variant)', borderRadius: 8, padding: 10, background: '#fff' }}>
-                  <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.78rem', fontWeight: 700, color: 'var(--admin-on-surface)', margin: 0 }}>
-                    Website/original values {pendingImport.originalTotals ? '(recommended)' : '(not found)'}
-                  </p>
-                  <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.8rem', color: 'var(--admin-on-surface-variant)', margin: '5px 0 10px' }}>
-                    {pendingImport.originalTotals ? macroLine(pendingImport.originalTotals) : 'This page did not expose usable nutrition values.'}
-                  </p>
-                  <button
-                    type="button"
-                    className="admin-btn-primary"
-                    disabled={!pendingImport.originalTotals}
-                    onClick={() => applyImportedRecipe(pendingImport, 'original')}
-                    style={{ background: '#C9A84C', color: '#162814', border: 'none', fontWeight: 700 }}
-                  >
-                    Use website values
-                  </button>
-                </div>
-                <div style={{ border: '1px solid var(--admin-outline-variant)', borderRadius: 8, padding: 10, background: '#fff' }}>
-                  <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.78rem', fontWeight: 700, color: 'var(--admin-on-surface)', margin: 0 }}>
-                    USDA/ingredient calculated
-                  </p>
-                  <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.8rem', color: 'var(--admin-on-surface-variant)', margin: '5px 0 10px' }}>
-                    {macroLine(pendingImport.calculatedTotals ?? pendingImport.totals)}
-                  </p>
-                  <button
-                    type="button"
-                    className="admin-btn-secondary"
-                    onClick={() => applyImportedRecipe(pendingImport, 'calculated')}
-                  >
-                    Use USDA values
-                  </button>
-                </div>
+              <div style={{ border: '1px solid var(--admin-outline-variant)', borderRadius: 8, padding: 10, background: '#fff' }}>
+                <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.78rem', fontWeight: 700, color: 'var(--admin-on-surface)', margin: 0 }}>
+                  USDA ingredient calculation
+                </p>
+                <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.8rem', color: 'var(--admin-on-surface-variant)', margin: '5px 0 0' }}>
+                  Review the imported ingredient lines above. The calculated nutrition panel will price the full recipe from USDA records.
+                </p>
               </div>
             </div>
           )}

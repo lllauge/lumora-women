@@ -25,7 +25,6 @@ import {
 } from '@/lib/workout-generator'
 import { buildGroceryList, cleanIngredientLine, mergeGroceryList } from '@/lib/grocery-list'
 import { blockWeeksLabel, mealPlanBlocks, startDateWeekdayWarning, BLOCK_MENU_DAYS } from '@/lib/meal-plan-schedule'
-import { isExcludedNutritionIngredient } from '@/lib/nutrition-ingredient'
 import { resolvedServingMultiplier } from '@/lib/nutrition-math'
 import { fitRecipeServingMultipliers } from '@/lib/meal-portion-fitting'
 import { findLibraryRecipe, syncRecipesWithLibrary } from '@/lib/plan-library-sync'
@@ -79,7 +78,7 @@ type LibraryRecipe = {
   ingredients: string[]
   instructions: string[]
   notes: string
-  // Present when the recipe was entered in paste-mode with publisher's macros.
+  // Present on legacy/manual library rows; plan prescriptions recalculate via USDA.
   calories: number | null
   protein: number | null
   carbs: number | null
@@ -216,17 +215,10 @@ function parseMealMacroLine(value: string) {
   }
 }
 
-function sameIngredientLines(left: string[], right: string[]) {
-  return left.length === right.length
-    && left.every((ingredient, index) => ingredient.trim() === right[index]?.trim())
-}
-
-// Paste-mode recipes carry stored macros on the library row. The plan recipe
-// shape uses strings everywhere, so convert and copy them when the recipe is
-// first dragged into a meal slot. Empty strings keep USDA-only recipes flowing
-// through the existing nutrition-calc pipeline unchanged.
+// Plan prescriptions use live USDA ingredient calculations, so a library
+// recipe starts without copied macro totals and is filled by the nutrition
+// preview/save pipeline.
 function libraryRecipeToPlanRecipe(libRecipe: LibraryRecipe): CoachingPlanDraft['recipes'][number] {
-  const macro = (n: number | null, suffix: string) => (n == null ? '' : `${n}${suffix}`)
   return {
     name: libRecipe.name,
     mealType: libRecipe.meal_type,
@@ -240,82 +232,15 @@ function libraryRecipeToPlanRecipe(libRecipe: LibraryRecipe): CoachingPlanDraft[
     clientServingBreakdown: '',
     prepTime: '',
     cookTime: '',
-    calories: macro(libRecipe.calories, ''),
-    protein: macro(libRecipe.protein, 'g'),
-    carbs: macro(libRecipe.carbs, 'g'),
-    fats: macro(libRecipe.fats, 'g'),
-    fiber: macro(libRecipe.fiber, 'g'),
+    calories: '',
+    protein: '',
+    carbs: '',
+    fats: '',
+    fiber: '',
     ingredients: libRecipe.ingredients,
     instructions: libRecipe.instructions,
     swaps: [],
     notes: libRecipe.notes,
-  }
-}
-
-// Pulls a leading "<grams>g " off an ingredient line. Returns null for free-text
-// lines (e.g. "Black pepper, to taste") that have no quantifiable weight.
-function extractLeadingGrams(line: string): { grams: number; label: string } | null {
-  const cleaned = cleanIngredientLine(line)
-  const match = cleaned.match(/^(\d+(?:\.\d+)?)\s*g\s+(.+)$/i)
-  if (!match) return null
-  return { grams: Number(match[1]), label: match[2].trim() }
-}
-
-// Scales a paste-mode recipe to the fitted client portion using the stored
-// recipe totals — no USDA call. Mirrors the shape that calculateRecipeNutrition
-// produces so downstream display code stays oblivious to the source.
-function scalePasteRecipe({
-  recipeCalories,
-  recipeProtein,
-  recipeCarbs,
-  recipeFats,
-  recipeFiber,
-  totalRecipeGrams,
-  ingredients,
-  isFamily,
-  familyServings,
-  servingMultiplier,
-}: {
-  recipeCalories: number
-  recipeProtein: number
-  recipeCarbs: number
-  recipeFats: number
-  recipeFiber: number
-  totalRecipeGrams: number
-  ingredients: string[]
-  isFamily: boolean
-  familyServings: number
-  servingMultiplier?: number
-}) {
-  const multiplier = servingMultiplier
-    ?? resolvedServingMultiplier(undefined, familyServings, isFamily)
-
-  const clientServingGrams = Math.round(totalRecipeGrams * multiplier)
-  const sharePct = multiplier === 1 ? 'the full recipe' : `${Math.round(multiplier * 100)}% of the full recipe`
-  const clientServingMeasure = `Prepare the ingredient weights below, then serve ${sharePct} of the finished recipe. The listed inputs total about ${clientServingGrams}g before cooking or draining.`
-
-  const breakdownParts: string[] = []
-  for (const raw of ingredients) {
-    const parsed = extractLeadingGrams(raw)
-    if (!parsed) continue
-    const scaledGrams = Math.round(parsed.grams * multiplier * 10) / 10
-    if (scaledGrams <= 0) continue
-    breakdownParts.push(`${scaledGrams}g ${parsed.label}`)
-  }
-  const clientServingBreakdown = breakdownParts.join(' + ')
-
-  const round1 = (n: number) => Math.round(n * 10) / 10
-  return {
-    clientServingMultiplier: `${multiplier}`,
-    clientServingGrams: `${clientServingGrams}g`,
-    clientServingMeasure,
-    clientServingBreakdown,
-    clientServing: clientServingBreakdown || `${clientServingGrams}g`,
-    calories: `${Math.round(recipeCalories * multiplier)}`,
-    protein: `${round1(recipeProtein * multiplier)}g`,
-    carbs: `${round1(recipeCarbs * multiplier)}g`,
-    fats: `${round1(recipeFats * multiplier)}g`,
-    fiber: `${round1(recipeFiber * multiplier)}g`,
   }
 }
 
@@ -403,6 +328,16 @@ function slotLinkLibraryRecipeAssignments(
       recipes.push({
         ...(existing ?? libraryRecipeToPlanRecipe(library)),
         name: slotRecipeName,
+        clientServing: '',
+        clientServingMultiplier: '',
+        clientServingGrams: '',
+        clientServingMeasure: '',
+        clientServingBreakdown: '',
+        calories: '',
+        protein: '',
+        carbs: '',
+        fats: '',
+        fiber: '',
         ingredients: [...(existing?.ingredients ?? library.ingredients)],
         instructions: [...(existing?.instructions ?? library.instructions)],
         swaps: [...(existing?.swaps ?? [])],
@@ -712,39 +647,6 @@ export default function CoachingPlanEditor({
           ? 1
           : explicitMultiplier
             ?? resolvedServingMultiplier(recipe.clientServingMultiplier, familyCount, isFamily)
-        const isCustomSlot = /\(d\d+-(?:breakfast|lunch|dinner|snack\d+)\)$/.test(recipe.name)
-        const libraryRecipe = isCustomSlot
-          ? undefined
-          : findLibraryRecipe(libraryRecipes, recipe.name)
-
-        const hasNutritionExclusions = recipe.ingredients.some(isExcludedNutritionIngredient)
-        if (
-          libraryRecipe?.calories
-          && libraryRecipe.calories > 0
-          && !hasNutritionExclusions
-          && sameIngredientLines(recipe.ingredients, libraryRecipe.ingredients)
-        ) {
-          const totalRecipeGrams = recipe.ingredients.reduce(
-            (sum, line) => sum + (extractLeadingGrams(line)?.grams ?? 0),
-            0,
-          )
-          return {
-            patch: scalePasteRecipe({
-              recipeCalories: libraryRecipe.calories,
-              recipeProtein: libraryRecipe.protein ?? 0,
-              recipeCarbs: libraryRecipe.carbs ?? 0,
-              recipeFats: libraryRecipe.fats ?? 0,
-              recipeFiber: libraryRecipe.fiber ?? 0,
-              totalRecipeGrams,
-              ingredients: recipe.ingredients,
-              isFamily,
-              familyServings: familyCount,
-              servingMultiplier: multiplier,
-            }),
-            failed: false,
-          }
-        }
-
         if (recipe.ingredients.length === 0) {
           return { patch: null, failed: false }
         }
@@ -1327,14 +1229,9 @@ export default function CoachingPlanEditor({
 
     if (recipesToCalc.length > 0) {
       // Derives the client-portion card fields for one recipe at the given
-      // portion multiplier (defaults to the stored/declared portion).
-      //
-      // Paste-mode signal: stored calories on the recipe row. Scale locally
-      // using the publisher's macros — no USDA call needed. Custom per-slot
-      // recipes (name ends in "(d1-breakfast)" etc.) always come through
-      // USDA — their stored calories are just the last USDA calc, so treating
-      // them as paste-mode would freeze the total even after ingredients
-      // change (e.g. adding a banana wouldn't update the day count).
+      // portion multiplier (defaults to the stored/declared portion). Recipe
+      // library macros can come from publishers, so plan prescriptions always
+      // rebuild calories from the reviewed USDA ingredient list.
       const deriveCard = async (
         recipe: CoachingPlanDraft['recipes'][number],
         explicitMultiplier?: number,
@@ -1345,33 +1242,6 @@ export default function CoachingPlanEditor({
           ? 1
           : explicitMultiplier
             ?? resolvedServingMultiplier(recipe.clientServingMultiplier, familyCount, isFamily)
-
-        const isCustomSlot = /\(d\d+-(?:breakfast|lunch|dinner|snack\d+)\)$/.test(recipe.name)
-        const libraryRecipe = isCustomSlot
-          ? undefined
-          : findLibraryRecipe(libraryRecipes, recipe.name)
-        const hasNutritionExclusions = recipe.ingredients.some(isExcludedNutritionIngredient)
-        if (
-          libraryRecipe?.calories
-          && libraryRecipe.calories > 0
-          && !hasNutritionExclusions
-          && sameIngredientLines(recipe.ingredients, libraryRecipe.ingredients)
-        ) {
-          const totalRecipeGrams = recipe.ingredients.reduce((sum, line) => sum + (extractLeadingGrams(line)?.grams ?? 0), 0)
-          const scaled = scalePasteRecipe({
-            recipeCalories: libraryRecipe.calories,
-            recipeProtein: libraryRecipe.protein ?? 0,
-            recipeCarbs: libraryRecipe.carbs ?? 0,
-            recipeFats: libraryRecipe.fats ?? 0,
-            recipeFiber: libraryRecipe.fiber ?? 0,
-            totalRecipeGrams,
-            ingredients: recipe.ingredients,
-            isFamily,
-            familyServings: familyCount,
-            servingMultiplier: multiplier,
-          })
-          return { pasteScaled: scaled, nutrition: null as UsdaNutritionResponse['nutrition'] | null }
-        }
 
         const res = await fetch('/api/admin/coaching/nutrition', {
           method: 'POST',
@@ -1384,7 +1254,6 @@ export default function CoachingPlanEditor({
         })
         const data = await res.json().catch(() => ({} as UsdaNutritionResponse)) as UsdaNutritionResponse
         return {
-          pasteScaled: null as ReturnType<typeof scalePasteRecipe> | null,
           nutrition: res.ok ? data.nutrition ?? null : null,
         }
       }
@@ -1396,7 +1265,6 @@ export default function CoachingPlanEditor({
         recipe: CoachingPlanDraft['recipes'][number],
         derived: Awaited<ReturnType<typeof deriveCard>>,
       ): CoachingPlanDraft['recipes'][number] | null => {
-        if (derived.pasteScaled) return { ...recipe, ...derived.pasteScaled }
         const nutrition = derived.nutrition
         if (!nutrition || nutrition.ingredients.length === 0 || !nutrition.totalRecipe.calories) {
           return null
@@ -2093,6 +1961,9 @@ export default function CoachingPlanEditor({
                                     {selectedRecipe?.calories && (
                                       <span style={{ color: 'var(--admin-on-surface-variant)' }}> · {selectedRecipe.calories.replace(/\s*k?cal$/i, '')} cal</span>
                                     )}
+                                    {selectedRecipe && !selectedRecipe.calories && liveNutritionPending && (
+                                      <span style={{ color: 'var(--admin-on-surface-variant)' }}> · calculating</span>
+                                    )}
                                     {libraryRecipesLoaded && !SLOT_NAME_SUFFIX.test(name) && !findLibraryRecipe(libraryRecipes, name) && (
                                       <span title="This recipe lives only inside this plan. Library edits won't reach it — remove it and re-add the recipe from your library to link them." style={{ color: '#B45309', fontWeight: 700 }}> · not in your library</span>
                                     )}
@@ -2209,6 +2080,9 @@ export default function CoachingPlanEditor({
                                       {stripSlotRecipeSuffixes(name)}
                                       {selectedRecipe?.calories && (
                                         <span style={{ color: 'var(--admin-on-surface-variant)' }}> · {selectedRecipe.calories.replace(/\s*k?cal$/i, '')} cal</span>
+                                      )}
+                                      {selectedRecipe && !selectedRecipe.calories && liveNutritionPending && (
+                                        <span style={{ color: 'var(--admin-on-surface-variant)' }}> · calculating</span>
                                       )}
                                       {libraryRecipesLoaded && !SLOT_NAME_SUFFIX.test(name) && !findLibraryRecipe(libraryRecipes, name) && (
                                         <span title="This recipe lives only inside this plan. Library edits won't reach it — remove it and re-add the recipe from your library to link them." style={{ color: '#B45309', fontWeight: 700 }}> · not in your library</span>

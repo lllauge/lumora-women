@@ -55,7 +55,7 @@ export type ImportedRecipe = {
     fiber: number
     grams: number
   }
-  nutritionSource: 'website' | 'calculated'
+  nutritionSource: 'calculated'
 }
 
 const FETCH_TIMEOUT_MS = 12_000
@@ -444,11 +444,6 @@ export async function importRecipeFromUrl(
     fiber: Math.round(included.reduce((sum, line) => sum + line.fiber, 0) * 10) / 10,
     grams: Math.round(included.reduce((sum, line) => sum + line.grams, 0) * 10) / 10,
   }
-  const totals = {
-    ...edamamTotals,
-    ...siteNutrition,
-    grams: edamamTotals.grams,
-  }
   const originalTotals = completeTotals(siteNutrition, edamamTotals.grams)
 
   return {
@@ -460,9 +455,9 @@ export async function importRecipeFromUrl(
     instructions,
     sourceUrl: url,
     notes: `Imported from ${url}. Review every ingredient before publishing.`,
-    totals: originalTotals ?? totals,
+    totals: edamamTotals,
     originalTotals,
     calculatedTotals: edamamTotals,
-    nutritionSource: originalTotals ? 'website' : 'calculated',
+    nutritionSource: 'calculated',
   }
 }

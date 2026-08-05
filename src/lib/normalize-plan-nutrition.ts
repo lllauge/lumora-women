@@ -1,12 +1,10 @@
 import {
   mealRecipeNames,
-  stripSlotRecipeSuffixes,
   type CoachingPlanDraft,
   type PlanMeal,
 } from './coaching-plan-schema'
-import { isExcludedNutritionIngredient } from './nutrition-ingredient'
 import { isIndividualPlanStyle } from './cooking-style'
-import { resolvedServingMultiplier, scaleFullRecipeNutrition } from './nutrition-math'
+import { resolvedServingMultiplier } from './nutrition-math'
 import { calculateRecipeNutritionFromUsda } from './usda/food-data'
 
 export type RecipeLibraryNutrition = {
@@ -36,42 +34,6 @@ function firstNumber(value: string | undefined) {
 
 function round1(value: number) {
   return Math.round(value * 10) / 10
-}
-
-function sameIngredients(left: string[], right: string[] | undefined) {
-  if (!right || left.length !== right.length) return false
-  return left.every((ingredient, index) => ingredient.trim() === right[index]?.trim())
-}
-
-const LEADING_GRAMS = /^(\d+(?:\.\d+)?)\s*g\s+(.+)$/i
-const FOOD_DATABASE_TOKEN = /^\[(?:fdc:\d+|curated:[a-z0-9-]+)\]\s*/i
-
-/**
- * Weigh-out fields for a library recipe scaled to the client multiplier,
- * mirroring the editor's paste-mode scaling so the persisted breakdown always
- * matches the persisted macros even when a save lands before the editor's
- * live preview refreshes them.
- */
-function scaledServingFields(ingredients: string[], multiplier: number) {
-  const parts: string[] = []
-  let totalRecipeGrams = 0
-  for (const raw of ingredients) {
-    const match = raw.replace(FOOD_DATABASE_TOKEN, '').trim().match(LEADING_GRAMS)
-    if (!match) continue
-    const grams = Number(match[1])
-    totalRecipeGrams += grams
-    const scaledGrams = Math.round(grams * multiplier * 10) / 10
-    if (scaledGrams > 0) parts.push(`${scaledGrams}g ${match[2].trim()}`)
-  }
-  const clientServingGrams = Math.round(totalRecipeGrams * multiplier)
-  const recipeShare = multiplier === 1 ? 'the full recipe' : `${Math.round(multiplier * 100)}% of the full recipe`
-  const breakdown = parts.join(' + ')
-  return {
-    clientServingGrams: `${clientServingGrams}g`,
-    clientServingMeasure: `Prepare the ingredient weights below, then serve ${recipeShare} of the finished recipe. The listed inputs total about ${clientServingGrams}g before cooking or draining.`,
-    clientServingBreakdown: breakdown,
-    clientServing: breakdown || `${clientServingGrams}g`,
-  }
 }
 
 function recipeTotals(meal: PlanMeal, recipes: CoachingPlanDraft['recipes']) {
@@ -118,7 +80,6 @@ export async function normalizeReferencedPlanNutrition({
     }
   }
 
-  const libraryByName = new Map(libraryRecipes.map((recipe) => [recipe.name, recipe]))
   const individualOnly = isIndividualPlanStyle(mealPlanStyle)
 
   const recipes = await Promise.all(plan.recipes.map(async (recipe) => {
@@ -130,36 +91,6 @@ export async function normalizeReferencedPlanNutrition({
       familyServings,
       !individualOnly && familyServings > 1,
     )
-    const customSlot = /^Custom\s+.+\(d\d+-(?:breakfast|lunch|dinner|snack\d+)\)$/i.test(recipe.name)
-    const hasExclusions = recipe.ingredients.some(isExcludedNutritionIngredient)
-    const library = customSlot ? undefined : libraryByName.get(stripSlotRecipeSuffixes(recipe.name))
-
-    if (
-      library?.calories
-      && library.calories > 0
-      && !hasExclusions
-      && sameIngredients(recipe.ingredients, library.ingredients)
-    ) {
-      const serving = scaleFullRecipeNutrition({
-        calories: library.calories,
-        protein: library.protein ?? 0,
-        carbs: library.carbs ?? 0,
-        fats: library.fats ?? 0,
-        fiber: library.fiber ?? 0,
-        multiplier,
-      })
-      return {
-        ...recipe,
-        ...scaledServingFields(recipe.ingredients, multiplier),
-        clientServingMultiplier: `${multiplier}`,
-        calories: `${serving.calories}`,
-        protein: `${serving.protein}g`,
-        carbs: `${serving.carbs}g`,
-        fats: `${serving.fats}g`,
-        fiber: `${serving.fiber}g`,
-      }
-    }
-
     const nutrition = await calculateRecipeNutritionFromUsda({
       ingredients: recipe.ingredients,
       clientServingMultiplier: `${multiplier}`,

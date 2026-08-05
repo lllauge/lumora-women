@@ -346,9 +346,9 @@ export async function POST(req: NextRequest) {
   const libraryInstructions = hasLibrary ? [
     `Laura has a recipe library with ${libraryRecipes.length} recipes. You MUST use only recipes from this library — do not invent new ones.`,
     'Select the best recipes from the library for each meal slot based on the client\'s allergies, food preferences, disliked foods, and macro targets.',
-    'The library nutrition values and ingredients describe the entire saved recipe. Never assume a family recipe can be enlarged beyond those written amounts.',
-    'Use each library recipe\'s calories, protein, carbs, fats, and fiber to choose combinations whose daily macro ratios are as close as practical to the client targets. If one recipe is too light for a meal, add another compatible library recipe to that same meal slot. The portion fitter may carve recipes down, but it will not rewrite a family recipe into a larger batch.',
-    'Before returning the plan, verify each day has enough selected full-recipe calories to reach the daily calorie target after portions are carved. Use multiple recipeNames in a meal when necessary; never leave a calorie gap that would require scaling a family recipe above 100%.',
+    'The library ingredients describe the saved base recipe. USDA post-processing will scale the client portion up or down from that base recipe to hit the assigned meal calorie budget.',
+    'Use each library recipe\'s ingredients and macro profile to choose foods whose protein, carbs, fats, and fiber are as close as practical to the client targets. If one selected recipe fits the client preferences, it may be scaled to the meal calorie budget instead of adding extra recipes.',
+    'Before returning the plan, verify every active meal slot has at least one selected recipe. The portion fitter will resize active recipe cards to the calorie budget for that slot.',
     'For each recipe you select, copy its name, ingredients, instructions, and notes exactly as provided — do not modify them.',
     'Set familyServings from the library recipe\'s family_servings field.',
     'If a recipe in the library has no ingredients, still use it — USDA post-processing will be skipped for that recipe.',

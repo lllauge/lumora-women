@@ -29,6 +29,10 @@ import { isExcludedNutritionIngredient } from '@/lib/nutrition-ingredient'
 import { resolvedServingMultiplier } from '@/lib/nutrition-math'
 import { fitRecipeServingMultipliers } from '@/lib/meal-portion-fitting'
 import { findLibraryRecipe, syncRecipesWithLibrary } from '@/lib/plan-library-sync'
+import {
+  buildMealCalorieBreakdown,
+  type MealCalorieBreakdown,
+} from '@/lib/meal-calorie-breakdown'
 
 type UsdaNutritionResponse = {
   error?: string
@@ -397,6 +401,56 @@ function dayMacroTotal(
     carbs: Math.round(raw.carbs * 10) / 10,
     fats: Math.round(raw.fats * 10) / 10,
   }
+}
+
+function MealCalorieMath({ breakdown }: { breakdown: MealCalorieBreakdown }) {
+  if (breakdown.recipes.length === 0 && breakdown.missingRecipes.length === 0) return null
+
+  const delta = Math.round(breakdown.deltaCalories)
+  const hasTarget = breakdown.targetCalories > 0
+  const deltaText = hasTarget
+    ? delta === 0
+      ? 'on target'
+      : delta > 0
+        ? `${delta} cal over target`
+        : `${Math.abs(delta)} cal under target`
+    : 'target unavailable'
+
+  return (
+    <div style={{
+      background: '#F8FAF4',
+      border: '1px solid var(--admin-outline-variant)',
+      borderRadius: 6,
+      padding: '7px 8px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 5,
+    }}>
+      <div style={{ fontFamily: 'var(--font-hanken)', fontWeight: 800, fontSize: '0.68rem', letterSpacing: 0, textTransform: 'uppercase', color: 'var(--admin-on-surface)' }}>
+        Admin calorie math
+      </div>
+      <div style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.68rem', lineHeight: 1.35, color: 'var(--admin-on-surface-variant)' }}>
+        {breakdown.targetFormula}
+      </div>
+      {breakdown.recipes.map((recipe) => (
+        <div key={recipe.name} style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.68rem', lineHeight: 1.35, color: 'var(--admin-on-surface-variant)' }}>
+          <strong style={{ color: 'var(--admin-on-surface)' }}>{recipe.displayName}:</strong> {recipe.formula}
+          {recipe.familyServings > 1 && (
+            <>. Current portion = {recipe.prescribedServings} original serving{recipe.prescribedServings === 1 ? '' : 's'}</>
+          )}
+          <div style={{ marginTop: 2 }}>{recipe.reason}</div>
+        </div>
+      ))}
+      {breakdown.missingRecipes.map((name) => (
+        <div key={name} style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.68rem', lineHeight: 1.35, color: '#B42318' }}>
+          Missing recipe card for {stripSlotRecipeSuffixes(name)}; its calories are not included.
+        </div>
+      ))}
+      <div style={{ fontFamily: 'var(--font-hanken)', fontWeight: 700, fontSize: '0.68rem', lineHeight: 1.35, color: 'var(--admin-on-surface)' }}>
+        Saved meal total: {Math.round(breakdown.savedCalories)} cal{hasTarget ? `; ${deltaText}.` : '.'}
+      </div>
+    </div>
+  )
 }
 
 function TextInput({
@@ -1910,6 +1964,14 @@ export default function CoachingPlanEditor({
                     const customRecipeName = selectedNames.find((name) => isSlotRecipeName(name, slotKey))
                     const customRecipe = plan.recipes.find((recipe) => recipe.name === customRecipeName)
                     const ingredients = customRecipe?.ingredients ?? []
+                    const calorieBreakdown = buildMealCalorieBreakdown({
+                      label: mealKey,
+                      meal,
+                      recipes: plan.recipes,
+                      dailyCalories: firstNumber(plan.macroTargets.calories),
+                      slot: mealKey,
+                      planningInputs,
+                    })
                     return (
                       <div key={mealKey} style={{ background: 'var(--admin-surface-low)', border: '1px solid var(--admin-outline-variant)', borderRadius: 9, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
                         <div style={{ fontFamily: 'var(--font-hanken)', fontWeight: 800, fontSize: '0.8rem', textTransform: 'capitalize', color: 'var(--admin-on-surface)' }}>{mealKey}</div>
@@ -1955,6 +2017,7 @@ export default function CoachingPlanEditor({
                             })}
                           </ul>
                         )}
+                        <MealCalorieMath breakdown={calorieBreakdown} />
                         {ingredients.length > 0 && (
                           <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3 }}>
                             {ingredients.map((ing, i) => (
@@ -2004,6 +2067,15 @@ export default function CoachingPlanEditor({
                       const customRecipeName = selectedNames.find((name) => isSlotRecipeName(name, slotKey))
                       const customRecipe = plan.recipes.find((recipe) => recipe.name === customRecipeName)
                       const snackIngredients = customRecipe?.ingredients ?? []
+                      const calorieBreakdown = buildMealCalorieBreakdown({
+                        label: day.snacks.length > 1 ? `Snack ${snackIndex + 1}` : 'Snack',
+                        meal: snack,
+                        recipes: plan.recipes,
+                        dailyCalories: firstNumber(plan.macroTargets.calories),
+                        slot: 'snack',
+                        snackCount: Math.max(1, day.snacks.length),
+                        planningInputs,
+                      })
                       return (
                         <div key={snackIndex} style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: snackIndex < day.snacks.length - 1 ? 8 : 0, borderBottom: snackIndex < day.snacks.length - 1 ? '1px solid var(--admin-outline-variant)' : 'none' }}>
                           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -2058,6 +2130,7 @@ export default function CoachingPlanEditor({
                               })}
                             </ul>
                           )}
+                          <MealCalorieMath breakdown={calorieBreakdown} />
                           {snackIngredients.length > 0 && (
                             <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3 }}>
                               {snackIngredients.map((ing, i) => (

@@ -72,14 +72,14 @@ test('a saved whole-recipe multiplier wins even with declared family servings', 
   )
 })
 
-test('a family recipe can never exceed the saved library batch', () => {
+test('a scaled-up family recipe weighs out above the saved library batch', () => {
   const r = recipe({
     familyServings: '6',
     clientServingMultiplier: '1.25',
     ingredients: ['[fdc:1] 258g eggs', '[fdc:2] 22.5g spinach'],
   })
-  assert.equal(clientPortionFactor(r), 1)
-  assert.deepEqual(clientPortionLines(r).map((line) => line.grams), [258, 23])
+  assert.equal(clientPortionFactor(r), 1.25)
+  assert.deepEqual(clientPortionLines(r).map((line) => line.grams), [323, 28])
 })
 
 test('portal portion factor always matches the server serving multiplier', () => {

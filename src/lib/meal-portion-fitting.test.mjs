@@ -160,9 +160,9 @@ test('a light family pot can exceed its declared equal share', () => {
   )
 })
 
-test('a light family recipe never grows beyond the saved library batch', () => {
-  // A calorie gap requires another planned food. The fitter may carve this
-  // recipe down, but must never rewrite its ingredient amounts above 100%.
+test('a light family recipe can scale above one batch to hit the meal target', () => {
+  // If the selected food is too light for the meal budget, the plan should
+  // prescribe a scaled-up recipe instead of leaving the client underfed.
   const plan = {
     macroTargets: { calories: '2000', protein: '150g', carbs: '175g', fats: '78g' },
     mealPlan: [{
@@ -186,7 +186,8 @@ test('a light family recipe never grows beyond the saved library batch', () => {
   const fitted = fitRecipeServingMultipliers(plan, percentages)
   const portion = fitted.get('Tiny Pot')
   assert.ok(portion !== undefined)
-  assert.equal(portion, 1)
+  assert.ok(portion > 1, `expected more than one batch, got ${portion}`)
+  assert.ok(Math.abs(portion - ((2000 * 25 / 90) / 300)) < 0.002)
 })
 
 test('the 1775-calorie four-recipe day never rewrites its library recipes', () => {
@@ -210,7 +211,7 @@ test('the 1775-calorie four-recipe day never rewrites its library recipes', () =
   for (const name of ['Frittata Egg Muffins', 'Baked Chicken Breast', 'Crispy Chicken Thighs', 'Roasted Sweet Potato']) {
     const portion = fitted.get(name)
     assert.ok(portion !== undefined)
-    assert.ok(portion <= 1, `${name}: expected no more than the saved batch, got ${portion}`)
+    assert.ok(portion <= 4, `${name}: expected no more than the 4x sanity cap, got ${portion}`)
   }
 })
 
@@ -234,10 +235,62 @@ test('meal percentages stay authoritative when a selected recipe is too light', 
   const fitted = fitRecipeServingMultipliers(plan, {
     breakfastPct: '30', lunchPct: '35', dinnerPct: '25', snackPct: '10',
   })
-  assert.equal(fitted.get('Frittata Egg Muffins'), 1)
-  assert.equal(fitted.get('Baked Chicken Breast'), 1)
+  assert.ok(Math.abs(fitted.get('Frittata Egg Muffins') - 532.5 / 496) < 0.002)
+  assert.ok(Math.abs(fitted.get('Baked Chicken Breast') - 621.25 / 322) < 0.002)
   assert.ok(Math.abs(fitted.get('Crispy Chicken Thighs') - 443.75 / 444) < 0.002)
   assert.ok(Math.abs(fitted.get('Roasted Sweet Potato') - 177.5 / 248) < 0.002)
+})
+
+test('slot-linked copies of the same recipe fit to different meal targets', () => {
+  const plan = {
+    macroTargets: { calories: '1775', protein: '140g', carbs: '150g', fats: '70g' },
+    mealPlan: [{
+      day: 'Tuesday',
+      breakfast: meal(['Crispy Chicken Thighs (d1-breakfast)']),
+      lunch: meal(['Frittata Egg Muffins (d1-lunch)']),
+      dinner: meal(['Ground Turkey Protein Pasta (d1-dinner)']),
+      snacks: [meal(['Frittata Egg Muffins (d1-snack0)'])],
+    }],
+    recipes: [
+      recipe({ name: 'Crispy Chicken Thighs (d1-breakfast)', familyServings: '5', clientServingMultiplier: '0.2', calories: '460' }),
+      recipe({ name: 'Frittata Egg Muffins (d1-lunch)', familyServings: '6', clientServingMultiplier: '1', calories: '496' }),
+      recipe({ name: 'Ground Turkey Protein Pasta (d1-dinner)', familyServings: '4', clientServingMultiplier: '0.275', calories: '443' }),
+      recipe({ name: 'Frittata Egg Muffins (d1-snack0)', familyServings: '6', clientServingMultiplier: '1', calories: '496' }),
+    ],
+  }
+  const fitted = fitRecipeServingMultipliers(plan, {
+    breakfastPct: '30', lunchPct: '35', dinnerPct: '25', snackPct: '10',
+  })
+
+  assert.ok(Math.abs(fitted.get('Crispy Chicken Thighs (d1-breakfast)') - 533 / 2300) < 0.002)
+  assert.ok(Math.abs(fitted.get('Frittata Egg Muffins (d1-lunch)') - 621 / 496) < 0.002)
+  assert.ok(Math.abs(fitted.get('Ground Turkey Protein Pasta (d1-dinner)') - 444 / (443 / 0.275)) < 0.002)
+  assert.ok(Math.abs(fitted.get('Frittata Egg Muffins (d1-snack0)') - 178 / 496) < 0.002)
+})
+
+test('empty meal slots redistribute their calorie budget to active meals', () => {
+  const plan = {
+    macroTargets: { calories: '1775', protein: '140g', carbs: '150g', fats: '70g' },
+    mealPlan: [{
+      day: 'Tuesday',
+      breakfast: meal(['Breakfast Pot']),
+      lunch: meal([]),
+      dinner: meal(['Dinner Pot']),
+      snacks: [meal(['Snack Pot'])],
+    }],
+    recipes: [
+      recipe({ name: 'Breakfast Pot', familyServings: '4', clientServingMultiplier: '0.25', calories: '400' }),
+      recipe({ name: 'Dinner Pot', familyServings: '4', clientServingMultiplier: '0.25', calories: '400' }),
+      recipe({ name: 'Snack Pot', familyServings: '4', clientServingMultiplier: '0.25', calories: '400' }),
+    ],
+  }
+  const fitted = fitRecipeServingMultipliers(plan, {
+    breakfastPct: '30', lunchPct: '35', dinnerPct: '25', snackPct: '10',
+  })
+
+  assert.ok(Math.abs(fitted.get('Breakfast Pot') - (1775 * 30 / 65) / 1600) < 0.002)
+  assert.ok(Math.abs(fitted.get('Dinner Pot') - (1775 * 25 / 65) / 1600) < 0.002)
+  assert.ok(Math.abs(fitted.get('Snack Pot') - (1775 * 10 / 65) / 1600) < 0.002)
 })
 
 test('custom slot foods are never resized', () => {

@@ -163,19 +163,18 @@ function scaleMacro(value: string, factor: number) {
   return `${rounded}${/g\s*$/i.test(value) ? 'g' : ''}`
 }
 
-// A short-lived release allowed a family recipe multiplier above 1, which
-// produced plan ingredients and macros that no longer matched the library.
-// Normalize those saved cards on read so every surface immediately returns to
-// the immutable full recipe; the corrected plan persists on the next save.
+// Keep obviously corrupt portions from making old plans unusable. Intentional
+// fitted portions above one full recipe are valid: they mean the client should
+// scale the recipe up to hit the slot calorie target.
 function normalizeOversizedFamilyRecipes(plan: CoachingPlanDraft): CoachingPlanDraft {
   let changed = false
   const recipes = plan.recipes.map((recipe) => {
     const familyServings = firstNumber(recipe.familyServings || recipe.servings)
     const multiplier = firstNumber(recipe.clientServingMultiplier)
-    if (familyServings <= 1 || multiplier <= 1) return recipe
+    if (familyServings <= 1 || multiplier <= 4) return recipe
 
     changed = true
-    const factor = 1 / multiplier
+    const factor = 4 / multiplier
     const ingredientLines = recipe.ingredients
       .map((ingredient) => ingredient.replace(/^\[(?:fdc:\d+|curated:[a-z0-9-]+)\]\s*/i, '').trim())
       .filter(Boolean)
@@ -187,7 +186,7 @@ function normalizeOversizedFamilyRecipes(plan: CoachingPlanDraft): CoachingPlanD
 
     return {
       ...recipe,
-      clientServingMultiplier: '1',
+      clientServingMultiplier: '4',
       clientServingGrams: totalGrams > 0 ? `${Math.round(totalGrams)}g` : '',
       clientServingMeasure: 'Prepare the recipe exactly as written. The ingredient amounts match the saved library recipe.',
       clientServingBreakdown: breakdown,

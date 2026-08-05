@@ -65,7 +65,7 @@ function mealPercentage(slot: MealSlotKind, planningInputs: Record<string, unkno
 }
 
 function isSlotRecipe(name: string) {
-  return /\(d\d+-(?:breakfast|lunch|dinner|snack\d+)\)$/.test(name)
+  return /^Custom\s+.+\(d\d+-(?:breakfast|lunch|dinner|snack\d+)\)$/i.test(name)
 }
 
 function recipeBreakdown(recipe: Recipe): MealCalorieBreakdownRecipe {
@@ -121,6 +121,7 @@ export function buildMealCalorieBreakdown({
   slot,
   snackCount = 1,
   planningInputs,
+  percentageTotal,
 }: {
   label: string
   meal: PlanMeal
@@ -129,14 +130,16 @@ export function buildMealCalorieBreakdown({
   slot: MealSlotKind
   snackCount?: number
   planningInputs: Record<string, unknown>
+  percentageTotal?: number
 }): MealCalorieBreakdown {
   const names = mealRecipeNames(meal)
   const { percentage, total } = mealPercentage(slot, planningInputs)
   const slotPercentage = slot === 'snack'
     ? percentage / Math.max(1, snackCount)
     : percentage
+  const resolvedPercentageTotal = percentageTotal && percentageTotal > 0 ? percentageTotal : total
   const targetCalories = dailyCalories > 0
-    ? dailyCalories * slotPercentage / total
+    ? dailyCalories * slotPercentage / resolvedPercentageTotal
     : 0
   const recipeRows = names
     .map((name) => recipes.find((recipe) => recipe.name === name))
@@ -148,10 +151,10 @@ export function buildMealCalorieBreakdown({
   return {
     label,
     percentage: round1(slotPercentage),
-    percentageTotal: round1(total),
+    percentageTotal: round1(resolvedPercentageTotal),
     targetCalories: round1(targetCalories),
     targetFormula: dailyCalories > 0
-      ? `${Math.round(dailyCalories)} daily cal x ${round1(slotPercentage)} / ${round1(total)} = ${Math.round(targetCalories)} cal target`
+      ? `${Math.round(dailyCalories)} daily cal x ${round1(slotPercentage)} / ${round1(resolvedPercentageTotal)} = ${Math.round(targetCalories)} cal target`
       : 'Daily calorie target is blank, so no meal budget can be computed.',
     savedCalories: round1(savedCalories),
     deltaCalories: round1(savedCalories - targetCalories),

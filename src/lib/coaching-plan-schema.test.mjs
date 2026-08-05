@@ -37,7 +37,7 @@ test('normalizes repeated internal slot suffixes to one stable suffix', () => {
   assert.equal(isSlotRecipeName(malformed, 'd1-breakfast'), true)
 })
 
-test('repairs a saved family recipe that was enlarged beyond the library batch', () => {
+test('preserves an intentional scaled-up family recipe', () => {
   const plan = parseCoachingPlan({
     recipes: [{
       name: 'Frittata Egg Muffins',
@@ -52,11 +52,10 @@ test('repairs a saved family recipe that was enlarged beyond the library batch',
       ingredients: ['258g eggs', '22.5g spinach', '8.3g Olive oil'],
     }],
   })
-  const repaired = plan.recipes[0]
-  assert.equal(repaired.clientServingMultiplier, '1')
-  assert.equal(repaired.clientServingGrams, '289g')
-  assert.equal(repaired.calories, '495.1')
-  assert.equal(repaired.protein, '36g')
-  assert.deepEqual(repaired.ingredients, ['258g eggs', '22.5g spinach', '8.3g Olive oil'])
-  assert.match(repaired.clientServingMeasure, /match the saved library recipe/)
+  const parsed = plan.recipes[0]
+  assert.equal(parsed.clientServingMultiplier, '1.22')
+  assert.equal(parsed.clientServingGrams, '657g')
+  assert.equal(parsed.calories, '604')
+  assert.equal(parsed.protein, '43.9g')
+  assert.deepEqual(parsed.ingredients, ['258g eggs', '22.5g spinach', '8.3g Olive oil'])
 })

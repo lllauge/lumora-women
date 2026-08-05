@@ -203,11 +203,6 @@ async function auditRecipe({
   if (!library && !/\(d\d+-(?:breakfast|lunch|dinner|snack\d+)\)$/.test(recipe.name)) {
     issues.push('Recipe is missing from the current Recipe Library.')
   }
-  const storedNumber = Number.parseFloat(recipe.clientServingMultiplier)
-  if (isFamilyRecipe && Number.isFinite(storedNumber) && storedNumber > 1) {
-    issues.push(`Family multiplier ${storedNumber} exceeds the full recipe; the calculation caps it at 1.`)
-  }
-
   let ingredientResults: UsdaIngredientResult[] = []
   let unmatchedIngredients: string[] = []
   let excludedIngredients: string[] = []

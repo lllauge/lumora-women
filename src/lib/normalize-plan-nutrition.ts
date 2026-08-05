@@ -1,5 +1,6 @@
 import {
   mealRecipeNames,
+  stripSlotRecipeSuffixes,
   type CoachingPlanDraft,
   type PlanMeal,
 } from './coaching-plan-schema'
@@ -129,9 +130,9 @@ export async function normalizeReferencedPlanNutrition({
       familyServings,
       !individualOnly && familyServings > 1,
     )
-    const customSlot = /\(d\d+-(?:breakfast|lunch|dinner|snack\d+)\)$/.test(recipe.name)
+    const customSlot = /^Custom\s+.+\(d\d+-(?:breakfast|lunch|dinner|snack\d+)\)$/i.test(recipe.name)
     const hasExclusions = recipe.ingredients.some(isExcludedNutritionIngredient)
-    const library = customSlot ? undefined : libraryByName.get(recipe.name)
+    const library = customSlot ? undefined : libraryByName.get(stripSlotRecipeSuffixes(recipe.name))
 
     if (
       library?.calories

@@ -49,9 +49,12 @@ function nutrientsForNames(names: string[], recipes: CoachingPlanDraft['recipes'
 
 function isAdjustableRecipe(name: string, recipes: CoachingPlanDraft['recipes']) {
   // Custom slot foods represent exact coach-entered quantities and must never
-  // be silently resized. Pinned cards are the coach's explicit "as-written is
-  // her portion" — they contribute fixed macros the rest of the slot absorbs.
-  if (/\(d\d+-(?:breakfast|lunch|dinner|snack\d+)\)$/.test(name)) return false
+  // be silently resized. Library recipes can be cloned per slot with the same
+  // suffix, and those must remain adjustable so lunch and snack can prescribe
+  // different portions of the same original recipe.
+  if (/^Custom\s+.+\(d\d+-(?:breakfast|lunch|dinner|snack\d+)\)$/i.test(name)) return false
+  // Pinned cards are the coach's explicit "as-written is her portion" — they
+  // contribute fixed macros the rest of the slot absorbs.
   return !recipes.find((recipe) => recipe.name === name)?.portionPinned
 }
 
@@ -63,11 +66,9 @@ function median(values: number[]) {
     : (sorted[middle - 1] + sorted[middle]) / 2
 }
 
-// Family recipes are immutable library recipes: fitting may carve the client's
-// share down, but it must never silently enlarge or rewrite the saved batch.
-// Individual recipes can still scale because their written amounts describe
-// the client's dish rather than a shared family recipe.
-const MAX_FAMILY_MULTIPLIER = 1
+// Recipes can scale up or down to hit the slot calorie target. The library
+// recipe remains immutable; the plan card stores the client's scaled portion.
+const MAX_FAMILY_MULTIPLIER = 4
 const MAX_INDIVIDUAL_MULTIPLIER = 4
 // Hard floor for a carve, and the threshold below which a stored carve is
 // treated as collapsed rather than deliberate: 1% of a recipe is never a real
@@ -112,15 +113,22 @@ export function fitRecipeServingMultipliers(
   const candidates = new Map<string, number[]>()
 
   for (const day of plan.mealPlan) {
-    const slots = [
-      { meal: day.breakfast, share: rawPercentages.breakfast / percentageTotal },
-      { meal: day.lunch, share: rawPercentages.lunch / percentageTotal },
-      { meal: day.dinner, share: rawPercentages.dinner / percentageTotal },
+    const activeSnackCount = Math.max(1, day.snacks.filter((meal) => mealRecipeNames(meal).length > 0).length)
+    const rawSlots = [
+      { meal: day.breakfast, percentage: rawPercentages.breakfast },
+      { meal: day.lunch, percentage: rawPercentages.lunch },
+      { meal: day.dinner, percentage: rawPercentages.dinner },
       ...day.snacks.map((meal) => ({
         meal,
-        share: (rawPercentages.snack / percentageTotal) / Math.max(1, day.snacks.length),
+        percentage: rawPercentages.snack / activeSnackCount,
       })),
     ]
+    const activeSlots = rawSlots.filter(({ meal }) => mealRecipeNames(meal).length > 0)
+    const activePercentageTotal = activeSlots.reduce((sum, slot) => sum + slot.percentage, 0) || percentageTotal
+    const slots = activeSlots.map(({ meal, percentage }) => ({
+      meal,
+      share: percentage / activePercentageTotal,
+    }))
 
     const fitted = slots.map(({ meal, share }) => {
       const names = mealRecipeNames(meal)

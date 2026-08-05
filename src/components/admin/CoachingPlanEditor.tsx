@@ -320,11 +320,17 @@ function scalePasteRecipe({
 }
 
 const SLOT_NAME_SUFFIX = /\s*\(d\d+-(?:breakfast|lunch|dinner|snack\d+)\)$/
+const CUSTOM_SLOT_RECIPE_NAME = /^Custom\s+.+\(d\d+-(?:breakfast|lunch|dinner|snack\d+)\)$/i
+
+function isCustomSlotRecipe(name: string) {
+  return CUSTOM_SLOT_RECIPE_NAME.test(name)
+}
 
 // Copying a meal into another slot must clone its per-slot custom recipe
 // under the target slot's name — sharing one "(d1-lunch)" recipe across slots
 // would make later ingredient edits on one day silently change the other.
-// Library recipes are shared by name on purpose, so those copy by reference.
+// Library recipes can be slot-linked too, so those copies keep independent
+// client portions while still tracing back to the same library name.
 function cloneMealForSlot(
   meal: PlanMeal,
   recipes: CoachingPlanDraft['recipes'],
@@ -362,6 +368,68 @@ function upsertRecipes(
     else next.push(clone)
   }
   return next
+}
+
+function activeMealPercentageTotal(
+  day: CoachingPlanDraft['mealPlan'][number],
+  planningInputs: Pick<MacroCalculationInputs, 'breakfastPct' | 'lunchPct' | 'dinnerPct' | 'snackPct'>,
+) {
+  const activeSnackCount = day.snacks.filter((snack) => mealRecipeNames(snack).length > 0).length
+  return [
+    mealRecipeNames(day.breakfast).length > 0 ? firstNumber(planningInputs.breakfastPct) || 35 : 0,
+    mealRecipeNames(day.lunch).length > 0 ? firstNumber(planningInputs.lunchPct) || 30 : 0,
+    mealRecipeNames(day.dinner).length > 0 ? firstNumber(planningInputs.dinnerPct) || 25 : 0,
+    activeSnackCount > 0 ? firstNumber(planningInputs.snackPct) || 10 : 0,
+  ].reduce((sum, value) => sum + value, 0) || 100
+}
+
+function slotLinkLibraryRecipeAssignments(
+  plan: CoachingPlanDraft,
+  libraryRecipes: LibraryRecipe[],
+): CoachingPlanDraft {
+  if (libraryRecipes.length === 0) return plan
+  let changed = false
+  let recipes = [...plan.recipes]
+
+  const linkedName = (name: string, slotKey: string) => {
+    if (isCustomSlotRecipe(name)) return name
+    const library = findLibraryRecipe(libraryRecipes, name)
+    if (!library) return name
+    const slotRecipeName = normalizedSlotRecipeName(library.name, library.name, slotKey)
+    if (name === slotRecipeName) return name
+    changed = true
+    if (!recipes.some((recipe) => recipe.name === slotRecipeName)) {
+      const existing = recipes.find((recipe) => recipe.name === name)
+      recipes.push({
+        ...(existing ?? libraryRecipeToPlanRecipe(library)),
+        name: slotRecipeName,
+        ingredients: [...(existing?.ingredients ?? library.ingredients)],
+        instructions: [...(existing?.instructions ?? library.instructions)],
+        swaps: [...(existing?.swaps ?? [])],
+      })
+    }
+    return slotRecipeName
+  }
+
+  const mealPlan = plan.mealPlan.map((day, dayIndex) => {
+    const linkMeal = (meal: PlanMeal, slotKey: string) => {
+      const names = mealRecipeNames(meal)
+      if (names.length === 0) return meal
+      const nextNames = names.map((name) => linkedName(name, slotKey))
+      return nextNames.some((name, index) => name !== names[index])
+        ? withMealRecipeNames(meal, nextNames)
+        : meal
+    }
+    return {
+      ...day,
+      breakfast: linkMeal(day.breakfast, `d${dayIndex + 1}-breakfast`),
+      lunch: linkMeal(day.lunch, `d${dayIndex + 1}-lunch`),
+      dinner: linkMeal(day.dinner, `d${dayIndex + 1}-dinner`),
+      snacks: day.snacks.map((snack, snackIndex) => linkMeal(snack, `d${dayIndex + 1}-snack${snackIndex}`)),
+    }
+  })
+
+  return changed ? { ...plan, recipes, mealPlan } : plan
 }
 
 // Auto-created per-slot recipe copies look like "Name (d2-lunch)" — drop them once no slot uses them.
@@ -524,6 +592,11 @@ export default function CoachingPlanEditor({
   }, [])
 
   useEffect(() => {
+    if (!libraryRecipesLoaded || libraryRecipes.length === 0) return
+    setPlan((current) => slotLinkLibraryRecipeAssignments(current, libraryRecipes))
+  }, [libraryRecipesLoaded, libraryRecipes])
+
+  useEffect(() => {
     fetch('/api/admin/exercises')
       .then(r => r.json())
       .then(d => setLibraryExercises(d.exercises ?? []))
@@ -543,6 +616,7 @@ export default function CoachingPlanEditor({
   // so applying a nutrition preview below cannot trigger a calculation loop.
   const liveNutritionKey = useMemo(() => {
     const assignedNames = new Set<string>()
+    const assignedBaseNames = new Set<string>()
     const slots = plan.mealPlan.map((day) => {
       const slot = {
         breakfast: mealRecipeNames(day.breakfast),
@@ -557,6 +631,7 @@ export default function CoachingPlanEditor({
         ...slot.snacks.flat(),
       ].forEach((name) => {
         if (name) assignedNames.add(name)
+        if (name) assignedBaseNames.add(stripSlotRecipeSuffixes(name))
       })
       return slot
     })
@@ -573,7 +648,7 @@ export default function CoachingPlanEditor({
           portionPinned: recipe.portionPinned,
         })),
       libraryMacros: libraryRecipes
-        .filter((recipe) => assignedNames.has(recipe.name))
+        .filter((recipe) => assignedBaseNames.has(recipe.name))
         .map((recipe) => ({
           name: recipe.name,
           calories: recipe.calories,
@@ -800,16 +875,25 @@ export default function CoachingPlanEditor({
     if (!libRecipeName) return
     const libRecipe = libraryRecipes.find(r => r.name === libRecipeName)
     setPlan(current => {
+      if (!libRecipe) return current
+      const slotKey = `d${dayIndex + 1}-${mealKey}`
+      const slotRecipeName = normalizedSlotRecipeName(libRecipe.name, libRecipe.name, slotKey)
       let newRecipes = current.recipes
-      if (libRecipe && !current.recipes.some(r => r.name === libRecipeName)) {
-        newRecipes = [...current.recipes, libraryRecipeToPlanRecipe(libRecipe)]
+      if (!current.recipes.some(r => r.name === slotRecipeName)) {
+        newRecipes = [
+          ...current.recipes,
+          { ...libraryRecipeToPlanRecipe(libRecipe), name: slotRecipeName },
+        ]
       }
       const mealPlan = [...current.mealPlan]
       const day = mealPlan[dayIndex]
       const currentMeal = day[mealKey]
+      if (mealRecipeNames(currentMeal).some((name) => stripSlotRecipeSuffixes(name) === libRecipe.name)) {
+        return current
+      }
       const updatedMeal = withMealRecipeNames(currentMeal, [
         ...mealRecipeNames(currentMeal),
-        libRecipeName,
+        slotRecipeName,
       ])
       mealPlan[dayIndex] = {
         ...day,
@@ -823,15 +907,24 @@ export default function CoachingPlanEditor({
     if (!libRecipeName) return
     const libRecipe = libraryRecipes.find(r => r.name === libRecipeName)
     setPlan(current => {
+      if (!libRecipe) return current
+      const slotKey = `d${dayIndex + 1}-snack${snackIndex}`
+      const slotRecipeName = normalizedSlotRecipeName(libRecipe.name, libRecipe.name, slotKey)
       let newRecipes = current.recipes
-      if (libRecipe && !current.recipes.some(r => r.name === libRecipeName)) {
-        newRecipes = [...current.recipes, libraryRecipeToPlanRecipe(libRecipe)]
+      if (!current.recipes.some(r => r.name === slotRecipeName)) {
+        newRecipes = [
+          ...current.recipes,
+          { ...libraryRecipeToPlanRecipe(libRecipe), name: slotRecipeName },
+        ]
       }
       const mealPlan = [...current.mealPlan]
       const day = mealPlan[dayIndex]
       const snacks = [...(day.snacks ?? [])]
       const snack = snacks[snackIndex] ?? { name: '', recipeName: '', recipeNames: [], description: '', macros: '' }
-      const updatedSnack = withMealRecipeNames(snack, [...mealRecipeNames(snack), libRecipeName])
+      if (mealRecipeNames(snack).some((name) => stripSlotRecipeSuffixes(name) === libRecipe.name)) {
+        return current
+      }
+      const updatedSnack = withMealRecipeNames(snack, [...mealRecipeNames(snack), slotRecipeName])
       snacks[snackIndex] = {
         ...updatedSnack,
         description: '',
@@ -955,7 +1048,7 @@ export default function CoachingPlanEditor({
       const meal = current.mealPlan[dayIndex][mealKey]
       const slotKey = `d${dayIndex + 1}-${mealKey}`
       const names = mealRecipeNames(meal)
-      const existingSlotName = names.find((name) => isSlotRecipeName(name, slotKey))
+      const existingSlotName = names.find((name) => isSlotRecipeName(name, slotKey) && isCustomSlotRecipe(name))
       const slotRecipeName = normalizedSlotRecipeName(existingSlotName ?? '', `Custom ${mealKey}`, slotKey)
 
       const newRecipes = current.recipes.map((recipe) => (
@@ -997,7 +1090,7 @@ export default function CoachingPlanEditor({
     setPlan(current => {
       const slotKey = `d${dayIndex + 1}-${mealKey}`
       const meal = current.mealPlan[dayIndex][mealKey]
-      const recipeName = mealRecipeNames(meal).find((name) => isSlotRecipeName(name, slotKey))
+      const recipeName = mealRecipeNames(meal).find((name) => isSlotRecipeName(name, slotKey) && isCustomSlotRecipe(name))
       if (!recipeName) return current
       const existingRecipe = current.recipes.find((recipe) => recipe.name === recipeName)
       const remainingIngredients = existingRecipe?.ingredients.filter((_, i) => i !== ingredientIndex) ?? []
@@ -1034,7 +1127,7 @@ export default function CoachingPlanEditor({
       const snack = snacks[snackIndex] ?? { name: '', recipeName: '', recipeNames: [], description: '', macros: '' }
       const slotKey = `d${dayIndex + 1}-snack${snackIndex}`
       const names = mealRecipeNames(snack)
-      const existingSlotName = names.find((name) => isSlotRecipeName(name, slotKey))
+      const existingSlotName = names.find((name) => isSlotRecipeName(name, slotKey) && isCustomSlotRecipe(name))
       const slotRecipeName = normalizedSlotRecipeName(existingSlotName ?? '', 'Custom Snack', slotKey)
 
       const newRecipes = current.recipes.map((recipe) => (
@@ -1071,7 +1164,7 @@ export default function CoachingPlanEditor({
     setPlan(current => {
       const slotKey = `d${dayIndex + 1}-snack${snackIndex}`
       const snack = current.mealPlan[dayIndex].snacks[snackIndex]
-      const recipeName = snack && mealRecipeNames(snack).find((name) => isSlotRecipeName(name, slotKey))
+      const recipeName = snack && mealRecipeNames(snack).find((name) => isSlotRecipeName(name, slotKey) && isCustomSlotRecipe(name))
       if (!recipeName) return current
       const existingRecipe = current.recipes.find((recipe) => recipe.name === recipeName)
       const remainingIngredients = existingRecipe?.ingredients.filter((_, i) => i !== ingredientIndex) ?? []
@@ -1960,10 +2053,12 @@ export default function CoachingPlanEditor({
                   {(['breakfast', 'lunch', 'dinner'] as const).map((mealKey) => {
                     const meal = day[mealKey]
                     const selectedNames = mealRecipeNames(meal)
+                    const selectedBaseNames = selectedNames.map(stripSlotRecipeSuffixes)
                     const slotKey = `d${dayIndex + 1}-${mealKey}`
-                    const customRecipeName = selectedNames.find((name) => isSlotRecipeName(name, slotKey))
+                    const customRecipeName = selectedNames.find((name) => isSlotRecipeName(name, slotKey) && isCustomSlotRecipe(name))
                     const customRecipe = plan.recipes.find((recipe) => recipe.name === customRecipeName)
                     const ingredients = customRecipe?.ingredients ?? []
+                    const dayPercentageTotal = activeMealPercentageTotal(day, planningInputs)
                     const calorieBreakdown = buildMealCalorieBreakdown({
                       label: mealKey,
                       meal,
@@ -1971,6 +2066,7 @@ export default function CoachingPlanEditor({
                       dailyCalories: firstNumber(plan.macroTargets.calories),
                       slot: mealKey,
                       planningInputs,
+                      percentageTotal: dayPercentageTotal,
                     })
                     return (
                       <div key={mealKey} style={{ background: 'var(--admin-surface-low)', border: '1px solid var(--admin-outline-variant)', borderRadius: 9, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -1982,7 +2078,7 @@ export default function CoachingPlanEditor({
                           onChange={(e) => applyLibraryRecipeToMeal(dayIndex, mealKey, e.target.value)}
                         >
                           <option value="">+ Add a recipe…</option>
-                          {libraryRecipes.filter((recipe) => !selectedNames.includes(recipe.name)).map((r) => (
+                          {libraryRecipes.filter((recipe) => !selectedBaseNames.includes(recipe.name)).map((r) => (
                             <option key={r.id} value={r.name}>{r.name}</option>
                           ))}
                         </select>
@@ -2063,18 +2159,22 @@ export default function CoachingPlanEditor({
                     </div>
                     {(day.snacks.length === 0 ? [{ name: '', recipeName: '', recipeNames: [], description: '', macros: '' }] : day.snacks).map((snack, snackIndex) => {
                       const selectedNames = mealRecipeNames(snack)
+                      const selectedBaseNames = selectedNames.map(stripSlotRecipeSuffixes)
                       const slotKey = `d${dayIndex + 1}-snack${snackIndex}`
-                      const customRecipeName = selectedNames.find((name) => isSlotRecipeName(name, slotKey))
+                      const customRecipeName = selectedNames.find((name) => isSlotRecipeName(name, slotKey) && isCustomSlotRecipe(name))
                       const customRecipe = plan.recipes.find((recipe) => recipe.name === customRecipeName)
                       const snackIngredients = customRecipe?.ingredients ?? []
+                      const activeSnackCount = Math.max(1, day.snacks.filter((candidate) => mealRecipeNames(candidate).length > 0).length)
+                      const dayPercentageTotal = activeMealPercentageTotal(day, planningInputs)
                       const calorieBreakdown = buildMealCalorieBreakdown({
                         label: day.snacks.length > 1 ? `Snack ${snackIndex + 1}` : 'Snack',
                         meal: snack,
                         recipes: plan.recipes,
                         dailyCalories: firstNumber(plan.macroTargets.calories),
                         slot: 'snack',
-                        snackCount: Math.max(1, day.snacks.length),
+                        snackCount: activeSnackCount,
                         planningInputs,
+                        percentageTotal: dayPercentageTotal,
                       })
                       return (
                         <div key={snackIndex} style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: snackIndex < day.snacks.length - 1 ? 8 : 0, borderBottom: snackIndex < day.snacks.length - 1 ? '1px solid var(--admin-outline-variant)' : 'none' }}>
@@ -2086,7 +2186,7 @@ export default function CoachingPlanEditor({
                               onChange={(e) => applyLibraryRecipeToSnack(dayIndex, snackIndex, e.target.value)}
                             >
                               <option value="">+ Add a recipe…</option>
-                              {libraryRecipes.filter((recipe) => !selectedNames.includes(recipe.name)).map((r) => (
+                              {libraryRecipes.filter((recipe) => !selectedBaseNames.includes(recipe.name)).map((r) => (
                                 <option key={r.id} value={r.name}>{r.name}</option>
                               ))}
                             </select>

@@ -59,6 +59,10 @@ test('findLibraryRecipe matches names case-insensitively', () => {
     findLibraryRecipe(library, 'overnight oats - Blueberry'),
     library[0],
   )
+  assert.equal(
+    findLibraryRecipe(library, 'Overnight oats - Blueberry (d1-breakfast)'),
+    library[0],
+  )
   assert.equal(findLibraryRecipe(library, 'Green Smoothie'), undefined)
   assert.equal(findLibraryRecipe(library, ''), undefined)
 })
@@ -91,6 +95,19 @@ test('custom per-slot recipes never sync', () => {
   const [synced] = syncRecipesWithLibrary([recipe], [library])
   assert.deepEqual(synced, recipe)
   assert.equal(isCustomSlotRecipeName(recipe.name), true)
+})
+
+test('slot-linked library recipes still sync to the original library card', () => {
+  const recipe = planRecipe({ name: 'Roasted Sweet Potato (d1-dinner)' })
+  const library = libraryRecipe({
+    ingredients: ['700g sweet potatoes', '25g Olive oil'],
+    instructions: ['Roast until tender.'],
+  })
+  const [synced] = syncRecipesWithLibrary([recipe], [library])
+  assert.equal(synced.name, 'Roasted Sweet Potato (d1-dinner)')
+  assert.deepEqual(synced.ingredients, library.ingredients)
+  assert.deepEqual(synced.instructions, library.instructions)
+  assert.equal(isCustomSlotRecipeName(recipe.name), false)
 })
 
 test('a changed declared serving count resets the carved portion', () => {

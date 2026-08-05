@@ -971,7 +971,7 @@ export async function calculateRecipeNutritionFromUsda({
   if (manualMult) {
     multiplier = parseServingMultiplier(manualMult)
   } else if (targetCalories && totalRecipe.calories > 0) {
-    multiplier = Math.min(1, targetCalories / totalRecipe.calories)
+    multiplier = targetCalories / totalRecipe.calories
   } else if (servingCount) {
     multiplier = 1 / servingCount
   } else {

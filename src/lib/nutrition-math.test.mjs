@@ -39,7 +39,7 @@ test('honors saved whole-recipe multipliers and only falls back for blanks', () 
   // the written recipe is her portion; blank legacy family recipes still fall
   // back to one declared serving.
   assert.equal(resolvedServingMultiplier('1', 4, true), 1)
-  assert.equal(resolvedServingMultiplier('1.25', 6, true), 1)
+  assert.equal(resolvedServingMultiplier('1.25', 6, true), 1.25)
   assert.equal(resolvedServingMultiplier('', 4, true), 0.25)
   assert.equal(resolvedServingMultiplier('1', 4, false), 1)
   assert.equal(resolvedServingMultiplier('1.3', 1, false), 1.3)

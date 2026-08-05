@@ -91,3 +91,20 @@ test('splits snack percentage across multiple snack slots', () => {
   assert.equal(breakdown.savedCalories, 496)
   assert.equal(breakdown.recipes[0].prescribedServings, 1.2)
 })
+
+test('uses an active-day percentage total when a meal is removed', () => {
+  const breakdown = buildMealCalorieBreakdown({
+    label: 'Breakfast',
+    meal: meal(['Crispy Chicken Thighs']),
+    recipes: [recipe()],
+    dailyCalories: 1775,
+    slot: 'breakfast',
+    planningInputs: { breakfastPct: '30', lunchPct: '35', dinnerPct: '25', snackPct: '10' },
+    percentageTotal: 65,
+  })
+
+  assert.equal(breakdown.percentage, 30)
+  assert.equal(breakdown.percentageTotal, 65)
+  assert.equal(breakdown.targetCalories, 819.2)
+  assert.match(breakdown.targetFormula, /1775 daily cal x 30 \/ 65 = 819 cal target/)
+})

@@ -2,7 +2,7 @@
 // snapshots taken when a recipe is dropped into a meal slot; they go stale
 // when the library is edited afterwards. Pure module (no server or React
 // deps) so the sync rules can be unit tested.
-import type { CoachingPlanDraft } from './coaching-plan-schema'
+import { stripSlotRecipeSuffixes, type CoachingPlanDraft } from './coaching-plan-schema.ts'
 
 type PlanRecipe = CoachingPlanDraft['recipes'][number]
 
@@ -16,7 +16,7 @@ export type LibraryRecipeSource = {
   notes: string
 }
 
-const CUSTOM_SLOT_RECIPE = /\(d\d+-(?:breakfast|lunch|dinner|snack\d+)\)$/
+const CUSTOM_SLOT_RECIPE = /^Custom\s+.+\(d\d+-(?:breakfast|lunch|dinner|snack\d+)\)$/i
 
 /** Custom per-slot foods ("Custom lunch (d1-lunch)") have no library counterpart. */
 export function isCustomSlotRecipeName(name: string) {
@@ -37,7 +37,7 @@ export function findLibraryRecipe<T extends { name: string }>(
   libraryRecipes: T[],
   planRecipeName: string,
 ): T | undefined {
-  const wanted = normalizeRecipeName(planRecipeName)
+  const wanted = normalizeRecipeName(stripSlotRecipeSuffixes(planRecipeName))
   if (!wanted) return undefined
   return libraryRecipes.find((candidate) => normalizeRecipeName(candidate.name) === wanted)
 }

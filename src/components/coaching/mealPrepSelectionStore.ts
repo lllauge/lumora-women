@@ -1,8 +1,11 @@
 'use client'
 
 export type MealPrepSelection = {
-  peopleEating: number
-  prepPortions: number
+  mode?: 'meal-prep' | 'family'
+  portions?: number
+  /** Legacy fields retained so existing local selections remain readable. */
+  peopleEating?: number
+  prepPortions?: number
   totalFactor: number
 }
 

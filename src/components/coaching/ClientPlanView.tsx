@@ -414,7 +414,7 @@ export default async function ClientPlanView({
               // The list buys batches (or exact portions), not meal slots —
               // without this line a menu that repeats a recipe looks
               // under-shopped to the client.
-              'Use each recipe\'s Meal prep button when you want to scale a meal for family portions or saved containers.',
+              'Use Meal prep for more of your exact portions, or Cook for family for a full batch.',
             ].filter(Boolean).join(' ')}
           />
           <div className="portal-card">

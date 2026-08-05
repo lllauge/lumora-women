@@ -1,10 +1,12 @@
 'use client'
 
-import { Minus, Plus, UtensilsCrossed } from 'lucide-react'
+import { Minus, Plus, UsersRound, UtensilsCrossed } from 'lucide-react'
 import { useMemo, useState, useSyncExternalStore } from 'react'
 import {
   cleanIngredientText,
   clientPortionFactor,
+  exactPortionsCookFactor,
+  familyCookFactor,
   ingredientGrams,
   ingredientWeighState,
   shortIngredientName,
@@ -52,10 +54,6 @@ const helpText: React.CSSProperties = {
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value))
-}
-
-function plural(value: number, singular: string, pluralValue = `${singular}s`) {
-  return `${value} ${value === 1 ? singular : pluralValue}`
 }
 
 function scaledIngredientLines(recipe: Recipe, factor: number) {
@@ -130,11 +128,9 @@ export default function MealPrepPlanner({
   storageKey?: string
   occurrenceKey?: string
 }) {
-  const [open, setOpen] = useState(false)
+  const [openMode, setOpenMode] = useState<'meal-prep' | 'family' | null>(null)
+  const [localPortions, setLocalPortions] = useState<number | null>(null)
   const portionFactor = clientPortionFactor(recipe, individualPlanStyle)
-  const familyServings = parseFloat(recipe.familyServings)
-  const hasFamilyYield = Number.isFinite(familyServings) && familyServings > 1 && !individualPlanStyle && !recipe.portionPinned
-  const standardServingFactor = hasFamilyYield ? 1 / familyServings : portionFactor
   const selectionsSnapshot = useSyncExternalStore(
     (listener) => storageKey ? subscribeMealPrepSelections(storageKey, listener) : () => {},
     () => storageKey ? mealPrepSelectionsSnapshot(storageKey) : '',
@@ -142,16 +138,19 @@ export default function MealPrepPlanner({
   )
   const selections = useMemo(() => parseMealPrepSelections(selectionsSnapshot), [selectionsSnapshot])
   const savedSelection = occurrenceKey ? selections[occurrenceKey] : undefined
-  const peopleEating = savedSelection?.peopleEating ?? 1
-  const prepPortions = savedSelection?.prepPortions ?? 0
-  const extraPeople = Math.max(peopleEating, 1) - 1
-  const mealFactor = portionFactor + extraPeople * standardServingFactor
-  const prepFactor = prepPortions * portionFactor
-  const totalFactor = mealFactor + prepFactor
-  const lines = useMemo(() => scaledIngredientLines(recipe, totalFactor), [recipe, totalFactor])
-  const totalLabel = totalFactor >= 0.995 && totalFactor <= 1.005
-    ? '1x the base recipe'
-    : `${Number(totalFactor.toFixed(2))}x the base recipe`
+  const savedMode = savedSelection?.mode
+    ?? (savedSelection?.peopleEating && savedSelection.peopleEating > 1 ? 'family' : savedSelection ? 'meal-prep' : null)
+  const savedExactPortions = savedMode === 'meal-prep'
+    ? Math.max(1, Math.round(savedSelection?.portions ?? ((savedSelection?.prepPortions ?? 0) + 1)))
+    : 1
+  const exactPortions = localPortions ?? savedExactPortions
+  const familyFactor = familyCookFactor(portionFactor)
+  const panelFactor = openMode === 'family'
+    ? familyFactor
+    : exactPortionsCookFactor(portionFactor, exactPortions)
+  const lines = useMemo(() => scaledIngredientLines(recipe, panelFactor), [recipe, panelFactor])
+  const servingWeight = recipe.clientServingGrams.trim().replace(/\s*g$/i, '')
+  const servingCalories = recipe.calories.trim().replace(/\s*k?cal$/i, '')
 
   const buttonStyle = (active = false): React.CSSProperties => ({
     fontFamily: 'var(--font-sans)',
@@ -166,74 +165,107 @@ export default function MealPrepPlanner({
     cursor: 'pointer',
   })
 
-  const persistSelection = (nextPeopleEating: number, nextPrepPortions: number) => {
+  const persistSelection = (
+    mode: 'meal-prep' | 'family' | null,
+    portions: number,
+    totalFactor: number,
+  ) => {
     if (!storageKey || !occurrenceKey) return
-    const nextExtraPeople = Math.max(nextPeopleEating, 1) - 1
-    const nextMealFactor = portionFactor + nextExtraPeople * standardServingFactor
-    const nextTotalFactor = nextMealFactor + nextPrepPortions * portionFactor
-    const defaultFactor = portionFactor
-    const isDefault = nextPeopleEating === 1
-      && nextPrepPortions === 0
-      && Math.abs(nextTotalFactor - defaultFactor) < 0.0001
-    writeMealPrepSelection(storageKey, occurrenceKey, isDefault
-      ? null
-      : { peopleEating: nextPeopleEating, prepPortions: nextPrepPortions, totalFactor: nextTotalFactor })
+    writeMealPrepSelection(storageKey, occurrenceKey, mode
+      ? { mode, portions, totalFactor }
+      : null)
   }
 
-  const setPeopleEating = (value: number) => {
-    persistSelection(value, prepPortions)
+  const openMealPrep = () => {
+    if (openMode === 'meal-prep') {
+      setOpenMode(null)
+      return
+    }
+    setOpenMode('meal-prep')
+    setLocalPortions(savedMode === 'meal-prep' ? savedExactPortions : 1)
+    if (savedMode === 'family') persistSelection(null, 1, portionFactor)
   }
 
-  const setPrepPortions = (value: number) => {
-    persistSelection(peopleEating, value)
+  const openFamily = () => {
+    if (openMode === 'family') {
+      setOpenMode(null)
+      return
+    }
+    setOpenMode('family')
+    persistSelection('family', familyFactor, familyFactor)
+  }
+
+  const setExactPortions = (value: number) => {
+    const portions = clamp(value, 1, 7)
+    setLocalPortions(portions)
+    const totalFactor = exactPortionsCookFactor(portionFactor, portions)
+    persistSelection(portions === 1 ? null : 'meal-prep', portions, totalFactor)
   }
 
   return (
     <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(200,220,192,0.6)' }}>
-      <button
-        type="button"
-        aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}
-        style={{ ...buttonStyle(open), display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
-      >
-        <UtensilsCrossed size={14} aria-hidden="true" />
-        Meal prep
-      </button>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+        <button
+          type="button"
+          aria-expanded={openMode === 'meal-prep'}
+          aria-pressed={savedMode === 'meal-prep'}
+          onClick={openMealPrep}
+          style={{ ...buttonStyle(openMode === 'meal-prep' || savedMode === 'meal-prep'), display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+        >
+          <UtensilsCrossed size={14} aria-hidden="true" />
+          Meal prep
+        </button>
+        <button
+          type="button"
+          aria-expanded={openMode === 'family'}
+          aria-pressed={savedMode === 'family'}
+          onClick={openFamily}
+          style={{ ...buttonStyle(openMode === 'family' || savedMode === 'family'), display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+        >
+          <UsersRound size={14} aria-hidden="true" />
+          Cook for family
+        </button>
+      </div>
 
-      {open && (
+      {openMode && (
         <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          <MealPrepStepper
-            label="How many people are eating?"
-            hint="Include her in this count. Each extra person adds one standard recipe portion."
-            value={peopleEating}
-            min={1}
-            max={12}
-            setValue={setPeopleEating}
-          />
-          <MealPrepStepper
-            label="How many days do you want to meal prep this for?"
-            hint="Each day adds one extra container using her prescribed serving."
-            value={prepPortions}
-            min={0}
-            max={7}
-            setValue={setPrepPortions}
-          />
+          {openMode === 'meal-prep' && (
+            <MealPrepStepper
+              label="How many exact portions do you want to prepare?"
+              hint={`Every portion matches your plan${servingCalories ? ` at ${servingCalories} calories` : ''}${servingWeight ? ` and ${servingWeight}g cooked` : ''}.`}
+              value={exactPortions}
+              min={1}
+              max={7}
+              setValue={setExactPortions}
+            />
+          )}
 
           <div style={{ background: 'rgba(255,255,255,0.38)', border: '1px solid rgba(63,105,54,0.14)', borderRadius: '0.5rem', padding: '0.75rem' }}>
             <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
-              Cook <strong style={{ color: 'var(--text-primary)' }}>{totalLabel}</strong>. This covers her prescribed serving
-              {extraPeople > 0 ? ` plus ${plural(extraPeople, 'standard portion')} for others` : ''}
-              {prepPortions > 0 ? ` plus ${plural(prepPortions, 'saved portion')} for her.` : '.'}
+              {openMode === 'meal-prep' ? (
+                <>
+                  Prepare <strong style={{ color: 'var(--text-primary)' }}>{exactPortions} exact {exactPortions === 1 ? 'portion' : 'portions'}</strong>.
+                  {servingWeight
+                    ? exactPortions === 1
+                      ? ` Place the finished ${servingWeight}g serving in one container.`
+                      : ` Divide the finished food into ${exactPortions} containers of ${servingWeight}g each.`
+                    : exactPortions === 1
+                      ? ' Place the full finished serving in one container.'
+                      : ` Divide the finished food evenly among ${exactPortions} containers.`}
+                </>
+              ) : (
+                <>
+                  Cook <strong style={{ color: 'var(--text-primary)' }}>{familyFactor === 1 ? 'the full recipe' : `${familyFactor} full recipe batches`}</strong>.
+                  {servingWeight
+                    ? ` After cooking, set aside ${servingWeight}g for your exact portion. Your family can eat the rest.`
+                    : ` After cooking, set aside ${Math.round((portionFactor / familyFactor) * 100)}% of the finished food for your exact portion. Your family can eat the rest.`}
+                </>
+              )}
             </p>
-            {prepPortions > 0 && (
-              <p style={{ ...helpText, marginTop: '0.35rem' }}>
-                Her saved containers use her plan portion, so the listed calories and macros stay on track.
-              </p>
-            )}
             {lines.length > 0 && (
               <>
                 <p style={{ ...helpText, marginTop: '0.625rem' }}>
-                  Prep these raw ingredient amounts unless a line says cooked weight.
+                  Prepare these ingredient amounts unless a line says cooked weight.
                 </p>
                 <ul style={{ listStyle: 'none', margin: '0.625rem 0 0', padding: 0, display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
                   {lines.map((line, index) => (

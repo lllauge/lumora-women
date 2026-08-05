@@ -88,6 +88,23 @@ export function clientPortionFactor(
   return 1
 }
 
+/** Total recipe factor needed for a chosen number of exact client portions. */
+export function exactPortionsCookFactor(portionFactor: number, portions: number): number {
+  const safeFactor = Number.isFinite(portionFactor) && portionFactor > 0 ? portionFactor : 1
+  const safePortions = Number.isFinite(portions) ? Math.max(1, Math.round(portions)) : 1
+  return safeFactor * safePortions
+}
+
+/**
+ * Whole recipe batches needed to include the client's prescribed portion and
+ * leave any remainder for the family. A portion larger than one recipe rounds
+ * up to the next complete batch.
+ */
+export function familyCookFactor(portionFactor: number): number {
+  const safeFactor = Number.isFinite(portionFactor) && portionFactor > 0 ? portionFactor : 1
+  return Math.max(1, Math.floor(safeFactor) + 1)
+}
+
 /**
  * Per-ingredient weigh-out list for the client's portion: full-recipe gram
  * amounts scaled by her serving multiplier (family recipes get her carved

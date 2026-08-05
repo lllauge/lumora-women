@@ -5,6 +5,8 @@ import {
   cleanIngredientText,
   clientPortionFactor,
   clientPortionLines,
+  exactPortionsCookFactor,
+  familyCookFactor,
   portionFraction,
   portionSummaryLine,
 } from './client-portion.ts'
@@ -90,6 +92,17 @@ test('a very light recipe can scale beyond four batches when the target requires
   })
   assert.equal(clientPortionFactor(r), 8.5)
   assert.deepEqual(clientPortionLines(r).map((line) => line.grams), [850])
+})
+
+test('meal prep repeats only the exact prescribed client portion', () => {
+  assert.equal(exactPortionsCookFactor(0.6, 1), 0.6)
+  assert.equal(exactPortionsCookFactor(0.6, 4), 2.4)
+})
+
+test('family cooking uses complete recipe batches with room for her portion', () => {
+  assert.equal(familyCookFactor(0.6), 1)
+  assert.equal(familyCookFactor(1), 2)
+  assert.equal(familyCookFactor(1.25), 2)
 })
 
 test('portal portion factor always matches the server serving multiplier', () => {

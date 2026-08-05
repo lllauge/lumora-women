@@ -277,7 +277,7 @@ function RecipeDetail({
           <p style={{ ...bodyText, fontSize: '0.8125rem', fontStyle: 'italic', marginBottom: '0.5rem' }}>
             {wholeRecipePortion
               ? 'Make the full amounts below. Ingredients are shown before cooking unless a line says cooked weight.'
-              : 'These ingredient amounts are scaled to make your prescribed serving. Ingredients are shown before cooking unless a line says cooked weight. Use Meal prep above to add portions for other people or future days.'}
+              : 'These ingredient amounts are scaled to make your prescribed serving. Ingredients are shown before cooking unless a line says cooked weight. Use Meal prep for more of your exact portions, or Cook for family for a full batch.'}
           </p>
           <PrepIngredientList lines={shoppingPrepLines(recipe.ingredients, portionFactor)} />
         </>

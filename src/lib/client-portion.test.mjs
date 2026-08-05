@@ -7,6 +7,7 @@ import {
   clientPortionLines,
   exactPortionsCookFactor,
   familyCookFactor,
+  practicalPortionDivision,
   portionFraction,
   portionSummaryLine,
 } from './client-portion.ts'
@@ -103,6 +104,15 @@ test('family cooking uses complete recipe batches with room for her portion', ()
   assert.equal(familyCookFactor(0.6), 1)
   assert.equal(familyCookFactor(1), 2)
   assert.equal(familyCookFactor(1.25), 2)
+})
+
+test('family cooking offers a practical no-scale split of the cooked batch', () => {
+  assert.deepEqual(practicalPortionDivision(0.6), { parts: 5, take: 3, relativeDifference: 0 })
+  assert.deepEqual(practicalPortionDivision(0.375), { parts: 8, take: 3, relativeDifference: 0 })
+  const smallShare = practicalPortionDivision(0.16)
+  assert.equal(smallShare?.parts, 6)
+  assert.equal(smallShare?.take, 1)
+  assert.ok((smallShare?.relativeDifference ?? 1) < 0.05)
 })
 
 test('portal portion factor always matches the server serving multiplier', () => {

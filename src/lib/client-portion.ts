@@ -105,6 +105,33 @@ export function familyCookFactor(portionFactor: number): number {
   return Math.max(1, Math.floor(safeFactor) + 1)
 }
 
+export type PracticalPortionDivision = {
+  parts: number
+  take: number
+  relativeDifference: number
+}
+
+/**
+ * Closest practical equal-container split for a share of a cooked family
+ * batch. Denominators stop at 12 so the instruction remains usable; the
+ * returned difference lets the UI state clearly that weighing is more exact.
+ */
+export function practicalPortionDivision(share: number): PracticalPortionDivision | null {
+  if (!Number.isFinite(share) || share <= 0 || share >= 1) return null
+  let best: PracticalPortionDivision | null = null
+  for (let parts = 2; parts <= 12; parts += 1) {
+    for (let take = 1; take < parts; take += 1) {
+      const relativeDifference = Math.abs((take / parts) - share) / share
+      if (!best
+        || relativeDifference < best.relativeDifference - 0.000001
+        || (Math.abs(relativeDifference - best.relativeDifference) < 0.000001 && parts < best.parts)) {
+        best = { parts, take, relativeDifference }
+      }
+    }
+  }
+  return best
+}
+
 /**
  * Per-ingredient weigh-out list for the client's portion: full-recipe gram
  * amounts scaled by her serving multiplier (family recipes get her carved

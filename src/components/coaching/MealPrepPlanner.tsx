@@ -7,6 +7,7 @@ import {
   clientPortionFactor,
   exactPortionsCookFactor,
   familyCookFactor,
+  practicalPortionDivision,
   ingredientGrams,
   ingredientWeighState,
   shortIngredientName,
@@ -145,6 +146,7 @@ export default function MealPrepPlanner({
     : 1
   const exactPortions = localPortions ?? savedExactPortions
   const familyFactor = familyCookFactor(portionFactor)
+  const familyDivision = practicalPortionDivision(portionFactor / familyFactor)
   const panelFactor = openMode === 'family'
     ? familyFactor
     : exactPortionsCookFactor(portionFactor, exactPortions)
@@ -262,6 +264,14 @@ export default function MealPrepPlanner({
                 </>
               )}
             </p>
+            {openMode === 'family' && familyDivision && (
+              <p style={{ ...helpText, marginTop: '0.5rem' }}>
+                <strong style={{ color: 'var(--text-primary)' }}>
+                  Without a scale{familyDivision.relativeDifference > 0.01 ? ' (close estimate)' : ''}:
+                </strong>{' '}
+                Divide the finished food into {familyDivision.parts} equal portions and eat {familyDivision.take} {familyDivision.take === 1 ? 'portion' : 'portions'} yourself. Your family can eat the rest. Weighing your cooked portion is the most accurate method.
+              </p>
+            )}
             {lines.length > 0 && (
               <>
                 <p style={{ ...helpText, marginTop: '0.625rem' }}>

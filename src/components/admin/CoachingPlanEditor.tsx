@@ -612,10 +612,10 @@ export default function CoachingPlanEditor({
       ): Promise<{ patch: RecipePatch | null; failed: boolean }> => {
         const familyCount = firstNumber(recipe.familyServings || recipe.servings)
         const isFamily = !individualPlanStyle && familyCount > 1 && !recipe.portionPinned
-        const multiplier = recipe.portionPinned
-          ? 1
-          : explicitMultiplier
-            ?? resolvedServingMultiplier(recipe.clientServingMultiplier, familyCount, isFamily)
+        const multiplier = explicitMultiplier
+          ?? (recipe.portionPinned
+            ? 1
+            : resolvedServingMultiplier(recipe.clientServingMultiplier, familyCount, isFamily))
         if (recipe.ingredients.length === 0) {
           return { patch: null, failed: false }
         }
@@ -663,34 +663,47 @@ export default function CoachingPlanEditor({
 
       if (cancelled) return
       const firstPassPatches = new Map(results.filter((result) => result.patch).map((result) => [result.name, result.patch!]))
-      const firstPassRecipes = plan.recipes.map((recipe) => {
+      let workingRecipes = plan.recipes.map((recipe) => {
         const patch = firstPassPatches.get(recipe.name)
         return patch ? { ...recipe, ...patch } : recipe
       })
       const failedNames = new Set(results.filter((result) => result.failed).map((result) => result.name))
-      const fittedMultipliers = fitRecipeServingMultipliers(
-        { ...plan, recipes: firstPassRecipes },
-        planningInputs,
-      )
-      const refitResults = await Promise.all([...fittedMultipliers].map(async ([name, fitted]) => {
-        const recipe = firstPassRecipes.find((candidate) => candidate.name === name)
-        if (!recipe || recipe.ingredients.length === 0 || failedNames.has(recipe.name)) {
-          return { name, patch: null as RecipePatch | null, failed: false }
-        }
-        const current = parseFloat(recipe.clientServingMultiplier)
-        if (Number.isFinite(current) && current > 0 && Math.abs(fitted - current) / current < 0.005) {
-          return { name, patch: null as RecipePatch | null, failed: false }
-        }
-        const result = await derivePreviewPatch(recipe, fitted)
-        return { name, ...result }
-      }))
-      if (cancelled) return
       const patches = new Map<string, RecipePatch>()
       for (const result of results) {
         if (result.patch) patches.set(result.name, result.patch)
       }
-      for (const result of refitResults) {
-        if (result.patch) patches.set(result.name, result.patch)
+
+      for (let pass = 0; pass < 4; pass += 1) {
+        const fittedMultipliers = fitRecipeServingMultipliers(
+          { ...plan, recipes: workingRecipes },
+          planningInputs,
+        )
+        const pendingFits = [...fittedMultipliers].filter(([name, fitted]) => {
+          const recipe = workingRecipes.find((candidate) => candidate.name === name)
+          if (!recipe || recipe.ingredients.length === 0 || failedNames.has(recipe.name)) return false
+          const current = parseFloat(recipe.clientServingMultiplier)
+          return !Number.isFinite(current) || current <= 0 || Math.abs(fitted - current) >= 0.000001
+        })
+        if (pendingFits.length === 0) break
+
+        const passResults = await Promise.all(pendingFits.map(async ([name, fitted]) => {
+          const recipe = workingRecipes.find((candidate) => candidate.name === name)!
+          const result = await derivePreviewPatch(recipe, fitted)
+          return { name, ...result }
+        }))
+        if (cancelled) return
+        const passPatches = new Map<string, RecipePatch>()
+        for (const result of passResults) {
+          if (result.failed) failedNames.add(result.name)
+          if (result.patch) {
+            passPatches.set(result.name, result.patch)
+            patches.set(result.name, result.patch)
+          }
+        }
+        workingRecipes = workingRecipes.map((recipe) => {
+          const patch = passPatches.get(recipe.name)
+          return patch ? { ...recipe, ...patch } : recipe
+        })
       }
       setPlan((current) => {
         const recipes = current.recipes.map((recipe) => {
@@ -712,9 +725,7 @@ export default function CoachingPlanEditor({
           })),
         }
       })
-      const failedRecipeNames = results
-        .filter((result) => result.failed)
-        .map((result) => stripSlotRecipeSuffixes(result.name))
+      const failedRecipeNames = [...failedNames].map(stripSlotRecipeSuffixes)
       setLiveNutritionError(failedRecipeNames.length > 0
         ? `Could not preview calories for: ${failedRecipeNames.join(', ')}.`
         : '')

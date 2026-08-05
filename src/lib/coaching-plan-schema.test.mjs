@@ -59,3 +59,19 @@ test('preserves an intentional scaled-up family recipe', () => {
   assert.equal(parsed.protein, '43.9g')
   assert.deepEqual(parsed.ingredients, ['258g eggs', '22.5g spinach', '8.3g Olive oil'])
 })
+
+test('preserves target-driven portions above four recipe batches', () => {
+  const plan = parseCoachingPlan({
+    recipes: [{
+      name: 'Very Light Soup',
+      familyServings: '4',
+      clientServingMultiplier: '8.5',
+      clientServingGrams: '1700g',
+      calories: '600',
+      ingredients: ['200g soup'],
+    }],
+  })
+  assert.equal(plan.recipes[0].clientServingMultiplier, '8.5')
+  assert.equal(plan.recipes[0].clientServingGrams, '1700g')
+  assert.equal(plan.recipes[0].calories, '600')
+})

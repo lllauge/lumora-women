@@ -53,9 +53,20 @@ export function slotLinkRecipeAssignments(
   let changed = false
   let recipes = [...plan.recipes]
 
+  const clearLegacyPin = (name: string) => {
+    const index = recipes.findIndex((recipe) => recipe.name === name)
+    if (index < 0 || !recipes[index].portionPinned) return
+    changed = true
+    recipes = recipes.map((recipe, recipeIndex) => (
+      recipeIndex === index ? { ...recipe, portionPinned: false } : recipe
+    ))
+  }
+
   const linkedName = (name: string, slotKey: string) => {
-    if (isCustomSlotRecipeName(name)) return name
-    if (isSlotRecipeName(name, slotKey)) return name
+    if (isCustomSlotRecipeName(name) || isSlotRecipeName(name, slotKey)) {
+      clearLegacyPin(name)
+      return name
+    }
 
     const baseName = stripSlotRecipeSuffixes(name)
     const library = findLibraryRecipe(libraryRecipes, name)
@@ -74,6 +85,7 @@ export function slotLinkRecipeAssignments(
       recipes.push({
         ...source,
         name: slotRecipeName,
+        portionPinned: false,
         clientServing: '',
         clientServingMultiplier: '',
         clientServingGrams: '',

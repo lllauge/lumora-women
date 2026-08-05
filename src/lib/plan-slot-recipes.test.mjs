@@ -129,3 +129,32 @@ test('custom slot foods and already-linked cards are left alone', () => {
 
   assert.equal(next, plan)
 })
+
+test('legacy pins are cleared from assigned slot cards', () => {
+  const plan = {
+    macroTargets: { calories: '1775' },
+    mealPlan: [{
+      day: 'Monday',
+      breakfast: meal(['Custom breakfast (d1-breakfast)']),
+      lunch: meal(['Crispy Chicken Thighs (d1-lunch)']),
+      dinner: meal([]),
+      snacks: [],
+      notes: '',
+    }],
+    recipes: [
+      recipe({ name: 'Custom breakfast (d1-breakfast)', portionPinned: true }),
+      recipe({ name: 'Crispy Chicken Thighs (d1-lunch)', portionPinned: true }),
+    ],
+    workoutPlan: [],
+    groceryList: [],
+    adminNotes: '',
+    clientNotes: '',
+    status: 'draft',
+    generatedByAi: false,
+  }
+  const next = slotLinkRecipeAssignments(plan, [libraryRecipe()])
+
+  assert.notEqual(next, plan)
+  assert.equal(next.recipes.find((item) => item.name === 'Custom breakfast (d1-breakfast)').portionPinned, false)
+  assert.equal(next.recipes.find((item) => item.name === 'Crispy Chicken Thighs (d1-lunch)').portionPinned, false)
+})

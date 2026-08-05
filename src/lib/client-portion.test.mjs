@@ -82,6 +82,16 @@ test('a scaled-up family recipe weighs out above the saved library batch', () =>
   assert.deepEqual(clientPortionLines(r).map((line) => line.grams), [323, 28])
 })
 
+test('a very light recipe can scale beyond four batches when the target requires it', () => {
+  const r = recipe({
+    familyServings: '2',
+    clientServingMultiplier: '8.5',
+    ingredients: ['[fdc:1] 100g vegetables, cooked'],
+  })
+  assert.equal(clientPortionFactor(r), 8.5)
+  assert.deepEqual(clientPortionLines(r).map((line) => line.grams), [850])
+})
+
 test('portal portion factor always matches the server serving multiplier', () => {
   const cases = [
     { stored: '0.25', familyServings: '4', individual: false },

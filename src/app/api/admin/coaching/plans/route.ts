@@ -10,6 +10,7 @@ import {
   NutritionNormalizationError,
 } from '@/lib/normalize-plan-nutrition'
 import { slotLinkRecipeAssignments } from '@/lib/plan-slot-recipes'
+import { fitRecipeServingMultipliers } from '@/lib/meal-portion-fitting'
 import { getUsdaApiKey } from '@/lib/usda/api-key'
 import { sendPlanPublishedEmail } from '@/lib/coaching-email'
 
@@ -68,6 +69,33 @@ export async function POST(req: NextRequest) {
       libraryRecipes: libraryRecipes ?? [],
       apiKey: usdaKey.key,
     })
+    // The editor normally arrives here already fitted. This bounded server-side
+    // check also repairs stale/external drafts and prevents an off-target day
+    // from being persisted if the browser was closed before its preview settled.
+    for (let pass = 0; pass < 4; pass += 1) {
+      const fitted = fitRecipeServingMultipliers(plan, {
+        ...(planningInputs ?? {}),
+        mealPlanStyle: planningInputs?.mealPlanStyle,
+      })
+      let refit = false
+      const recipes = plan.recipes.map((recipe) => {
+        const target = fitted.get(recipe.name)
+        if (target === undefined || recipe.ingredients.length === 0) return recipe
+        const current = Number.parseFloat(recipe.clientServingMultiplier)
+        if (Number.isFinite(current) && current > 0 && Math.abs(target - current) < 0.000001) {
+          return recipe
+        }
+        refit = true
+        return { ...recipe, clientServingMultiplier: `${target}` }
+      })
+      if (!refit) break
+      plan = await normalizeReferencedPlanNutrition({
+        plan: { ...plan, recipes },
+        mealPlanStyle: planningInputs?.mealPlanStyle,
+        libraryRecipes: libraryRecipes ?? [],
+        apiKey: usdaKey.key,
+      })
+    }
   } catch (error) {
     const message = error instanceof NutritionNormalizationError
       ? error.message

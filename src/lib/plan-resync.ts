@@ -128,22 +128,22 @@ export async function resyncPlansForRecipes({
         libraryRecipes: library,
         apiKey,
       })
-      // Re-carve portions to the client's macro targets, then re-price the
-      // cards whose portion actually moved (>0.5%, same threshold the
-      // editor uses so repeat syncs settle instead of churning).
-      const fitted = fitRecipeServingMultipliers(next, { ...planningInputs, mealPlanStyle })
-      let refit = false
-      const recipes = next.recipes.map((recipe) => {
-        const target = fitted.get(recipe.name)
-        if (target === undefined || recipe.ingredients.length === 0) return recipe
-        const current = parseFloat(recipe.clientServingMultiplier)
-        if (Number.isFinite(current) && current > 0 && Math.abs(target - current) / current < 0.005) {
-          return recipe
-        }
-        refit = true
-        return { ...recipe, clientServingMultiplier: `${target}` }
-      })
-      if (refit) {
+      // Re-carve and re-price until whole-calorie slot totals settle. A one-calorie
+      // difference still matters, so there is no percentage-based tolerance.
+      for (let pass = 0; pass < 4; pass += 1) {
+        const fitted = fitRecipeServingMultipliers(next, { ...planningInputs, mealPlanStyle })
+        let refit = false
+        const recipes = next.recipes.map((recipe) => {
+          const target = fitted.get(recipe.name)
+          if (target === undefined || recipe.ingredients.length === 0) return recipe
+          const current = parseFloat(recipe.clientServingMultiplier)
+          if (Number.isFinite(current) && current > 0 && Math.abs(target - current) < 0.000001) {
+            return recipe
+          }
+          refit = true
+          return { ...recipe, clientServingMultiplier: `${target}` }
+        })
+        if (!refit) break
         next = await normalizeReferencedPlanNutrition({
           plan: { ...next, recipes },
           mealPlanStyle,

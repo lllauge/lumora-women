@@ -190,7 +190,7 @@ test('a light family recipe can scale above one batch to hit the meal target', (
   assert.ok(Math.abs(portion - ((2000 * 25 / 90) / 300)) < 0.002)
 })
 
-test('the 1775-calorie four-recipe day never rewrites its library recipes', () => {
+test('the 1775-calorie four-recipe day fits every selected recipe', () => {
   const plan = {
     macroTargets: { calories: '1775', protein: '137g', carbs: '150g', fats: '70g' },
     mealPlan: [{
@@ -211,8 +211,27 @@ test('the 1775-calorie four-recipe day never rewrites its library recipes', () =
   for (const name of ['Frittata Egg Muffins', 'Baked Chicken Breast', 'Crispy Chicken Thighs', 'Roasted Sweet Potato']) {
     const portion = fitted.get(name)
     assert.ok(portion !== undefined)
-    assert.ok(portion <= 4, `${name}: expected no more than the 4x sanity cap, got ${portion}`)
   }
+})
+
+test('a calorie target can require more than four batches of a very light recipe', () => {
+  const plan = {
+    macroTargets: { calories: '2200', protein: '150g', carbs: '200g', fats: '80g' },
+    mealPlan: [{
+      day: 'Monday',
+      breakfast: meal(['Very Light Breakfast']),
+      lunch: meal([]),
+      dinner: meal([]),
+      snacks: [],
+    }],
+    recipes: [recipe({
+      name: 'Very Light Breakfast',
+      clientServingMultiplier: '1',
+      calories: '200',
+    })],
+  }
+  const fitted = fitRecipeServingMultipliers(plan, { breakfastPct: '100' })
+  assert.equal(fitted.get('Very Light Breakfast'), 11)
 })
 
 test('meal percentages stay authoritative when a selected recipe is too light', () => {
@@ -342,7 +361,7 @@ test('every day in every menu gets its own exact calorie-fit targets', () => {
   }
 })
 
-test('custom slot foods are never resized', () => {
+test('custom USDA slot foods resize with every meal budget', () => {
   const plan = incidentPlan({
     sweetPotato: {
       clientServingMultiplier: '0.25',
@@ -350,8 +369,93 @@ test('custom slot foods are never resized', () => {
     },
   })
   const fitted = fitRecipeServingMultipliers(plan, percentages)
-  for (const name of fitted.keys()) {
-    assert.doesNotMatch(name, /\(d\d+-/)
+  for (const name of [
+    'Custom breakfast (d1-breakfast)',
+    'Custom dinner (d1-dinner)',
+    'Custom Snack (d1-snack0)',
+  ]) {
+    assert.ok(fitted.has(name), `${name} should be calibrated`)
+  }
+  assert.equal(Math.round(dayCaloriesAfterFit(plan, fitted)), 1775)
+})
+
+test('custom meals calibrate every weekday to the exact daily target', () => {
+  const recipes = []
+  const mealPlan = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day, dayIndex) => {
+    const suffix = `d${dayIndex + 1}`
+    const names = {
+      breakfast: `Custom breakfast (${suffix}-breakfast)`,
+      lunch: `Custom lunch (${suffix}-lunch)`,
+      dinner: `Custom dinner (${suffix}-dinner)`,
+      snack: `Custom Snack (${suffix}-snack0)`,
+    }
+    recipes.push(
+      recipe({ name: names.breakfast, clientServingMultiplier: '1', calories: '683' }),
+      recipe({ name: names.lunch, clientServingMultiplier: '1', calories: '622' }),
+      recipe({ name: names.dinner, clientServingMultiplier: '1', calories: '393' }),
+      recipe({ name: names.snack, clientServingMultiplier: '1', calories: '130' }),
+    )
+    return {
+      day,
+      breakfast: meal([names.breakfast]),
+      lunch: meal([names.lunch]),
+      dinner: meal([names.dinner]),
+      snacks: [meal([names.snack])],
+    }
+  })
+  const plan = {
+    macroTargets: { calories: '1775', protein: '140g', carbs: '150g', fats: '70g' },
+    mealPlan,
+    recipes,
+  }
+  const fitted = fitRecipeServingMultipliers(plan, {
+    breakfastPct: '30', lunchPct: '35', dinnerPct: '25', snackPct: '10',
+  })
+
+  for (const day of mealPlan) {
+    const names = [
+      ...day.breakfast.recipeNames,
+      ...day.lunch.recipeNames,
+      ...day.dinner.recipeNames,
+      ...day.snacks.flatMap((snack) => snack.recipeNames),
+    ]
+    const total = names.reduce((sum, name) => {
+      const currentRecipe = recipes.find((candidate) => candidate.name === name)
+      const multiplier = fitted.get(name)
+      assert.ok(currentRecipe)
+      assert.ok(multiplier !== undefined, `${name} should be fitted`)
+      return sum + Math.round(Number(currentRecipe.calories) * multiplier)
+    }, 0)
+    assert.equal(total, 1775, `${day.day} should hit the daily calorie target exactly`)
+  }
+})
+
+test('uses each client calorie target and meal-percentage budget dynamically', () => {
+  const scenarios = [
+    { target: 1450, percentages: { breakfastPct: '25', lunchPct: '35', dinnerPct: '30', snackPct: '10' } },
+    { target: 1775, percentages: { breakfastPct: '30', lunchPct: '35', dinnerPct: '25', snackPct: '10' } },
+    { target: 2250, percentages: { breakfastPct: '35', lunchPct: '25', dinnerPct: '30', snackPct: '10' } },
+  ]
+
+  for (const scenario of scenarios) {
+    const plan = {
+      macroTargets: { calories: `${scenario.target}`, protein: '140g', carbs: '150g', fats: '70g' },
+      mealPlan: [{
+        day: 'Monday',
+        breakfast: meal(['Custom breakfast (d1-breakfast)']),
+        lunch: meal(['Custom lunch (d1-lunch)']),
+        dinner: meal(['Custom dinner (d1-dinner)']),
+        snacks: [meal(['Custom Snack (d1-snack0)'])],
+      }],
+      recipes: [
+        recipe({ name: 'Custom breakfast (d1-breakfast)', clientServingMultiplier: '1', calories: '683' }),
+        recipe({ name: 'Custom lunch (d1-lunch)', clientServingMultiplier: '1', calories: '622' }),
+        recipe({ name: 'Custom dinner (d1-dinner)', clientServingMultiplier: '1', calories: '393' }),
+        recipe({ name: 'Custom Snack (d1-snack0)', clientServingMultiplier: '1', calories: '130' }),
+      ],
+    }
+    const fitted = fitRecipeServingMultipliers(plan, scenario.percentages)
+    assert.equal(Math.round(dayCaloriesAfterFit(plan, fitted)), scenario.target)
   }
 })
 
@@ -468,7 +572,7 @@ test('returns nothing without a calorie target', () => {
   assert.equal(fitRecipeServingMultipliers(plan, percentages).size, 0)
 })
 
-test('pinned recipes are never fitted; the rest of the slot absorbs them', () => {
+test('legacy pinned recipes cannot prevent exact meal calibration', () => {
   const plan = {
     macroTargets: { calories: '1575', protein: '120g', carbs: '139g', fats: '60g' },
     mealPlan: [{
@@ -495,10 +599,7 @@ test('pinned recipes are never fitted; the rest of the slot absorbs them', () =>
     ],
   }
   const fitted = fitRecipeServingMultipliers(plan, { mealPlanStyle: 'individual_only' })
-  // The pinned card gets no fitted multiplier at all…
-  assert.equal(fitted.has('Overnight Oats'), false)
-  // …and the adjustable neighbor shrinks to absorb the pinned 293 cal
-  // (551-cal breakfast slot − 293 pinned ≈ 258 for the 300-cal bowl).
-  const bowl = fitted.get('Greek Yogurt Bowl')
-  assert.ok(bowl > 0.5 && bowl < 1, `expected the bowl carved below 1, got ${bowl}`)
+  assert.ok(fitted.has('Overnight Oats'))
+  assert.ok(fitted.has('Greek Yogurt Bowl'))
+  assert.equal(Math.round(dayCaloriesAfterFit(plan, fitted)), 1575)
 })

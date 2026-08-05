@@ -151,59 +151,9 @@ export const emptyCoachingPlan: CoachingPlanDraft = {
   generatedByAi: false,
 }
 
-function firstNumber(value: string) {
-  const match = value.match(/-?\d+(?:\.\d+)?/)
-  return match ? Number(match[0]) : 0
-}
-
-function scaleMacro(value: string, factor: number) {
-  const amount = firstNumber(value)
-  if (!amount) return value
-  const rounded = Math.round(amount * factor * 10) / 10
-  return `${rounded}${/g\s*$/i.test(value) ? 'g' : ''}`
-}
-
-// Keep obviously corrupt portions from making old plans unusable. Intentional
-// fitted portions above one full recipe are valid: they mean the client should
-// scale the recipe up to hit the slot calorie target.
-function normalizeOversizedFamilyRecipes(plan: CoachingPlanDraft): CoachingPlanDraft {
-  let changed = false
-  const recipes = plan.recipes.map((recipe) => {
-    const familyServings = firstNumber(recipe.familyServings || recipe.servings)
-    const multiplier = firstNumber(recipe.clientServingMultiplier)
-    if (familyServings <= 1 || multiplier <= 4) return recipe
-
-    changed = true
-    const factor = 4 / multiplier
-    const ingredientLines = recipe.ingredients
-      .map((ingredient) => ingredient.replace(/^\[(?:fdc:\d+|curated:[a-z0-9-]+)\]\s*/i, '').trim())
-      .filter(Boolean)
-    const totalGrams = ingredientLines.reduce((total, ingredient) => {
-      const match = ingredient.match(/^(\d+(?:\.\d+)?)\s*g\b/i)
-      return total + (match ? Number(match[1]) : 0)
-    }, 0)
-    const breakdown = ingredientLines.filter((ingredient) => /^\d+(?:\.\d+)?\s*g\b/i.test(ingredient)).join(' + ')
-
-    return {
-      ...recipe,
-      clientServingMultiplier: '4',
-      clientServingGrams: totalGrams > 0 ? `${Math.round(totalGrams)}g` : '',
-      clientServingMeasure: 'Prepare the recipe exactly as written. The ingredient amounts match the saved library recipe.',
-      clientServingBreakdown: breakdown,
-      clientServing: breakdown || (totalGrams > 0 ? `${Math.round(totalGrams)}g` : ''),
-      calories: scaleMacro(recipe.calories, factor),
-      protein: scaleMacro(recipe.protein, factor),
-      carbs: scaleMacro(recipe.carbs, factor),
-      fats: scaleMacro(recipe.fats, factor),
-      fiber: scaleMacro(recipe.fiber, factor),
-    }
-  })
-  return changed ? { ...plan, recipes } : plan
-}
-
 export function parseCoachingPlan(value: unknown): CoachingPlanDraft {
   const parsed = CoachingPlanSchema.safeParse(value)
-  return parsed.success ? normalizeOversizedFamilyRecipes(parsed.data) : emptyCoachingPlan
+  return parsed.success ? parsed.data : emptyCoachingPlan
 }
 
 export const CoachingPlanAiJsonSchema = {

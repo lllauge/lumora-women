@@ -79,7 +79,7 @@ export function clientPortionFactor(
   const multiplier = parseFloat(recipe.clientServingMultiplier)
   const familyServings = parseFloat(recipe.familyServings)
   const isFamily = !individualPlanStyle && Number.isFinite(familyServings) && familyServings > 1
-  if (Number.isFinite(multiplier) && multiplier > 0 && multiplier <= 4) {
+  if (Number.isFinite(multiplier) && multiplier > 0) {
     return multiplier
   }
   if (isFamily) {

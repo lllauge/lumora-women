@@ -83,7 +83,7 @@ function recipeBreakdown(recipe: Recipe): MealCalorieBreakdownRecipe {
   const prescribedServings = declaredMultiplier > 0
     ? effectiveMultiplier / declaredMultiplier
     : 1
-  const adjustable = !recipe.portionPinned && !isSlotRecipe(recipe.name)
+  const adjustable = true
 
   const familyText = familyServings > 1
     ? `serves ${round1(familyServings)}`
@@ -91,11 +91,9 @@ function recipeBreakdown(recipe: Recipe): MealCalorieBreakdownRecipe {
   const formula = familyServings > 1
     ? `${Math.round(fullRecipeCalories)} cal full recipe / ${round1(familyServings)} servings = ${Math.round(declaredServingCalories)} cal per original serving; ${Math.round(fullRecipeCalories)} x ${round3(effectiveMultiplier)} = ${Math.round(savedCalories)} prescribed cal`
     : `${Math.round(fullRecipeCalories)} cal recipe x ${round3(effectiveMultiplier)} = ${Math.round(savedCalories)} prescribed cal`
-  const reason = recipe.portionPinned
-    ? 'Pinned by coach: saved exactly as written and skipped by fitting.'
-    : isSlotRecipe(recipe.name)
-      ? 'Custom slot food: saved as exact entered quantity and skipped by fitting.'
-      : `Adjustable recipe: fitter compares this ${familyText} recipe against the meal calorie budget and saves the resulting multiplier.`
+  const reason = isSlotRecipe(recipe.name)
+    ? 'Adjustable custom meal: USDA totals are scaled to the meal calorie budget and the resulting portion is saved.'
+    : `Adjustable recipe: fitter compares this ${familyText} recipe against the meal calorie budget and saves the resulting multiplier.`
 
   return {
     name: recipe.name,

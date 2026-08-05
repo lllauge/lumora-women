@@ -30,6 +30,7 @@ test('uses one declared serving for a family recipe', () => {
 
 test('preserves a fitted serving multiplier through later nutrition passes', () => {
   assert.equal(resolvedServingMultiplier('0.218', 4, true), 0.218)
+  assert.equal(resolvedServingMultiplier('8.5', 4, true), 8.5)
   assert.equal(resolvedServingMultiplier('', 4, true), 0.25)
   assert.equal(resolvedServingMultiplier('not a number', 4, true), 0.25)
 })
@@ -123,7 +124,7 @@ test('reduces oversized dinner and snack portions to fit the daily targets', () 
   assert.ok(Math.abs(totalCalories - 1700) <= 5)
 })
 
-test('never resizes exact custom-slot food quantities while fitting recipes', () => {
+test('custom-slot foods participate in exact meal calibration', () => {
   const exactCustomName = 'Custom breakfast (d1-breakfast)'
   const meal = {
     name: 'Breakfast',
@@ -184,8 +185,12 @@ test('never resizes exact custom-slot food quantities while fitting recipes', ()
   }
 
   const fitted = fitRecipeServingMultipliers(plan, { breakfastPct: '100' })
-  assert.equal(fitted.has(exactCustomName), false)
+  assert.ok(fitted.has(exactCustomName))
   assert.ok(fitted.has('Oats'))
+  const fittedCalories = plan.recipes.reduce((sum, item) => (
+    sum + Math.round(Number(item.calories) * fitted.get(item.name))
+  ), 0)
+  assert.equal(fittedCalories, 500)
 })
 
 test('scales full-recipe totals once and never re-divides saved serving calories', () => {

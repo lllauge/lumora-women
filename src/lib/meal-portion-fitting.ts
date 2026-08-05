@@ -3,7 +3,6 @@ import type {
   PlanMeal,
 } from './coaching-plan-schema'
 import { declaredServingMultiplier } from './nutrition-math.ts'
-import { isIndividualPlanStyle } from './cooking-style.ts'
 import { allocateMealCalorieTargets } from './meal-calorie-targets.ts'
 
 type Nutrients = {
@@ -18,8 +17,6 @@ type MealPercentages = {
   lunchPct?: string
   dinnerPct?: string
   snackPct?: string
-  // 'individual_only' plans treat recipes as exact grams as entered, so a
-  // recipe's declared family servings don't shape its portion bounds.
   mealPlanStyle?: string
 }
 
@@ -49,14 +46,10 @@ function nutrientsForNames(names: string[], recipes: CoachingPlanDraft['recipes'
 }
 
 function isAdjustableRecipe(name: string, recipes: CoachingPlanDraft['recipes']) {
-  // Custom slot foods represent exact coach-entered quantities and must never
-  // be silently resized. Library recipes can be cloned per slot with the same
-  // suffix, and those must remain adjustable so lunch and snack can prescribe
-  // different portions of the same original recipe.
-  if (/^Custom\s+.+\(d\d+-(?:breakfast|lunch|dinner|snack\d+)\)$/i.test(name)) return false
-  // Pinned cards are the coach's explicit "as-written is her portion" — they
-  // contribute fixed macros the rest of the slot absorbs.
-  return !recipes.find((recipe) => recipe.name === name)?.portionPinned
+  // Every food assigned to a meal is part of that meal's prescription. Custom
+  // USDA combinations and legacy pinned cards must scale with the slot too;
+  // otherwise a single fixed card can make the daily calorie target impossible.
+  return recipes.some((recipe) => recipe.name === name)
 }
 
 function median(values: number[]) {
@@ -69,8 +62,6 @@ function median(values: number[]) {
 
 // Recipes can scale up or down to hit the slot calorie target. The library
 // recipe remains immutable; the plan card stores the client's scaled portion.
-const MAX_FAMILY_MULTIPLIER = 4
-const MAX_INDIVIDUAL_MULTIPLIER = 4
 // Hard floor for a carve, and the threshold below which a stored carve is
 // treated as collapsed rather than deliberate: 1% of a recipe is never a real
 // serving of a meal.
@@ -165,13 +156,11 @@ export function fitRecipeServingMultipliers(
       }
     })
 
-    const individualPlanStyle = isIndividualPlanStyle(percentages.mealPlanStyle)
     for (const { adjustableNames, scale } of fitted) {
       for (const name of adjustableNames) {
         const recipe = plan.recipes.find((candidate) => candidate.name === name)
         if (!recipe) continue
         const familyCount = firstNumber(recipe.familyServings || recipe.servings)
-        const isFamily = !individualPlanStyle && familyCount > 1
         const stored = firstNumber(recipe.clientServingMultiplier)
         // A collapsed carve cannot heal through the slot scale: its card
         // macros are near zero, so a slot that another recipe already fills
@@ -187,9 +176,8 @@ export function fitRecipeServingMultipliers(
         // can't survive a refit: the recipe's
         // card macros scale with the baseline, so `baseline * scale` lands
         // on the target-driven share regardless of where the carve started.
-        const maxMultiplier = isFamily ? MAX_FAMILY_MULTIPLIER : MAX_INDIVIDUAL_MULTIPLIER
         const unbounded = baseline * scale
-        const desired = Math.round(Math.min(maxMultiplier, Math.max(MIN_MULTIPLIER, unbounded)) * 1000000) / 1000000
+        const desired = Math.round(Math.max(MIN_MULTIPLIER, unbounded) * 1000000) / 1000000
         const values = candidates.get(name) ?? []
         values.push(desired)
         candidates.set(name, values)

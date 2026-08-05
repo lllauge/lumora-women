@@ -54,7 +54,7 @@ export function resolvedServingMultiplier(
   isFamily: boolean,
 ) {
   const stored = Number.parseFloat(String(storedMultiplier ?? '').trim())
-  return Number.isFinite(stored) && stored > 0 && stored <= 4
+  return Number.isFinite(stored) && stored > 0
     ? stored
     : declaredServingMultiplier(familyServings, isFamily)
 }

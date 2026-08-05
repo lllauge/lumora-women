@@ -39,7 +39,7 @@ type DayTemplate = {
   cooldown?: string
 }
 
-const DEEP_CORE_PREP = 'Deep core prep: 360 breathing x 5 breaths, pelvic floor relax + lift x 6, heel slides x 6/side. Exhale on effort and stop if she feels doming, pelvic pressure, leaking, or pain.'
+const DEEP_CORE_WARMUP = 'Start with the deep core exercises listed below before any strength exercises. Move slowly, breathe through each rep, and stop if there is doming/coning, leaking, pelvic pressure, or pain.'
 const POSTPARTUM_COOLDOWN = 'Downshift breathing x 5 breaths, hip flexor stretch, hamstring stretch, chest opener.'
 const PROGRESSIVE_OVERLOAD_NOTE = 'Progressive overload: keep 1-3 reps in reserve. When she hits the top of the rep range on every set with clean form, increase dumbbell weight next time; if weights are limited, add 1-2 reps, slow the lowering to 3 seconds, add a pause, or add 1 set.'
 
@@ -76,6 +76,39 @@ const POSTPARTUM_CORE_AVOID_TERMS = [
   'v up',
   'toes to bar',
   'leg raise',
+]
+
+const DEEP_CORE_SEQUENCE: LibraryExercise[] = [
+  {
+    id: 'deep-core-360-breathing',
+    name: '360 Breathing',
+    movement_pattern: 'core',
+    primary_muscles: ['deep core', 'pelvic floor'],
+    equipment: 'bodyweight',
+    difficulty: 'beginner',
+    default_sets: '1',
+    default_reps: '5 slow breaths',
+    default_rest: '15-30s',
+    cues: 'How to do it: Lie on your back with knees bent or sit tall. Put hands around the sides of your ribs. Inhale through your nose and feel your ribs, back, and belly expand into your hands. Exhale slowly like you are fogging a mirror and gently lift the pelvic floor while your lower belly wraps in. Fully relax before the next breath. Do not suck in, clench, or hold your breath.',
+    video_url: '',
+    female_recomp_priority: 2,
+    archived: false,
+  },
+  {
+    id: 'deep-core-heel-slides',
+    name: 'Heel Slides',
+    movement_pattern: 'core',
+    primary_muscles: ['deep core'],
+    equipment: 'bodyweight',
+    difficulty: 'beginner',
+    default_sets: '2',
+    default_reps: '6/side',
+    default_rest: '30s',
+    cues: 'How to do it: Lie on your back with knees bent and feet on the floor. Exhale first, gently wrap the lower belly, then slowly slide one heel away until the leg is almost straight. Inhale to bring it back. Keep ribs down and hips still. Stop the slide early if your belly domes, your back arches, or you feel pelvic pressure.',
+    video_url: '',
+    female_recomp_priority: 2,
+    archived: false,
+  },
 ]
 
 const FALLBACK_EXERCISES: LibraryExercise[] = [
@@ -385,7 +418,7 @@ const FALLBACK_EXERCISES: LibraryExercise[] = [
 // heaviest compounds first so a client running out of time still hits them.
 const FULL_BODY_TEMPLATE_A: DayTemplate = {
   focus: 'Full Body — Hinge Focus',
-  warmup: `${DEEP_CORE_PREP} Then: 90/90 hip switches and cat-cow.`,
+  warmup: `${DEEP_CORE_WARMUP} Then do 90/90 hip switches and cat-cow if she needs extra mobility.`,
   slots: [
     { pattern: 'hinge' },
     { pattern: 'push_horizontal' },
@@ -399,7 +432,7 @@ const FULL_BODY_TEMPLATE_A: DayTemplate = {
 
 const FULL_BODY_TEMPLATE_B: DayTemplate = {
   focus: 'Full Body — Squat Focus',
-  warmup: `${DEEP_CORE_PREP} Then: glute bridge x 10 and bodyweight squat x 6.`,
+  warmup: `${DEEP_CORE_WARMUP} Then do glute bridge x 10 and bodyweight squat x 6 if she needs extra mobility.`,
   slots: [
     { pattern: 'squat' },
     { pattern: 'pull_vertical', fallbackPatterns: ['pull_horizontal'] },
@@ -413,7 +446,7 @@ const FULL_BODY_TEMPLATE_B: DayTemplate = {
 
 const FULL_BODY_TEMPLATE_C: DayTemplate = {
   focus: 'Full Body — Posterior Chain',
-  warmup: `${DEEP_CORE_PREP} Then: hip hinge drill x 8 and dead bug x 6/side.`,
+  warmup: `${DEEP_CORE_WARMUP} Then do hip hinge drill x 8 if she needs extra mobility.`,
   slots: [
     { pattern: 'hinge' },
     { pattern: 'pull_horizontal' },
@@ -427,7 +460,7 @@ const FULL_BODY_TEMPLATE_C: DayTemplate = {
 
 const LOWER_BODY_TEMPLATE: DayTemplate = {
   focus: 'Lower Body',
-  warmup: `${DEEP_CORE_PREP} Then: glute bridge x 12 and 90/90 hip switches.`,
+  warmup: `${DEEP_CORE_WARMUP} Then do glute bridge x 12 and 90/90 hip switches if she needs extra mobility.`,
   slots: [
     { pattern: 'squat' },
     { pattern: 'hinge' },
@@ -441,7 +474,7 @@ const LOWER_BODY_TEMPLATE: DayTemplate = {
 
 const UPPER_BODY_TEMPLATE: DayTemplate = {
   focus: 'Upper Body',
-  warmup: `${DEEP_CORE_PREP} Then: cat-cow and scapular wall slides x 8.`,
+  warmup: `${DEEP_CORE_WARMUP} Then do cat-cow and scapular wall slides x 8 if she needs extra mobility.`,
   slots: [
     { pattern: 'push_horizontal' },
     { pattern: 'pull_horizontal' },
@@ -455,7 +488,7 @@ const UPPER_BODY_TEMPLATE: DayTemplate = {
 
 const GLUTE_FOCUS_TEMPLATE: DayTemplate = {
   focus: 'Glute Focus',
-  warmup: `${DEEP_CORE_PREP} Then: glute bridge x 12 and hip hinge drill x 8.`,
+  warmup: `${DEEP_CORE_WARMUP} Then do glute bridge x 12 and hip hinge drill x 8 if she needs extra mobility.`,
   slots: [
     { pattern: 'hinge' },
     { pattern: 'glute' },
@@ -469,7 +502,7 @@ const GLUTE_FOCUS_TEMPLATE: DayTemplate = {
 
 const CARDIO_DAY_TEMPLATE: DayTemplate = {
   focus: 'Cardio + Mobility',
-  warmup: `${DEEP_CORE_PREP} Then: 5 min easy walk.`,
+  warmup: `${DEEP_CORE_WARMUP} Then do 5 min easy walking.`,
   slots: [
     { pattern: 'cardio_steady' },
     { pattern: 'core' },
@@ -604,6 +637,22 @@ function notesForExercise(ex: LibraryExercise) {
   return notes.join(' ')
 }
 
+function workoutExerciseFromLibraryExercise(ex: LibraryExercise, level: GeneratorInputs['level']) {
+  const dose = doseForExercise(ex, level)
+  return {
+    name: ex.name,
+    sets: dose.sets || ex.default_sets,
+    reps: dose.reps || ex.default_reps,
+    rest: dose.rest || ex.default_rest,
+    videoUrl: ex.video_url,
+    notes: notesForExercise(ex),
+  }
+}
+
+function deepCorePrepExercises(level: GeneratorInputs['level']): WorkoutDay['exercises'] {
+  return DEEP_CORE_SEQUENCE.map((exercise) => workoutExerciseFromLibraryExercise(exercise, level))
+}
+
 export function generateWorkoutPlan(
   library: LibraryExercise[],
   inputs: GeneratorInputs,
@@ -619,21 +668,22 @@ export function generateWorkoutPlan(
 
   templates.forEach((template, i) => {
     const slots = slotsForTimeBudget(template, inputs.minutesPerSession)
-    const exercises: WorkoutDay['exercises'] = []
+    const exercises: WorkoutDay['exercises'] = deepCorePrepExercises(inputs.level)
+    const strengthSlots = slots.filter((slot) => slot.pattern !== 'core')
+    const coreSlots = slots.filter((slot) => slot.pattern === 'core')
 
-    for (const slot of slots) {
+    for (const slot of strengthSlots) {
       const ex = pickForPattern(expandedLibrary, slot, inputs.level, inputs.equipment, used)
       if (!ex) continue
       used.add(ex.id)
-      const dose = doseForExercise(ex, inputs.level)
-      exercises.push({
-        name: ex.name,
-        sets: dose.sets || ex.default_sets,
-        reps: dose.reps || ex.default_reps,
-        rest: dose.rest || ex.default_rest,
-        videoUrl: ex.video_url,
-        notes: notesForExercise(ex),
-      })
+      exercises.push(workoutExerciseFromLibraryExercise(ex, inputs.level))
+    }
+
+    for (const slot of coreSlots) {
+      const ex = pickForPattern(expandedLibrary, slot, inputs.level, inputs.equipment, used)
+      if (!ex) continue
+      used.add(ex.id)
+      exercises.push(workoutExerciseFromLibraryExercise(ex, inputs.level))
     }
 
     days.push({

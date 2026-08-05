@@ -42,8 +42,12 @@ test('generates postpartum-friendly hypertrophy workouts for dumbbell-only clien
 
   assert.equal(plan.length, 3)
   for (const day of plan) {
-    assert.match(day.warmup, /Deep core prep/)
+    assert.match(day.warmup, /Start with the deep core exercises listed below/)
     assert.match(day.notes, /Progressive overload/)
+    assert.equal(day.exercises[0].name, '360 Breathing')
+    assert.equal(day.exercises[1].name, 'Heel Slides')
+    assert.match(day.exercises[0].notes, /How to do it/)
+    assert.match(day.exercises[1].notes, /How to do it/)
     assert.ok(day.exercises.some((ex) => /Dead Bug|deep core/i.test(`${ex.name} ${ex.notes}`)))
   }
 
@@ -61,6 +65,6 @@ test('uses YMove-backed fallback exercises when the library is sparse', () => {
 
   const exercises = plan.flatMap((day) => day.exercises)
   assert.ok(exercises.length > 0)
-  assert.ok(exercises.every((exercise) => exercise.videoUrl.startsWith('ymove:')))
+  assert.ok(exercises.every((exercise) => exercise.name === '360 Breathing' || exercise.name === 'Heel Slides' || exercise.videoUrl.startsWith('ymove:')))
   assert.ok(exercises.some((exercise) => /Dumbbell|Bird Dog|Dead Bug|Pelvic|Suitcase/.test(exercise.name)))
 })

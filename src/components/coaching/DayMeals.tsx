@@ -6,6 +6,7 @@ import {
 import { seasoningSpoonAmount } from '@/lib/household-measure'
 import InstructionSteps from '@/components/coaching/InstructionSteps'
 import MealPrepPlanner from '@/components/coaching/MealPrepPlanner'
+import SavedCookingChoiceBadge from '@/components/coaching/SavedCookingChoiceBadge'
 import { mealRecipeNames, type CoachingPlanDraft } from '@/lib/coaching-plan-schema'
 import type { MealPrepBadge } from '@/lib/cooking-style'
 import { mealPrepOccurrenceKey } from '@/lib/grocery-list'
@@ -104,6 +105,11 @@ export default function DayMeals({
                               {badge.label}
                             </p>
                           )}
+                          <SavedCookingChoiceBadge
+                            recipe={recipe}
+                            storageKey={mealPrepStorageKey}
+                            occurrenceKey={mealPrepOccurrenceKey(groceryDayIndex, row.mealKey, name)}
+                          />
                         </div>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontFamily: 'var(--font-sans)', fontSize: '0.78rem', fontWeight: 700, color: '#3F6936', whiteSpace: 'nowrap' }}>
                           View recipe

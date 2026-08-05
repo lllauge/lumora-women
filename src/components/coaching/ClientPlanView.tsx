@@ -9,6 +9,7 @@ import {
   getDailyLogs, coachingToday,
 } from '@/lib/coaching-engagement'
 import DynamicGroceryChecklist from '@/components/coaching/DynamicGroceryChecklist'
+import WeeklyCookingPlanner from '@/components/coaching/WeeklyCookingPlanner'
 import { buildGroceryList, clientGroceryList } from '@/lib/grocery-list'
 import { mealPlanBlocks, mealPlanSchedule, friendlyBlockDate } from '@/lib/meal-plan-schedule'
 import DayMeals from '@/components/coaching/DayMeals'
@@ -278,6 +279,31 @@ export default async function ClientPlanView({
         </section>
       )}
 
+      {/* Weekly cooking choices and the grocery list stay together: the list
+          starts with prescribed portions and only saved choices add food. */}
+      {groceryItems.length > 0 && (
+        <section aria-label="Grocery list" style={{ marginBottom: '2.25rem' }}>
+          <SectionHeader
+            icon={<ShoppingBasket style={headerIcon} aria-hidden="true" />}
+            title="Grocery List"
+            subtitle={twoWeekMenu
+              ? 'One week of your menu, starting with your prescribed portions. Add meal prep or family servings only when you need them, then check items off as you shop.'
+              : 'Starts with your prescribed portions. Add meal prep or family servings only when needed, then check items off as you shop.'}
+          />
+          <WeeklyCookingPlanner plan={currentPlan} storageKey={mealPrepStorageKey} />
+          <div className="portal-card">
+            <div className="portal-gold-line" aria-hidden="true" />
+            <div style={{ padding: '1rem 1.25rem' }}>
+              <DynamicGroceryChecklist
+                plan={currentPlan}
+                storageKey={groceryStorageKey}
+                mealPrepStorageKey={mealPrepStorageKey}
+              />
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Weekly workouts */}
       {plan.workoutPlan.length > 0 && (
         <section aria-label="Weekly workouts" style={{ marginBottom: '2.25rem' }}>
@@ -401,35 +427,6 @@ export default async function ClientPlanView({
         </section>
       )}
 
-      {/* Grocery list */}
-      {groceryItems.length > 0 && (
-        <section aria-label="Grocery list">
-          <SectionHeader
-            icon={<ShoppingBasket style={headerIcon} aria-hidden="true" />}
-            title="Grocery List"
-            subtitle={[
-              twoWeekMenu
-                ? 'One week of your menu — shop it each week. Check items off as you go, it remembers between visits.'
-                : 'Check items off as you shop, it remembers between visits.',
-              // The list buys batches (or exact portions), not meal slots —
-              // without this line a menu that repeats a recipe looks
-              // under-shopped to the client.
-              'Use Meal prep for more of your exact portions, or Cook for family for a full batch.',
-            ].filter(Boolean).join(' ')}
-          />
-          <div className="portal-card">
-            <div className="portal-gold-line" aria-hidden="true" />
-            <div style={{ padding: '1rem 1.25rem' }}>
-              <DynamicGroceryChecklist
-                plan={currentPlan}
-                storageKey={groceryStorageKey}
-                mealPrepStorageKey={mealPrepStorageKey}
-              />
-            </div>
-          </div>
-        </section>
-      )}
-
       {/* Next two weeks, unlocked shortly before they start so she can shop ahead */}
       {nextDays.length > 0 && (
         <section aria-label="Your next two weeks" style={{ marginTop: '2.25rem' }}>
@@ -477,8 +474,9 @@ export default async function ClientPlanView({
               <SectionHeader
                 icon={<ShoppingBasket style={headerIcon} aria-hidden="true" />}
                 title="Grocery List for the Next 2 Weeks"
-                subtitle="One week's shopping for your new menu — grab it before day one."
+                subtitle="One week's shopping for your new menu, starting with your prescribed portions."
               />
+              <WeeklyCookingPlanner plan={nextPlan!} storageKey={nextMealPrepStorageKey} />
               <div className="portal-card">
                 <div className="portal-gold-line" aria-hidden="true" />
                 <div style={{ padding: '1rem 1.25rem' }}>

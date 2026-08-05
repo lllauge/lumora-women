@@ -322,13 +322,15 @@ export default function ExerciseLibraryPage() {
     }
   }
 
-  async function searchYMove() {
+  async function searchYMove(overrides?: { search?: string; muscleGroup?: string }) {
     setYmoveLoading(true)
     setYmoveError('')
     try {
       const params = new URLSearchParams()
-      if (ymoveQuery.trim()) params.set('search', ymoveQuery.trim())
-      if (ymoveMuscle) params.set('muscleGroup', ymoveMuscle)
+      const search = overrides?.search ?? ymoveQuery
+      const muscleGroup = overrides?.muscleGroup ?? ymoveMuscle
+      if (search.trim()) params.set('search', search.trim())
+      if (muscleGroup) params.set('muscleGroup', muscleGroup)
       const res = await fetch(`/api/admin/ymove/exercises?${params.toString()}`)
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'YMove search failed.')
@@ -408,9 +410,22 @@ export default function ExerciseLibraryPage() {
           </label>
           <button
             type="button"
+            className="admin-btn-secondary"
+            disabled={ymoveLoading}
+            onClick={() => {
+              setYmoveQuery('pilates')
+              setYmoveMuscle('core')
+              searchYMove({ search: 'pilates', muscleGroup: 'core' })
+            }}
+            style={{ justifyContent: 'center', width: '100%' }}
+          >
+            Pilates Core
+          </button>
+          <button
+            type="button"
             className="admin-btn-primary"
             disabled={ymoveLoading || (!ymoveQuery.trim() && !ymoveMuscle)}
-            onClick={searchYMove}
+            onClick={() => searchYMove()}
             style={{ background: '#162814', color: '#fff', border: 'none', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center', width: '100%' }}
           >
             <Search size={14} /> {ymoveLoading ? 'Searching...' : 'Search'}

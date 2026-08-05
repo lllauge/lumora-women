@@ -1,6 +1,6 @@
 import { ChevronDown } from 'lucide-react'
 import {
-  cleanIngredientText, clientPortionFactor, clientPortionLines, portionFraction,
+  cleanIngredientText, clientPortionFactor, portionFraction,
   clientRecipeNotes, shoppingPrepLines, displayRecipeName,
 } from '@/lib/coaching-engagement'
 import { seasoningSpoonAmount } from '@/lib/household-measure'
@@ -236,12 +236,12 @@ function RecipeDetail({
   const portionFactor = clientPortionFactor(recipe, individualPlanStyle)
   const cookedPercent = percentLabel(portionFactor)
   const noScaleText = noScalePortionText(portionFactor)
-  const portionLines = clientPortionLines(recipe, individualPlanStyle).filter((line) => line.grams !== null)
   const servingCalories = recipe.calories.trim().replace(/\s*k?cal$/i, '')
+  const servingWeight = recipe.clientServingGrams.trim()
 
   return (
     <div>
-      {(servingCalories || portionLines.length > 0 || isFamily || wholeRecipePortion) && (
+      {(servingCalories || servingWeight || isFamily || wholeRecipePortion) && (
         <div style={{ background: 'var(--section-tint)', borderRadius: '0.75rem', padding: '0.75rem 0.875rem', marginTop: '0.5rem' }}>
           <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 700, color: '#3F6936', marginBottom: '0.125rem' }}>
             {soloBatch ? 'YOUR PRESCRIBED SERVING (if cooking fresh daily)' : 'YOUR PRESCRIBED SERVING'}
@@ -256,9 +256,12 @@ function RecipeDetail({
               </p>
             </>
           )}
-          {servingCalories && (
+          {(servingWeight || servingCalories) && (
             <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-              {servingCalories} cal
+              {[
+                servingWeight && `${servingWeight.replace(/\s*g$/i, '')}g cooked serving`,
+                servingCalories && `${servingCalories} cal`,
+              ].filter(Boolean).join(' · ')}
             </p>
           )}
           {!wholeRecipePortion && (
@@ -267,7 +270,9 @@ function RecipeDetail({
                 Most accurate
               </p>
               <p style={{ ...bodyText, fontSize: '0.8125rem' }}>
-                After cooking, weigh the finished recipe. Your serving is {cookedPercent || 'your prescribed share'} of the cooked finished food.
+                {servingWeight
+                  ? `After cooking, weigh ${servingWeight.replace(/\s*g$/i, '')}g from the finished recipe for your serving.`
+                  : `After cooking, weigh the finished recipe. Your serving is ${cookedPercent || 'your prescribed share'} of the cooked finished food.`}
               </p>
               <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 700, color: '#3F6936', margin: '0.625rem 0 0.25rem' }}>
                 No scale
@@ -330,7 +335,7 @@ function RecipeDetail({
                 ? ' Your serving is portioned from the finished dish, after cooking.'
                 : wholeRecipePortion
                   ? ' Make the full amounts below — the whole recipe is your serving.'
-                  : ' When you weigh your serving above, use the food as it’s listed there: cooked unless marked otherwise.'}
+                  : ''}
           </p>
           <PrepIngredientList lines={shoppingPrepLines(recipe.ingredients)} />
         </>

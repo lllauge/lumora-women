@@ -1,11 +1,11 @@
-import { parseIngredientLine as pasteParseIngredientLine } from '../recipes/paste-parser'
-import { matchCommonFood } from './common-foods'
+import { parseIngredientLine as pasteParseIngredientLine } from '../recipes/paste-parser.ts'
+import { matchCommonFood } from './common-foods.ts'
 import {
   isCanonicalZeroNutritionIngredient,
   isExcludedNutritionIngredient,
-} from '../nutrition-ingredient'
-import { resolvedFoodCalories } from '../nutrition-math'
-import { getCuratedBrandedFood } from '../curated-branded-foods'
+} from '../nutrition-ingredient.ts'
+import { resolvedFoodCalories } from '../nutrition-math.ts'
+import { getCuratedBrandedFood } from '../curated-branded-foods.ts'
 
 type FoodSearchResult = {
   fdcId: number
@@ -88,6 +88,51 @@ export type UsdaRecipeNutrition = {
 }
 
 const USDA_SEARCH_URL = 'https://api.nal.usda.gov/fdc/v1/foods/search'
+const USDA_LOOKUP_CACHE_MS = 15 * 60 * 1000
+const USDA_LOOKUP_CACHE_MAX = 500
+
+type CachedLookup<T> = {
+  expiresAt: number
+  promise: Promise<T>
+}
+
+const foodDetailCache = new Map<string, CachedLookup<FoodSearchResult | null>>()
+const foodSearchCache = new Map<string, CachedLookup<FoodSearchResult | null>>()
+
+function cachedLookup<T>(
+  cache: Map<string, CachedLookup<T>>,
+  key: string,
+  loader: () => Promise<T>,
+) {
+  const now = Date.now()
+  const existing = cache.get(key)
+  if (existing && existing.expiresAt > now) return existing.promise
+  if (existing) cache.delete(key)
+  if (cache.size >= USDA_LOOKUP_CACHE_MAX) {
+    const oldest = cache.keys().next().value
+    if (oldest !== undefined) cache.delete(oldest)
+  }
+  const promise = loader()
+    .then((value) => {
+      if (value === null) cache.delete(key)
+      return value
+    })
+    .catch((error) => {
+      cache.delete(key)
+      throw error
+    })
+  cache.set(key, { expiresAt: now + USDA_LOOKUP_CACHE_MS, promise })
+  return promise
+}
+
+async function fetchUsdaWithRetry(request: () => Promise<Response>) {
+  let response = await request()
+  for (let attempt = 0; attempt < 2 && (response.status === 429 || response.status >= 500); attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 200 * (attempt + 1)))
+    response = await request()
+  }
+  return response
+}
 
 const UNIT_TO_GRAMS: Record<string, number> = {
   g: 1,
@@ -236,6 +281,11 @@ function hasDietaryFiberValue(food: FoodSearchResult) {
 }
 
 async function searchFood(query: string, apiKey: string) {
+  const key = query.trim().toLowerCase().replace(/\s+/g, ' ')
+  return cachedLookup(foodSearchCache, key, () => searchFoodUncached(query, apiKey))
+}
+
+async function searchFoodUncached(query: string, apiKey: string) {
   const commonFood = matchCommonFood(query)
   if (commonFood?.fdcId) {
     return fetchFoodById(commonFood.fdcId, apiKey)
@@ -244,7 +294,7 @@ async function searchFood(query: string, apiKey: string) {
   const url = new URL(USDA_SEARCH_URL)
   url.searchParams.set('api_key', apiKey)
 
-  const response = await fetch(url, {
+  const requestOptions = {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -252,7 +302,8 @@ async function searchFood(query: string, apiKey: string) {
       pageSize: commonFood ? 25 : 50,
       dataType: ['Foundation', 'SR Legacy', 'Survey (FNDDS)'],
     }),
-  })
+  }
+  const response = await fetchUsdaWithRetry(() => fetch(url, requestOptions))
 
   if (!response.ok) {
     const message = await response.text()
@@ -698,12 +749,12 @@ export async function getFoodMeasuresById(fdcId: number, apiKey: string): Promis
 }
 
 async function fetchFoodById(fdcId: number, apiKey: string): Promise<FoodSearchResult | null> {
+  return cachedLookup(foodDetailCache, `${fdcId}`, () => fetchFoodByIdUncached(fdcId, apiKey))
+}
+
+async function fetchFoodByIdUncached(fdcId: number, apiKey: string): Promise<FoodSearchResult | null> {
   const url = `https://api.nal.usda.gov/fdc/v1/food/${fdcId}?api_key=${apiKey}`
-  let response = await fetch(url)
-  if (!response.ok && (response.status === 429 || response.status >= 500)) {
-    await new Promise((resolve) => setTimeout(resolve, 150))
-    response = await fetch(url)
-  }
+  const response = await fetchUsdaWithRetry(() => fetch(url))
   if (!response.ok) return null
   const data = await response.json() as Record<string, unknown>
 

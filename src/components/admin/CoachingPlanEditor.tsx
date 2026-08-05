@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, ChevronDown, Sparkles, Trash2 } from 'lucide-react'
 import type { CoachingPlanDraft, PlanMeal } from '@/lib/coaching-plan-schema'
 import {
@@ -29,6 +29,7 @@ import { resolvedServingMultiplier } from '@/lib/nutrition-math'
 import { fitRecipeServingMultipliers } from '@/lib/meal-portion-fitting'
 import { allocateMealCalorieTargets } from '@/lib/meal-calorie-targets'
 import { slotLinkRecipeAssignments } from '@/lib/plan-slot-recipes'
+import { isPlanCalibrated } from '@/lib/plan-calibration'
 import { findLibraryRecipe } from '@/lib/plan-library-sync'
 import {
   buildMealCalorieBreakdown,
@@ -176,6 +177,24 @@ function joinLines(value: string[]) {
 function firstNumber(value: string) {
   const match = value.match(/-?\d+(\.\d+)?/)
   return match ? Number(match[0]) : 0
+}
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  worker: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length)
+  let nextIndex = 0
+  const run = async () => {
+    while (nextIndex < items.length) {
+      const index = nextIndex
+      nextIndex += 1
+      results[index] = await worker(items[index])
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, run))
+  return results
 }
 
 function summedRecipeMacros(meal: PlanMeal, recipes: CoachingPlanDraft['recipes']) {
@@ -486,6 +505,7 @@ export default function CoachingPlanEditor({
   const [workoutMinutes, setWorkoutMinutes] = useState<number>(45)
   const [workoutLevel, setWorkoutLevel] = useState<'beginner' | 'intermediate' | 'advanced'>('beginner')
   const [workoutEquipment, setWorkoutEquipment] = useState<string[]>(['bodyweight', 'dumbbells', 'cable', 'machine'])
+  const lastNutritionInputKey = useRef<string | null>(null)
 
   useEffect(() => {
     fetch('/api/admin/recipes')
@@ -581,6 +601,11 @@ export default function CoachingPlanEditor({
   useEffect(() => {
     if (!libraryRecipesLoaded) return
 
+    const inputsChanged = lastNutritionInputKey.current !== null
+      && lastNutritionInputKey.current !== liveNutritionKey
+    lastNutritionInputKey.current = liveNutritionKey
+    if (!inputsChanged && isPlanCalibrated(plan, planningInputs)) return
+
     const controller = new AbortController()
     let cancelled = false
     const timer = window.setTimeout(async () => {
@@ -621,45 +646,52 @@ export default function CoachingPlanEditor({
         }
 
         try {
-          const response = await fetch('/api/admin/coaching/nutrition', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              ingredients: recipe.ingredients,
-              clientServingMultiplier: `${multiplier}`,
-              familyServings: recipe.familyServings || recipe.servings,
-            }),
-            signal: controller.signal,
-          })
-          const data = await response.json().catch(() => ({} as UsdaNutritionResponse)) as UsdaNutritionResponse
-          const nutrition = data.nutrition
-          if (!response.ok || !nutrition || nutrition.ingredients.length === 0 || !nutrition.totalRecipe.calories) {
-            return { patch: null, failed: true }
+          for (let attempt = 0; attempt < 3; attempt += 1) {
+            const response = await fetch('/api/admin/coaching/nutrition', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                ingredients: recipe.ingredients,
+                clientServingMultiplier: `${multiplier}`,
+                familyServings: recipe.familyServings || recipe.servings,
+              }),
+              signal: controller.signal,
+            })
+            if ((response.status === 429 || response.status >= 500) && attempt < 2) {
+              await new Promise((resolve) => window.setTimeout(resolve, 300 * (attempt + 1)))
+              continue
+            }
+            const data = await response.json().catch(() => ({} as UsdaNutritionResponse)) as UsdaNutritionResponse
+            const nutrition = data.nutrition
+            if (!response.ok || !nutrition || nutrition.ingredients.length === 0 || !nutrition.totalRecipe.calories) {
+              return { patch: null, failed: true }
+            }
+            return {
+              patch: {
+                clientServingMultiplier: `${nutrition.clientServingMultiplier}`,
+                clientServingGrams: `${nutrition.clientServingGrams}g`,
+                clientServingMeasure: nutrition.clientServingMeasure,
+                clientServingBreakdown: nutrition.clientServingBreakdown,
+                clientServing: nutrition.clientServingBreakdown || `${nutrition.clientServingGrams}g`,
+                calories: `${nutrition.clientServing.calories}`,
+                protein: `${nutrition.clientServing.protein}g`,
+                carbs: `${nutrition.clientServing.carbs}g`,
+                fats: `${nutrition.clientServing.fats}g`,
+                fiber: `${nutrition.clientServing.fiber}g`,
+              },
+              failed: false,
+            }
           }
-          return {
-            patch: {
-              clientServingMultiplier: `${nutrition.clientServingMultiplier}`,
-              clientServingGrams: `${nutrition.clientServingGrams}g`,
-              clientServingMeasure: nutrition.clientServingMeasure,
-              clientServingBreakdown: nutrition.clientServingBreakdown,
-              clientServing: nutrition.clientServingBreakdown || `${nutrition.clientServingGrams}g`,
-              calories: `${nutrition.clientServing.calories}`,
-              protein: `${nutrition.clientServing.protein}g`,
-              carbs: `${nutrition.clientServing.carbs}g`,
-              fats: `${nutrition.clientServing.fats}g`,
-              fiber: `${nutrition.clientServing.fiber}g`,
-            },
-            failed: false,
-          }
+          return { patch: null, failed: true }
         } catch {
           return { patch: null, failed: !controller.signal.aborted }
         }
       }
 
-      const results = await Promise.all(activeRecipes.map(async (recipe) => {
+      const results = await mapWithConcurrency(activeRecipes, 2, async (recipe) => {
         const result = await derivePreviewPatch(recipe)
         return { name: recipe.name, ...result }
-      }))
+      })
 
       if (cancelled) return
       const firstPassPatches = new Map(results.filter((result) => result.patch).map((result) => [result.name, result.patch!]))
@@ -686,11 +718,11 @@ export default function CoachingPlanEditor({
         })
         if (pendingFits.length === 0) break
 
-        const passResults = await Promise.all(pendingFits.map(async ([name, fitted]) => {
+        const passResults = await mapWithConcurrency(pendingFits, 2, async ([name, fitted]) => {
           const recipe = workingRecipes.find((candidate) => candidate.name === name)!
           const result = await derivePreviewPatch(recipe, fitted)
           return { name, ...result }
-        }))
+        })
         if (cancelled) return
         const passPatches = new Map<string, RecipePatch>()
         for (const result of passResults) {
@@ -725,7 +757,7 @@ export default function CoachingPlanEditor({
           })),
         }
       })
-      const failedRecipeNames = [...failedNames].map(stripSlotRecipeSuffixes)
+      const failedRecipeNames = [...new Set([...failedNames].map(stripSlotRecipeSuffixes))]
       setLiveNutritionError(failedRecipeNames.length > 0
         ? `Could not preview calories for: ${failedRecipeNames.join(', ')}.`
         : '')

@@ -263,7 +263,7 @@ function RecipeDetail({
           recipe.prepTime.trim() && `Prep ${recipe.prepTime.trim()}`,
           recipe.cookTime.trim() && `Cook ${recipe.cookTime.trim()}`,
           [recipe.calories, recipe.protein, recipe.carbs, recipe.fats, recipe.fiber].some((v) => v.trim()) &&
-            `Per portion: ${[
+            `Your portion: ${[
               recipe.calories.trim() && `${recipe.calories.trim().replace(/\s*k?cal$/i, '')} cal`,
               recipe.protein.trim() && `${recipe.protein.trim().replace(/\s*g$/i, '')}P`,
               recipe.carbs.trim() && `${recipe.carbs.trim().replace(/\s*g$/i, '')}C`,

@@ -95,7 +95,7 @@ const CUP_GRAMS: Array<{ match: RegExp; grams: number }> = [
   { match: /\bmozzarella\b|\bcheddar\b|\bmonterey\b|\bswiss\b|\bcheese\b/, grams: 113 }, // shredded
   { match: /\bfeta\b/, grams: 150 },
   // Nuts & seeds
-  { match: /\balmonds?\b|\bcashews?\b|\bwalnuts?\b|\bpecans?\b|\bpistachios?\b|\bnuts?\b/, grams: 140 },
+  { match: /\balmonds?\b(?!\s+milk)|\bcashews?\b(?!\s+milk)|\bwalnuts?\b|\bpecans?\b|\bpistachios?\b|\bnuts?\b/, grams: 140 },
   { match: /\bsunflower seeds?\b|\bpumpkin seeds?\b|\bchia\b|\bflax\b|\bsesame\b/, grams: 145 },
   // Dried spices & seasonings — densities approx, calibrated to common tsp/cup conversions.
   // Light leafy herbs (~1g/tsp = ~48g/cup): oregano, basil, thyme, rosemary, parsley, sage, mint, dill, tarragon, marjoram, italian seasoning, herbes de provence

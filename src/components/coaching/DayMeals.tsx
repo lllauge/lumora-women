@@ -52,47 +52,26 @@ export default function DayMeals({
         const mealRecipes = mealRecipeNames(row.meal)
           .map((name) => ({ recipe: recipes.find((item) => item.name === name), name }))
           .filter((entry): entry is { recipe: CoachingPlanDraft['recipes'][number]; name: string } => Boolean(entry.recipe))
-        const displayName = mealRecipes.map(({ name }) => displayRecipeName(name)).filter(Boolean).join(' + ')
-          || displayRecipeName(row.meal.name)
         return (
-          <details
+          <section
             key={i}
             id={`day-${dayIndex}-meal-${i}`}
-            open={selectedMealIndex === i}
             style={{
-              padding: '0.5rem 0',
+              padding: '0.75rem 0',
               borderTop: i === 0 ? 'none' : '1px solid rgba(200,220,192,0.25)',
             }}
           >
-            <summary
-              style={{
-                listStyle: 'none',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '0.75rem',
-                padding: '0.375rem 0',
-              }}
-            >
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9375rem', fontWeight: 700, color: '#3F6936', marginBottom: '0.125rem' }}>
-                  {row.slot}
-                </p>
-                <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {displayName || '—'}
-                </p>
-              </div>
-              <span aria-hidden="true" style={{ color: 'var(--text-muted)', fontSize: '0.875rem', flexShrink: 0 }}>▸</span>
-            </summary>
-            <div style={{ paddingTop: '0.5rem' }}>
+            <h3 style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9375rem', fontWeight: 700, color: '#3F6936', margin: '0 0 0.375rem' }}>
+              {row.slot}
+            </h3>
             {mealRecipes.map(({ recipe, name }) => {
               const recipeIndex = recipes.findIndex((item) => item.name === name)
               const recipeLabel = displayRecipeName(name)
               const isAutoCustom = /^Custom\s+/i.test(recipeLabel)
-              const isFamilyRecipe = !individualPlanStyle && parseFloat(recipe.familyServings) > 1 && !recipe.portionPinned
+              const recipePortionFactor = clientPortionFactor(recipe, individualPlanStyle)
+              const hasFittedPortion = Math.abs(recipePortionFactor - 1) > 0.001
               const calories = recipe.calories.trim().replace(/\s*k?cal$/i, '')
-              const portion = isFamilyRecipe
+              const portion = hasFittedPortion
                   ? calories
                     ? `Prescribed serving: ${calories} cal`
                     : 'Prescribed serving'
@@ -102,9 +81,10 @@ export default function DayMeals({
                 ? recipe.ingredients.map((ingredient) => {
                     const cleaned = cleanIngredientText(ingredient)
                     const match = cleaned.match(/^(\d+(?:\.\d+)?)\s*g\s+(.+)$/i)
+                    const scaledGrams = match ? Math.max(1, Math.round(Number(match[1]) * recipePortionFactor)) : 0
                     return match
                       ? {
-                          amount: seasoningSpoonAmount(match[2].trim(), Number(match[1])) ?? `${match[1]}g`,
+                          amount: seasoningSpoonAmount(match[2].trim(), scaledGrams) ?? `${scaledGrams}g`,
                           name: match[2].trim(),
                         }
                       : { amount: '', name: cleaned }
@@ -112,35 +92,7 @@ export default function DayMeals({
                 : []
               return (
                 <div key={name} style={{ marginTop: '0.5rem', background: 'var(--section-tint)', borderRadius: '0.625rem', overflow: 'hidden' }}>
-                  {isAutoCustom ? (
-                    <div style={{ padding: '0.75rem 0.875rem' }}>
-                      <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 700, color: '#3F6936', margin: 0 }}>{recipeLabel}</p>
-                      <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em', textTransform: 'uppercase', marginTop: '0.35rem' }}>
-                        Weigh out this portion
-                      </p>
-                      <ul style={{ listStyle: 'none', margin: '0.5rem 0 0', padding: 0, display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
-                        {customIngredients.map((ingredient, ingredientIndex) => (
-                          <li key={`${ingredient.name}-${ingredientIndex}`} style={{ display: 'flex', alignItems: 'baseline', gap: '0.625rem' }}>
-                            {ingredient.amount && (
-                              <span style={{ minWidth: '3.5rem', fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 800, color: '#3F6936', textAlign: 'right' }}>
-                                {ingredient.amount}
-                              </span>
-                            )}
-                            <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.35 }}>
-                              {ingredient.name}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                      <MealPrepPlanner
-                        recipe={recipe}
-                        individualPlanStyle={individualPlanStyle}
-                        storageKey={mealPrepStorageKey}
-                        occurrenceKey={mealPrepOccurrenceKey(groceryDayIndex, row.mealKey, name)}
-                      />
-                    </div>
-                  ) : (
-                    <details open={selectedRecipeIndex === recipeIndex}>
+                  <details open={selectedRecipeIndex === recipeIndex || (selectedMealIndex === i && mealRecipes.length === 1)}>
                       <summary style={{ listStyle: 'none', cursor: 'pointer', padding: '0.75rem 0.875rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
                         <div>
                           <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 700, color: '#3F6936', margin: 0 }}>{recipeLabel}</p>
@@ -160,21 +112,47 @@ export default function DayMeals({
                         </span>
                       </summary>
                       <div style={{ borderTop: '1px solid rgba(200,220,192,0.6)', padding: '0 0.875rem 0.875rem' }}>
-                        <RecipeDetail
-                          recipe={recipe}
-                          individualPlanStyle={individualPlanStyle}
-                          freshCook={freshCook}
-                          mealPrepStorageKey={mealPrepStorageKey}
-                          mealPrepOccurrenceKey={mealPrepOccurrenceKey(groceryDayIndex, row.mealKey, name)}
-                        />
+                        {isAutoCustom ? (
+                          <div style={{ paddingTop: '0.75rem' }}>
+                            <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em', textTransform: 'uppercase', margin: 0 }}>
+                              Weigh out this portion
+                            </p>
+                            <ul style={{ listStyle: 'none', margin: '0.5rem 0 0', padding: 0, display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                              {customIngredients.map((ingredient, ingredientIndex) => (
+                                <li key={`${ingredient.name}-${ingredientIndex}`} style={{ display: 'flex', alignItems: 'baseline', gap: '0.625rem' }}>
+                                  {ingredient.amount && (
+                                    <span style={{ minWidth: '3.5rem', fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 800, color: '#3F6936', textAlign: 'right' }}>
+                                      {ingredient.amount}
+                                    </span>
+                                  )}
+                                  <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.35 }}>
+                                    {ingredient.name}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                            <MealPrepPlanner
+                              recipe={recipe}
+                              individualPlanStyle={individualPlanStyle}
+                              storageKey={mealPrepStorageKey}
+                              occurrenceKey={mealPrepOccurrenceKey(groceryDayIndex, row.mealKey, name)}
+                            />
+                          </div>
+                        ) : (
+                          <RecipeDetail
+                            recipe={recipe}
+                            individualPlanStyle={individualPlanStyle}
+                            freshCook={freshCook}
+                            mealPrepStorageKey={mealPrepStorageKey}
+                            mealPrepOccurrenceKey={mealPrepOccurrenceKey(groceryDayIndex, row.mealKey, name)}
+                          />
+                        )}
                       </div>
-                    </details>
-                  )}
+                  </details>
                 </div>
               )
             })}
-            </div>
-          </details>
+          </section>
         )
       })}
       {day.notes.trim() && (
@@ -319,25 +297,14 @@ function RecipeDetail({
       {recipe.ingredients.length > 0 && (
         <>
           <h3 style={sectionTitle}>
-            {isFamily
-              ? 'Cooking & prep'
-              : soloBatch
-                ? 'Cooking & prep (to prep multiple meals for the week)'
-                : 'Cooking & prep'}
+            {wholeRecipePortion ? 'Cooking & prep' : 'Cooking & prep for your serving'}
           </h3>
           <p style={{ ...bodyText, fontSize: '0.8125rem', fontStyle: 'italic', marginBottom: '0.5rem' }}>
-            {freshCook && !wholeRecipePortion
-              ? 'The base recipe is here for reference — cook with your single-portion amounts above instead. Your grocery list is already scaled to them.'
-              : 'Amounts to buy and prep are raw ingredients, before cooking, unless a line says cooked weight.'}
-            {freshCook && !wholeRecipePortion
-              ? ''
-              : isFamily
-                ? ' Your serving is portioned from the finished dish, after cooking.'
-                : wholeRecipePortion
-                  ? ' Make the full amounts below — the whole recipe is your serving.'
-                  : ''}
+            {wholeRecipePortion
+              ? 'Make the full amounts below. Ingredients are shown before cooking unless a line says cooked weight.'
+              : 'These ingredient amounts are scaled to make your prescribed serving. Ingredients are shown before cooking unless a line says cooked weight. Use Meal prep above to add portions for other people or future days.'}
           </p>
-          <PrepIngredientList lines={shoppingPrepLines(recipe.ingredients)} />
+          <PrepIngredientList lines={shoppingPrepLines(recipe.ingredients, portionFactor)} />
         </>
       )}
 

@@ -73,6 +73,22 @@ test('prep lines convert cooked entries to raw buying weights in both units', ()
   assert.equal(seasoning.easy, 'Black pepper, to taste')
 })
 
+test('prep lines scale grams and household measures to the prescribed portion', () => {
+  const breakfast = shoppingPrepLines([
+    '[fdc:1] 90g rolled oats, dry',
+    '[fdc:2] 240g almond milk',
+  ], 0.5)
+  const lunch = shoppingPrepLines([
+    '[fdc:1] 90g rolled oats, dry',
+    '[fdc:2] 240g almond milk',
+  ], 0.75)
+
+  assert.deepEqual(breakfast.map((line) => line.grams), ['45g rolled oats, dry', '120g almond milk'])
+  assert.deepEqual(breakfast.map((line) => line.easy), ['½ cup rolled oats, dry', '½ cup almond milk'])
+  assert.deepEqual(lunch.map((line) => line.grams), ['68g rolled oats, dry', '180g almond milk'])
+  assert.deepEqual(lunch.map((line) => line.easy), ['¾ cup rolled oats, dry', '¾ cup almond milk'])
+})
+
 test('grocery display keeps its shopper-friendly formatting', () => {
   assert.equal(groceryDisplay('[fdc:1] 907g chicken breast, cooked'), 'chicken breast, raw, 2.75 lb')
   assert.equal(groceryDisplay('[fdc:2] 6g kosher salt'), '1 tsp kosher salt')

@@ -194,13 +194,14 @@ export type PrepLine = {
 }
 
 /**
- * Client-facing shopping & prep list: every gram line converted to its raw
- * (pre-cooking) buying weight, offered both as exact grams and as an easy
- * household measure. Lines whose cooked→raw factor is unknown keep their
- * cooked weight and state marker; lines without a leading gram amount pass
- * through unchanged in both modes.
+ * Client-facing shopping & prep list: every gram line is first scaled by the
+ * prescribed recipe factor, then converted to its raw (pre-cooking) buying
+ * weight and offered as both exact grams and an easy household measure. Lines
+ * whose cooked→raw factor is unknown keep their cooked weight and state marker;
+ * lines without a leading gram amount pass through unchanged in both modes.
  */
-export function shoppingPrepLines(ingredients: string[]): PrepLine[] {
+export function shoppingPrepLines(ingredients: string[], factor = 1): PrepLine[] {
+  const safeFactor = Number.isFinite(factor) && factor > 0 ? factor : 1
   const lines: PrepLine[] = []
   for (const raw of ingredients) {
     const cleaned = cleanIngredientText(raw)
@@ -210,7 +211,7 @@ export function shoppingPrepLines(ingredients: string[]): PrepLine[] {
       lines.push({ grams: cleaned, easy: cleaned, state: ingredientWeighState(cleaned) })
       continue
     }
-    const { grams, label } = cookedGramsToRaw(match[2].trim(), Number(match[1]))
+    const { grams, label } = cookedGramsToRaw(match[2].trim(), Number(match[1]) * safeFactor)
     // Seasonings show as spoons even in exact mode — nobody weighs 2g of
     // paprika, and the macro impact of the rounding is nil.
     const spoon = seasoningSpoonAmount(label, grams)

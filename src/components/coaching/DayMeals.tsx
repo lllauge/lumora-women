@@ -1,7 +1,8 @@
 import { ChevronDown } from 'lucide-react'
 import {
-  cleanIngredientText, clientPortionFactor, portionFraction,
+  cleanIngredientText, clientPortionFactor,
   clientRecipeNotes, shoppingPrepLines, displayRecipeName,
+  originalBatchSplitInstruction,
 } from '@/lib/coaching-engagement'
 import { seasoningSpoonAmount } from '@/lib/household-measure'
 import InstructionSteps from '@/components/coaching/InstructionSteps'
@@ -164,20 +165,6 @@ export default function DayMeals({
   )
 }
 
-function percentLabel(value: number) {
-  if (!Number.isFinite(value) || value <= 0) return ''
-  const percent = value * 100
-  return `${percent >= 10 ? Math.round(percent) : Math.round(percent * 10) / 10}%`
-}
-
-function noScalePortionText(factor: number) {
-  const fraction = portionFraction(factor)
-  if (!fraction || fraction.label === 'the whole recipe') return ''
-  const portionNoun = fraction.take === 1 ? 'portion' : 'portions'
-  const qualifier = fraction.qualifier ? `${fraction.qualifier} ` : ''
-  return `Divide the cooked recipe into ${fraction.parts} equal portions. Eat ${fraction.take} ${qualifier}${portionNoun}.`
-}
-
 function RecipeDetail({
   recipe,
   individualPlanStyle,
@@ -212,8 +199,7 @@ function RecipeDetail({
   // amounts she'd cook if making it fresh that day instead of batching.
   const soloBatch = !isFamily && !wholeRecipePortion && !freshCook
   const portionFactor = clientPortionFactor(recipe, individualPlanStyle)
-  const cookedPercent = percentLabel(portionFactor)
-  const noScaleText = noScalePortionText(portionFactor)
+  const originalBatchSplit = originalBatchSplitInstruction(portionFactor)
   const servingCalories = recipe.calories.trim().replace(/\s*k?cal$/i, '')
   const servingWeight = recipe.clientServingGrams.trim()
 
@@ -249,15 +235,25 @@ function RecipeDetail({
               </p>
               <p style={{ ...bodyText, fontSize: '0.8125rem' }}>
                 {servingWeight
-                  ? `After cooking, weigh ${servingWeight.replace(/\s*g$/i, '')}g from the finished recipe for your serving.`
-                  : `After cooking, weigh the finished recipe. Your serving is ${cookedPercent || 'your prescribed share'} of the cooked finished food.`}
+                  ? `Prepare the prescribed ingredient amounts below. After cooking, eat the full ${servingWeight.replace(/\s*g$/i, '')}g serving.`
+                  : 'Prepare the prescribed ingredient amounts below and eat the full cooked serving.'}
               </p>
               <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 700, color: '#3F6936', margin: '0.625rem 0 0.25rem' }}>
                 No scale
               </p>
               <p style={{ ...bodyText, fontSize: '0.8125rem' }}>
-                {noScaleText || 'Use the cooked-weight method for this one; the calorie-fitted portion does not line up cleanly with an equal-container split.'}
+                Cook the prescribed ingredient amounts below and eat all of the prepared food. Do not divide it again.
               </p>
+              {originalBatchSplit && (
+                <div style={{ marginTop: '0.625rem', padding: '0.625rem 0.75rem', background: 'rgba(255,255,255,0.38)', border: '1px solid rgba(63,105,54,0.14)', borderRadius: '0.5rem' }}>
+                  <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 700, color: '#3F6936', margin: 0 }}>
+                    If cooking the original full recipe instead
+                  </p>
+                  <p style={{ ...bodyText, fontSize: '0.8125rem', marginTop: '0.2rem' }}>
+                    Use the original Recipe Library ingredient amounts. {originalBatchSplit}
+                  </p>
+                </div>
+              )}
             </div>
           )}
           {!wholeRecipePortion && (
@@ -266,7 +262,7 @@ function RecipeDetail({
               marginTop: '0.625rem', paddingTop: '0.625rem', borderTop: '1px solid rgba(200,220,192,0.6)',
             }}>
               <span style={{ fontWeight: 700, color: '#3F6936' }}>How to use this: </span>
-              Cook the recipe below, then portion the finished food using either the cooked-weight method or the no-scale split. If you are cooking extra food for other people or future days, use Meal prep so the ingredient list scales from the same USDA-calculated recipe.
+              The ingredients below already make your complete prescribed serving. Cook them and eat the full prepared serving. Use Meal prep only when adding food for other people or future days.
             </p>
           )}
         </div>

@@ -13,6 +13,7 @@ export {
   clientRecipeNotes,
   ingredientGrams,
   ingredientWeighState,
+  originalBatchSplitInstruction,
   portionFraction,
   portionSummaryLine,
   shortIngredientName,

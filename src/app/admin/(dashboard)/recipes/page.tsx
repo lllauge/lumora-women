@@ -453,7 +453,7 @@ function RecipeIngredientsSection({
       ? r.originalTotals
       : r.calculatedTotals ?? r.totals
     const patch: Partial<typeof EMPTY_RECIPE> = {
-      ingredients: [...draft.ingredients, ...r.ingredients.map((i) => i.line)],
+      ingredients: r.ingredients.map((i) => i.line),
       instructions: r.instructions.length > 0 && draft.instructions.length === 0 ? r.instructions : draft.instructions,
       calories: selectedTotals.calories,
       protein: selectedTotals.protein,

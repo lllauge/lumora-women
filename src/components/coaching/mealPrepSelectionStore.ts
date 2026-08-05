@@ -3,6 +3,7 @@
 export type MealPrepSelection = {
   mode?: 'meal-prep' | 'family'
   portions?: number
+  familyPeople?: number
   /** Legacy fields retained so existing local selections remain readable. */
   peopleEating?: number
   prepPortions?: number

@@ -105,6 +105,22 @@ export function familyCookFactor(portionFactor: number): number {
   return Math.max(1, Math.floor(safeFactor) + 1)
 }
 
+/**
+ * Recipe factor for a household meal. The client receives her exact prescribed
+ * share; every other diner receives one standard serving from the original
+ * recipe.
+ */
+export function householdCookFactor(
+  portionFactor: number,
+  originalServings: number,
+  peopleEating: number,
+): number {
+  const clientFactor = Number.isFinite(portionFactor) && portionFactor > 0 ? portionFactor : 1
+  const servings = Number.isFinite(originalServings) ? Math.max(1, Math.round(originalServings)) : 1
+  const people = Number.isFinite(peopleEating) ? Math.max(1, Math.round(peopleEating)) : 1
+  return clientFactor + (Math.max(0, people - 1) / servings)
+}
+
 export type PracticalPortionDivision = {
   parts: number
   take: number

@@ -7,6 +7,7 @@ import {
   clientPortionLines,
   exactPortionsCookFactor,
   familyCookFactor,
+  householdCookFactor,
   practicalPortionDivision,
   portionFraction,
   portionSummaryLine,
@@ -104,6 +105,13 @@ test('family cooking uses complete recipe batches with room for her portion', ()
   assert.equal(familyCookFactor(0.6), 1)
   assert.equal(familyCookFactor(1), 2)
   assert.equal(familyCookFactor(1.25), 2)
+})
+
+test('household cooking preserves her prescription and adds one original serving per other diner', () => {
+  assert.equal(householdCookFactor(0.25, 4, 4), 1)
+  assert.equal(householdCookFactor(0.2, 4, 3), 0.7)
+  assert.equal(householdCookFactor(0.3, 4, 6), 1.55)
+  assert.equal(householdCookFactor(0.3, 4, 10), 2.55)
 })
 
 test('family cooking offers a practical no-scale split of the cooked batch', () => {

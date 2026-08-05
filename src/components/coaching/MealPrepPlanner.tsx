@@ -6,7 +6,7 @@ import {
   cleanIngredientText,
   clientPortionFactor,
   exactPortionsCookFactor,
-  familyCookFactor,
+  householdCookFactor,
   practicalPortionDivision,
   ingredientGrams,
   ingredientWeighState,
@@ -131,7 +131,12 @@ export default function MealPrepPlanner({
 }) {
   const [openMode, setOpenMode] = useState<'meal-prep' | 'family' | null>(null)
   const [localPortions, setLocalPortions] = useState<number | null>(null)
+  const [localFamilyPeople, setLocalFamilyPeople] = useState<number | null>(null)
   const portionFactor = clientPortionFactor(recipe, individualPlanStyle)
+  const parsedOriginalServings = parseFloat(recipe.familyServings)
+  const hasOriginalServings = Number.isFinite(parsedOriginalServings) && parsedOriginalServings > 0
+  const originalServings = hasOriginalServings ? Math.max(1, Math.round(parsedOriginalServings)) : 4
+  const defaultFamilyPeople = clamp(originalServings, 2, 12)
   const selectionsSnapshot = useSyncExternalStore(
     (listener) => storageKey ? subscribeMealPrepSelections(storageKey, listener) : () => {},
     () => storageKey ? mealPrepSelectionsSnapshot(storageKey) : '',
@@ -145,7 +150,11 @@ export default function MealPrepPlanner({
     ? Math.max(1, Math.round(savedSelection?.portions ?? ((savedSelection?.prepPortions ?? 0) + 1)))
     : 1
   const exactPortions = localPortions ?? savedExactPortions
-  const familyFactor = familyCookFactor(portionFactor)
+  const savedFamilyPeople = savedMode === 'family'
+    ? clamp(Math.round(savedSelection?.familyPeople ?? savedSelection?.peopleEating ?? defaultFamilyPeople), 2, 12)
+    : defaultFamilyPeople
+  const familyPeople = localFamilyPeople ?? savedFamilyPeople
+  const familyFactor = householdCookFactor(portionFactor, originalServings, familyPeople)
   const familyDivision = practicalPortionDivision(portionFactor / familyFactor)
   const panelFactor = openMode === 'family'
     ? familyFactor
@@ -171,10 +180,11 @@ export default function MealPrepPlanner({
     mode: 'meal-prep' | 'family' | null,
     portions: number,
     totalFactor: number,
+    familyPeople?: number,
   ) => {
     if (!storageKey || !occurrenceKey) return
     writeMealPrepSelection(storageKey, occurrenceKey, mode
-      ? { mode, portions, totalFactor }
+      ? { mode, portions, familyPeople, totalFactor }
       : null)
   }
 
@@ -194,7 +204,9 @@ export default function MealPrepPlanner({
       return
     }
     setOpenMode('family')
-    persistSelection('family', familyFactor, familyFactor)
+    setLocalFamilyPeople(savedFamilyPeople)
+    const totalFactor = householdCookFactor(portionFactor, originalServings, savedFamilyPeople)
+    persistSelection('family', 1, totalFactor, savedFamilyPeople)
   }
 
   const setExactPortions = (value: number) => {
@@ -202,6 +214,13 @@ export default function MealPrepPlanner({
     setLocalPortions(portions)
     const totalFactor = exactPortionsCookFactor(portionFactor, portions)
     persistSelection(portions === 1 ? null : 'meal-prep', portions, totalFactor)
+  }
+
+  const setFamilyPeople = (value: number) => {
+    const people = clamp(value, 2, 12)
+    setLocalFamilyPeople(people)
+    const totalFactor = householdCookFactor(portionFactor, originalServings, people)
+    persistSelection('family', 1, totalFactor, people)
   }
 
   return (
@@ -229,7 +248,9 @@ export default function MealPrepPlanner({
             Cook for family
           </button>
           <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.68rem', color: 'var(--text-muted)', lineHeight: 1.3 }}>
-            Typically makes 4-5 servings.
+            {hasOriginalServings
+              ? `Original recipe makes ${originalServings} ${originalServings === 1 ? 'serving' : 'servings'}.`
+              : 'Typically makes 4-5 servings.'}
           </span>
         </div>
       </div>
@@ -244,6 +265,16 @@ export default function MealPrepPlanner({
               min={1}
               max={7}
               setValue={setExactPortions}
+            />
+          )}
+          {openMode === 'family' && (
+            <MealPrepStepper
+              label="How many people are eating, including you?"
+              hint="Your prescribed portion stays exact; each other person receives one standard recipe serving."
+              value={familyPeople}
+              min={2}
+              max={12}
+              setValue={setFamilyPeople}
             />
           )}
 
@@ -262,7 +293,7 @@ export default function MealPrepPlanner({
                 </>
               ) : (
                 <>
-                  Cook <strong style={{ color: 'var(--text-primary)' }}>{familyFactor === 1 ? 'the full recipe' : `${familyFactor} full recipe batches`}</strong>.
+                  Prepare enough for <strong style={{ color: 'var(--text-primary)' }}>{familyPeople} people</strong>: your prescribed portion plus {familyPeople - 1} standard {familyPeople - 1 === 1 ? 'serving' : 'servings'}.
                   {servingWeight
                     ? ` After cooking, set aside ${servingWeight}g for your exact portion. Your family can eat the rest.`
                     : ` After cooking, set aside ${Math.round((portionFactor / familyFactor) * 100)}% of the finished food for your exact portion. Your family can eat the rest.`}

@@ -1,12 +1,11 @@
 import { ChevronDown } from 'lucide-react'
 import {
   cleanIngredientText, clientPortionFactor,
-  clientRecipeNotes, shoppingPrepLines, displayRecipeName,
+  clientRecipeNotes, displayRecipeName,
 } from '@/lib/coaching-engagement'
 import { seasoningSpoonAmount } from '@/lib/household-measure'
 import InstructionSteps from '@/components/coaching/InstructionSteps'
 import MealPrepPlanner from '@/components/coaching/MealPrepPlanner'
-import PrepIngredientList from '@/components/coaching/PrepIngredientList'
 import { mealRecipeNames, type CoachingPlanDraft } from '@/lib/coaching-plan-schema'
 import type { MealPrepBadge } from '@/lib/cooking-style'
 import { mealPrepOccurrenceKey } from '@/lib/grocery-list'
@@ -197,7 +196,6 @@ function RecipeDetail({
   // meals, while the portion block holds the single-meal amounts — the same
   // amounts she'd cook if making it fresh that day instead of batching.
   const soloBatch = !isFamily && !wholeRecipePortion && !freshCook
-  const portionFactor = clientPortionFactor(recipe, individualPlanStyle)
   const servingCalories = recipe.calories.trim().replace(/\s*k?cal$/i, '')
   const servingWeight = recipe.clientServingGrams.trim()
 
@@ -268,20 +266,6 @@ function RecipeDetail({
             ].filter(Boolean).join(' / ')}`,
         ].filter(Boolean).join(' · ')}
       </p>
-
-      {recipe.ingredients.length > 0 && (
-        <>
-          <h3 style={sectionTitle}>
-            {wholeRecipePortion ? 'Cooking & prep' : 'Cooking & prep for your serving'}
-          </h3>
-          <p style={{ ...bodyText, fontSize: '0.8125rem', fontStyle: 'italic', marginBottom: '0.5rem' }}>
-            {wholeRecipePortion
-              ? 'Make the full amounts below. Ingredients are shown before cooking unless a line says cooked weight.'
-              : 'These ingredient amounts are scaled to make your prescribed serving. Ingredients are shown before cooking unless a line says cooked weight. Use Meal prep for more of your exact portions, or Cook for family for a full batch.'}
-          </p>
-          <PrepIngredientList lines={shoppingPrepLines(recipe.ingredients, portionFactor)} />
-        </>
-      )}
 
       {recipe.instructions.length > 0 && (
         <>

@@ -42,6 +42,20 @@ const EMPTY_RECIPE = {
   total_recipe_grams: null as number | null,
 }
 
+type ImportedUrlRecipe = {
+  title: string
+  servings: number
+  ingredients: { line: string; unparsed: boolean }[]
+  instructions: string[]
+  sourceUrl: string
+  totals: { calories: number; protein: number; carbs: number; fats: number; fiber: number; grams: number }
+  originalTotals: { calories: number; protein: number; carbs: number; fats: number; fiber: number; grams: number } | null
+  calculatedTotals: { calories: number; protein: number; carbs: number; fats: number; fiber: number; grams: number }
+  nutritionSource: 'website' | 'calculated'
+}
+
+const URL_IMPORT_CACHE_KEY = 'lumora.recipeUrlImports.v2'
+
 const label: React.CSSProperties = {
   fontFamily: 'var(--font-hanken)',
   fontSize: '0.72rem',
@@ -181,6 +195,10 @@ function InstructionListEditor({
 // Detects whether a recipe was built in paste-mode (any saved macro total)
 // so reopening it lands the editor on the same tab she used to create it.
 function detectPasteMode(draft: typeof EMPTY_RECIPE): boolean {
+  return hasStoredNutrition(draft)
+}
+
+function hasStoredNutrition(draft: typeof EMPTY_RECIPE): boolean {
   return draft.calories != null || draft.protein != null || draft.carbs != null || draft.fats != null || draft.fiber != null
 }
 
@@ -193,6 +211,31 @@ function parseMacroInput(value: string): number | null {
   if (!trimmed) return null
   const num = Number(trimmed)
   return Number.isFinite(num) && num >= 0 ? num : null
+}
+
+function normalizeImportUrl(url: string): string {
+  return url.trim()
+}
+
+function readImportCache(): Record<string, ImportedUrlRecipe> {
+  if (typeof window === 'undefined') return {}
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(URL_IMPORT_CACHE_KEY) || '{}')
+    return parsed && typeof parsed === 'object' ? parsed as Record<string, ImportedUrlRecipe> : {}
+  } catch {
+    return {}
+  }
+}
+
+function cachedImport(url: string): ImportedUrlRecipe | null {
+  return readImportCache()[normalizeImportUrl(url)] ?? null
+}
+
+function storeCachedImport(recipe: ImportedUrlRecipe) {
+  if (typeof window === 'undefined' || !recipe.sourceUrl) return
+  const cache = readImportCache()
+  cache[normalizeImportUrl(recipe.sourceUrl)] = recipe
+  window.localStorage.setItem(URL_IMPORT_CACHE_KEY, JSON.stringify(cache))
 }
 
 type NutritionPreviewData = {
@@ -343,6 +386,50 @@ function UsdaNutritionPreview({
   )
 }
 
+function StoredNutritionPreview({
+  draft,
+}: {
+  draft: typeof EMPTY_RECIPE
+}) {
+  if (!hasStoredNutrition(draft)) return null
+
+  const total = {
+    calories: draft.calories ?? 0,
+    protein: draft.protein ?? 0,
+    carbs: draft.carbs ?? 0,
+    fats: draft.fats ?? 0,
+    fiber: draft.fiber ?? 0,
+  }
+  const servings = parseFloat(draft.family_servings)
+  const text: React.CSSProperties = { fontFamily: 'var(--font-hanken)', fontSize: '0.82rem', color: 'var(--admin-on-surface)', margin: 0 }
+  const muted: React.CSSProperties = { ...text, color: 'var(--admin-on-surface-variant)' }
+
+  return (
+    <div className="admin-card" style={{ marginTop: 10, padding: '12px 14px', background: '#F7F4EA', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+        <span style={label}>Saved nutrition values</span>
+        <span style={{ ...muted, fontSize: '0.75rem' }}>Saved values used by the app</span>
+      </div>
+      <p style={text}><strong>Whole recipe:</strong> {macroLine(total)}</p>
+      {Number.isFinite(servings) && servings > 1 && (
+        <p style={text}>
+          <strong>Per serving (one of {servings}):</strong>{' '}
+          {macroLine({
+            calories: total.calories / servings,
+            protein: total.protein / servings,
+            carbs: total.carbs / servings,
+            fats: total.fats / servings,
+            fiber: total.fiber / servings,
+          })}
+        </p>
+      )}
+      <p style={muted}>
+        These saved totals are the values the app uses for meal plans and client prescriptions.
+      </p>
+    </div>
+  )
+}
+
 function RecipeIngredientsSection({
   draft,
   onChange,
@@ -358,6 +445,47 @@ function RecipeIngredientsSection({
   const [importUrl, setImportUrl] = useState('')
   const [importing, setImporting] = useState(false)
   const [importError, setImportError] = useState('')
+  const [importNotice, setImportNotice] = useState('')
+  const [pendingImport, setPendingImport] = useState<ImportedUrlRecipe | null>(null)
+
+  function applyImportedRecipe(r: ImportedUrlRecipe, nutritionChoice: 'original' | 'calculated', fromCache = false) {
+    const selectedTotals = nutritionChoice === 'original' && r.originalTotals
+      ? r.originalTotals
+      : r.calculatedTotals ?? r.totals
+    const patch: Partial<typeof EMPTY_RECIPE> = {
+      ingredients: [...draft.ingredients, ...r.ingredients.map((i) => i.line)],
+      instructions: r.instructions.length > 0 && draft.instructions.length === 0 ? r.instructions : draft.instructions,
+      calories: selectedTotals.calories,
+      protein: selectedTotals.protein,
+      carbs: selectedTotals.carbs,
+      fats: selectedTotals.fats,
+      fiber: selectedTotals.fiber,
+      total_recipe_grams: selectedTotals.grams,
+    }
+    if (!draft.name && r.title) patch.name = r.title
+    if (r.servings) patch.family_servings = String(r.servings)
+    if (r.sourceUrl) {
+      const sourceLine = `Source: ${r.sourceUrl}`
+      patch.notes = draft.notes && !draft.notes.includes(r.sourceUrl)
+        ? `${draft.notes}\n\n${sourceLine}`
+        : draft.notes || sourceLine
+    }
+    onChange(patch)
+
+    const unparsedCount = r.ingredients.filter((i) => i.unparsed).length
+    if (unparsedCount > 0) {
+      setImportError(`Imported, but ${unparsedCount} ingredient${unparsedCount === 1 ? '' : 's'} couldn't be parsed. Look for lines that show "0g" and fix them before saving.`)
+      setImportNotice('')
+    } else if (fromCache) {
+      setImportError('')
+      setImportNotice(`Restored from saved import using ${nutritionChoice === 'original' ? 'website/original' : 'USDA calculated'} values. No nutrition API call was used.`)
+    } else {
+      setImportUrl('')
+      setImportError('')
+      setImportNotice(`Imported using ${nutritionChoice === 'original' ? 'website/original' : 'USDA calculated'} values.`)
+    }
+    setMode('url')
+  }
 
   function changeIngredients(ingredients: string[]) {
     // Ingredient edits invalidate any imported/manual whole-recipe totals.
@@ -375,56 +503,33 @@ function RecipeIngredientsSection({
   }
 
   async function importFromUrl() {
-    if (!importUrl.trim()) return
+    const url = normalizeImportUrl(importUrl)
+    if (!url) return
+    const saved = cachedImport(url)
+    if (saved) {
+      setPendingImport(saved)
+      applyImportedRecipe(saved, saved.originalTotals ? 'original' : 'calculated', true)
+      return
+    }
+
     setImporting(true)
     setImportError('')
+    setImportNotice('')
     try {
       const response = await fetch('/api/admin/coaching/recipes/import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: importUrl.trim() }),
+        body: JSON.stringify({ url }),
       })
       const data = await response.json()
       if (!response.ok) {
         setImportError(data.error || 'Could not import that recipe.')
         return
       }
-      const r = data.recipe as {
-        title: string
-        servings: number
-        ingredients: { line: string; unparsed: boolean }[]
-        instructions: string[]
-        sourceUrl: string
-        totals: { calories: number; protein: number; carbs: number; fats: number; fiber: number; grams: number }
-      }
-      const patch: Partial<typeof EMPTY_RECIPE> = {
-        ingredients: [...draft.ingredients, ...r.ingredients.map((i) => i.line)],
-        instructions: r.instructions.length > 0 && draft.instructions.length === 0 ? r.instructions : draft.instructions,
-        // Edamam returned full-recipe macros — pre-fill them so admin doesn't
-        // have to recalculate. She still reviews + can edit any field.
-        calories: r.totals.calories,
-        protein: r.totals.protein,
-        carbs: r.totals.carbs,
-        fats: r.totals.fats,
-        fiber: r.totals.fiber,
-        total_recipe_grams: r.totals.grams,
-      }
-      if (!draft.name && r.title) patch.name = r.title
-      if (r.servings) patch.family_servings = String(r.servings)
-      if (r.sourceUrl) {
-        const sourceLine = `Source: ${r.sourceUrl}`
-        patch.notes = draft.notes && !draft.notes.includes(r.sourceUrl)
-          ? `${draft.notes}\n\n${sourceLine}`
-          : draft.notes || sourceLine
-      }
-      onChange(patch)
-      const unparsedCount = r.ingredients.filter((i) => i.unparsed).length
-      if (unparsedCount > 0) {
-        setImportError(`Imported, but ${unparsedCount} ingredient${unparsedCount === 1 ? '' : 's'} couldn't be parsed. Look for lines that show "0g" and fix them before saving.`)
-      } else {
-        setImportUrl('')
-      }
-      setMode('usda')
+      const r = data.recipe as ImportedUrlRecipe
+      storeCachedImport(r)
+      setPendingImport(r)
+      applyImportedRecipe(r, r.originalTotals ? 'original' : 'calculated')
     } catch (err) {
       setImportError(err instanceof Error ? err.message : 'Could not import that recipe.')
     } finally {
@@ -518,7 +623,7 @@ function RecipeIngredientsSection({
       ) : mode === 'url' ? (
         <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 10 }}>
           <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.8rem', color: 'var(--admin-on-surface-variant)', margin: 0 }}>
-            Paste a recipe URL (NYT Cooking, AllRecipes, blog posts, etc.). We pull title, servings, ingredients with USDA-matched grams, and instructions — review every line before saving.
+            Paste a recipe URL. When the page provides nutrition, imported recipes use the website/original values by default. USDA-calculated values are available as an intentional alternate choice after import.
           </p>
           <div style={{ display: 'flex', gap: 8 }}>
             <input
@@ -544,6 +649,58 @@ function RecipeIngredientsSection({
             <p role="alert" style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.8rem', color: '#B42318', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 6, padding: '8px 10px', margin: 0 }}>
               {importError}
             </p>
+          )}
+          {importNotice && (
+            <p role="status" style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.8rem', color: '#2f5d31', background: '#f0f7ee', border: '1px solid #b6cfae', borderRadius: 6, padding: '8px 10px', margin: 0 }}>
+              {importNotice}
+            </p>
+          )}
+          {pendingImport && draft.ingredients.length > 0 && (
+            <div className="admin-card" style={{ padding: '12px 14px', background: '#F7F4EA', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div>
+                <span style={label}>Nutrition source</span>
+                <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.84rem', color: 'var(--admin-on-surface)', margin: '2px 0 0', fontWeight: 700 }}>
+                  {pendingImport.title || 'Imported recipe'}
+                </p>
+                <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.78rem', color: 'var(--admin-on-surface-variant)', margin: '2px 0 0' }}>
+                  The current saved values are used in client prescriptions. Switch only if you intentionally want the alternate calculation.
+                </p>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div style={{ border: '1px solid var(--admin-outline-variant)', borderRadius: 8, padding: 10, background: '#fff' }}>
+                  <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.78rem', fontWeight: 700, color: 'var(--admin-on-surface)', margin: 0 }}>
+                    Website/original values {pendingImport.originalTotals ? '(recommended)' : '(not found)'}
+                  </p>
+                  <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.8rem', color: 'var(--admin-on-surface-variant)', margin: '5px 0 10px' }}>
+                    {pendingImport.originalTotals ? macroLine(pendingImport.originalTotals) : 'This page did not expose usable nutrition values.'}
+                  </p>
+                  <button
+                    type="button"
+                    className="admin-btn-primary"
+                    disabled={!pendingImport.originalTotals}
+                    onClick={() => applyImportedRecipe(pendingImport, 'original')}
+                    style={{ background: '#C9A84C', color: '#162814', border: 'none', fontWeight: 700 }}
+                  >
+                    Use website values
+                  </button>
+                </div>
+                <div style={{ border: '1px solid var(--admin-outline-variant)', borderRadius: 8, padding: 10, background: '#fff' }}>
+                  <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.78rem', fontWeight: 700, color: 'var(--admin-on-surface)', margin: 0 }}>
+                    USDA/ingredient calculated
+                  </p>
+                  <p style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.8rem', color: 'var(--admin-on-surface-variant)', margin: '5px 0 10px' }}>
+                    {macroLine(pendingImport.calculatedTotals ?? pendingImport.totals)}
+                  </p>
+                  <button
+                    type="button"
+                    className="admin-btn-secondary"
+                    onClick={() => applyImportedRecipe(pendingImport, 'calculated')}
+                  >
+                    Use USDA values
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       ) : (
@@ -723,7 +880,10 @@ function RecipeIngredientsSection({
           })}
         </ul>
       )}
-      {mode === 'usda' && draft.ingredients.length > 0 && (
+      {hasStoredNutrition(draft) && (
+        <StoredNutritionPreview draft={draft} />
+      )}
+      {mode === 'usda' && draft.ingredients.length > 0 && !hasStoredNutrition(draft) && (
         <UsdaNutritionPreview ingredients={draft.ingredients} familyServings={draft.family_servings} />
       )}
     </div>

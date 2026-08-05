@@ -1,9 +1,9 @@
-import { analyzeIngredientsWithEdamam, type EdamamLineMacros } from '@/lib/edamam'
+import { analyzeIngredientsWithEdamam, type EdamamLineMacros } from '../edamam.ts'
 import {
   inferredDiscardedBrineIndexes,
   setIngredientNutritionExcluded,
-} from '@/lib/nutrition-ingredient'
-import { requestOpenAiJson } from '@/lib/openai-responses'
+} from '../nutrition-ingredient.ts'
+import { requestOpenAiJson } from '../openai-responses.ts'
 
 export type ImportedIngredient = {
   /** The original ingredient string from the recipe (e.g. "1.5 lbs chicken breast"). */
@@ -39,6 +39,23 @@ export type ImportedRecipe = {
     fiber: number
     grams: number
   }
+  originalTotals: {
+    calories: number
+    protein: number
+    carbs: number
+    fats: number
+    fiber: number
+    grams: number
+  } | null
+  calculatedTotals: {
+    calories: number
+    protein: number
+    carbs: number
+    fats: number
+    fiber: number
+    grams: number
+  }
+  nutritionSource: 'website' | 'calculated'
 }
 
 const FETCH_TIMEOUT_MS = 12_000
@@ -100,9 +117,18 @@ type JsonLdRecipe = {
   recipeIngredient?: string[]
   ingredients?: string[]
   recipeInstructions?: unknown
+  nutrition?: JsonLdNutrition
   prepTime?: string
   cookTime?: string
   totalTime?: string
+}
+
+type JsonLdNutrition = {
+  calories?: string | number
+  proteinContent?: string | number
+  carbohydrateContent?: string | number
+  fatContent?: string | number
+  fiberContent?: string | number
 }
 
 type ExtractedRecipe = {
@@ -114,10 +140,11 @@ type ExtractedRecipe = {
   instructions: string[]
 }
 
-function extractJsonLdRecipe(html: string): JsonLdRecipe | null {
+export function extractJsonLdRecipe(html: string): JsonLdRecipe | null {
   // Recipe sites embed schema.org/Recipe as JSON-LD in <script type="application/ld+json">.
   // Some sites nest the Recipe under @graph or list multiple types — handle both.
   const scripts = html.match(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi) ?? []
+  const recipes: JsonLdRecipe[] = []
   for (const block of scripts) {
     const inner = block.replace(/<script[^>]*>/i, '').replace(/<\/script>/i, '').trim()
     let parsed: unknown
@@ -128,27 +155,28 @@ function extractJsonLdRecipe(html: string): JsonLdRecipe | null {
     }
     const candidates: unknown[] = Array.isArray(parsed) ? parsed : [parsed]
     for (const entry of candidates) {
-      const recipe = findRecipeNode(entry)
-      if (recipe) return recipe
+      recipes.push(...findRecipeNodes(entry))
     }
   }
-  return null
+  return recipes.find((recipe) => recipe.nutrition)
+    ?? recipes.find((recipe) => (recipe.recipeIngredient ?? recipe.ingredients ?? []).length > 0)
+    ?? recipes[0]
+    ?? null
 }
 
-function findRecipeNode(node: unknown): JsonLdRecipe | null {
-  if (!node || typeof node !== 'object') return null
+function findRecipeNodes(node: unknown): JsonLdRecipe[] {
+  if (!node || typeof node !== 'object') return []
   const obj = node as Record<string, unknown>
   const type = obj['@type']
   const isRecipe = type === 'Recipe' || (Array.isArray(type) && type.includes('Recipe'))
-  if (isRecipe) return obj as JsonLdRecipe
+  const recipes: JsonLdRecipe[] = isRecipe ? [obj as JsonLdRecipe] : []
   const graph = obj['@graph']
   if (Array.isArray(graph)) {
     for (const child of graph) {
-      const found = findRecipeNode(child)
-      if (found) return found
+      recipes.push(...findRecipeNodes(child))
     }
   }
-  return null
+  return recipes
 }
 
 function parseServings(value: JsonLdRecipe['recipeYield']): number {
@@ -157,6 +185,79 @@ function parseServings(value: JsonLdRecipe['recipeYield']): number {
   const text = Array.isArray(value) ? value[0] : value
   const match = String(text).match(/\d+/)
   return match ? Number(match[0]) : 4
+}
+
+function parseNutritionAmount(value: string | number | undefined): number | null {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null
+  if (!value) return null
+  const match = String(value).replace(/,/g, '').match(/-?\d+(?:\.\d+)?/)
+  if (!match) return null
+  const amount = Number(match[0])
+  return Number.isFinite(amount) ? amount : null
+}
+
+export function scaleSiteNutrition(
+  nutrition: JsonLdNutrition | undefined,
+  servings: number,
+): Partial<ImportedRecipe['totals']> {
+  if (!nutrition || servings <= 0) return {}
+  const scaled = {
+    calories: parseNutritionAmount(nutrition.calories),
+    protein: parseNutritionAmount(nutrition.proteinContent),
+    carbs: parseNutritionAmount(nutrition.carbohydrateContent),
+    fats: parseNutritionAmount(nutrition.fatContent),
+    fiber: parseNutritionAmount(nutrition.fiberContent),
+  }
+  return {
+    ...(scaled.calories !== null ? { calories: Math.round(scaled.calories * servings) } : {}),
+    ...(scaled.protein !== null ? { protein: Math.round(scaled.protein * servings * 10) / 10 } : {}),
+    ...(scaled.carbs !== null ? { carbs: Math.round(scaled.carbs * servings * 10) / 10 } : {}),
+    ...(scaled.fats !== null ? { fats: Math.round(scaled.fats * servings * 10) / 10 } : {}),
+    ...(scaled.fiber !== null ? { fiber: Math.round(scaled.fiber * servings * 10) / 10 } : {}),
+  }
+}
+
+function completeTotals(
+  totals: Partial<ImportedRecipe['totals']>,
+  grams: number,
+): ImportedRecipe['totals'] | null {
+  if (totals.calories == null) return null
+  return {
+    calories: totals.calories,
+    protein: totals.protein ?? 0,
+    carbs: totals.carbs ?? 0,
+    fats: totals.fats ?? 0,
+    fiber: totals.fiber ?? 0,
+    grams,
+  }
+}
+
+export function extractVisibleNutrition(html: string): JsonLdNutrition | null {
+  const text = html
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  function amount(label: RegExp): string | undefined {
+    const match = text.match(label)
+    return match?.[1]
+  }
+
+  const nutrition = {
+    calories: amount(/\bCalories?\s*:\s*([0-9]+(?:\.[0-9]+)?)/i),
+    proteinContent: amount(/\bProtein\s*:\s*([0-9]+(?:\.[0-9]+)?)/i),
+    carbohydrateContent: amount(/\bCarbohydrates?\s*:\s*([0-9]+(?:\.[0-9]+)?)/i),
+    fatContent: amount(/(?:^|\s)Fat\s*:\s*([0-9]+(?:\.[0-9]+)?)/i),
+    fiberContent: amount(/\bFiber\s*:\s*([0-9]+(?:\.[0-9]+)?)/i),
+  }
+
+  if (!nutrition.calories) return null
+  const macroCount = [nutrition.proteinContent, nutrition.carbohydrateContent, nutrition.fatContent, nutrition.fiberContent]
+    .filter(Boolean)
+    .length
+  return macroCount >= 2 ? nutrition : null
 }
 
 function parseInstructions(value: unknown): string[] {
@@ -245,8 +346,30 @@ async function extractRecipeWithOpenAI(html: string, openAiKey: string): Promise
  */
 function formatLine(line: EdamamLineMacros): string {
   const grams = Math.max(0, Math.round(line.grams * 10) / 10)
-  const food = line.food || line.text || 'ingredient'
+  const food = ingredientNameFromRaw(line.text) || line.food || 'ingredient'
   return `${grams}g ${food}`
+}
+
+const LEADING_QUANTITY = String.raw`(?:\d+\s+\d+\/\d+|\d+\/\d+|\d+(?:\.\d+)?|[¼½¾⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞])`
+const LEADING_QUANTITY_RE = new RegExp(String.raw`^${LEADING_QUANTITY}(?:\s*(?:to|-|–)\s*${LEADING_QUANTITY})?\s*`, 'i')
+const LEADING_MEASURE_RE = /^(?:(?:to|or)\s+)?(?:cups?|c|tablespoons?|tbsp|teaspoons?|tsp|ounces?|oz|pounds?|lbs?|grams?|g|kilograms?|kg|milliliters?|ml|liters?|l|large|medium|small|cloves?)\s+/i
+
+export function ingredientNameFromRaw(raw: string): string {
+  let text = raw
+    .replace(/\([^)]*\)/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  text = text.replace(LEADING_QUANTITY_RE, '').trim()
+  while (LEADING_MEASURE_RE.test(text)) {
+    text = text.replace(LEADING_MEASURE_RE, '').trim()
+  }
+
+  return text
+    .replace(/^of\s+/i, '')
+    .replace(/,\s*(halved|sliced|cut|cored|minced|chopped|for garnish|drained|rinsed|raw|fresh|dried).*$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 export async function importRecipeFromUrl(
@@ -262,11 +385,14 @@ export async function importRecipeFromUrl(
   let cookTime = ''
   let ingredientStrings: string[] = []
   let instructions: string[] = []
+  let siteNutrition: Partial<ImportedRecipe['totals']> = {}
+  let siteNutritionRaw: JsonLdNutrition | null = null
 
   const jsonLd = extractJsonLdRecipe(html)
   if (jsonLd) {
     title = String(jsonLd.name ?? '').trim()
     servings = parseServings(jsonLd.recipeYield)
+    siteNutritionRaw = jsonLd.nutrition ?? null
     prepTime = parseDuration(jsonLd.prepTime)
     cookTime = parseDuration(jsonLd.cookTime)
     ingredientStrings = (jsonLd.recipeIngredient ?? jsonLd.ingredients ?? []).map((s) => String(s).trim()).filter(Boolean)
@@ -287,6 +413,8 @@ export async function importRecipeFromUrl(
   if (ingredientStrings.length === 0) {
     throw new Error('Could not find any ingredients on that page. Try a different URL.')
   }
+  siteNutritionRaw = siteNutritionRaw ?? extractVisibleNutrition(html)
+  siteNutrition = scaleSiteNutrition(siteNutritionRaw ?? undefined, servings)
 
   // Edamam owns the parse + macro math. One call returns grams + macros per line.
   const edamam = await analyzeIngredientsWithEdamam(ingredientStrings, title || 'Imported recipe')
@@ -308,6 +436,20 @@ export async function importRecipeFromUrl(
     line: setIngredientNutritionExcluded(formatLine(line), excludedIndexes.has(index)),
   }))
   const included = ingredients.filter((_, index) => !excludedIndexes.has(index))
+  const edamamTotals = {
+    calories: Math.round(included.reduce((sum, line) => sum + line.calories, 0)),
+    protein: Math.round(included.reduce((sum, line) => sum + line.protein, 0) * 10) / 10,
+    carbs: Math.round(included.reduce((sum, line) => sum + line.carbs, 0) * 10) / 10,
+    fats: Math.round(included.reduce((sum, line) => sum + line.fats, 0) * 10) / 10,
+    fiber: Math.round(included.reduce((sum, line) => sum + line.fiber, 0) * 10) / 10,
+    grams: Math.round(included.reduce((sum, line) => sum + line.grams, 0) * 10) / 10,
+  }
+  const totals = {
+    ...edamamTotals,
+    ...siteNutrition,
+    grams: edamamTotals.grams,
+  }
+  const originalTotals = completeTotals(siteNutrition, edamamTotals.grams)
 
   return {
     title: title || 'Imported recipe',
@@ -318,13 +460,9 @@ export async function importRecipeFromUrl(
     instructions,
     sourceUrl: url,
     notes: `Imported from ${url}. Review every ingredient before publishing.`,
-    totals: {
-      calories: Math.round(included.reduce((sum, line) => sum + line.calories, 0)),
-      protein: Math.round(included.reduce((sum, line) => sum + line.protein, 0) * 10) / 10,
-      carbs: Math.round(included.reduce((sum, line) => sum + line.carbs, 0) * 10) / 10,
-      fats: Math.round(included.reduce((sum, line) => sum + line.fats, 0) * 10) / 10,
-      fiber: Math.round(included.reduce((sum, line) => sum + line.fiber, 0) * 10) / 10,
-      grams: Math.round(included.reduce((sum, line) => sum + line.grams, 0) * 10) / 10,
-    },
+    totals: originalTotals ?? totals,
+    originalTotals,
+    calculatedTotals: edamamTotals,
+    nutritionSource: originalTotals ? 'website' : 'calculated',
   }
 }

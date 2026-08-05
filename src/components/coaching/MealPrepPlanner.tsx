@@ -134,6 +134,7 @@ export default function MealPrepPlanner({
   const portionFactor = clientPortionFactor(recipe, individualPlanStyle)
   const familyServings = parseFloat(recipe.familyServings)
   const hasFamilyYield = Number.isFinite(familyServings) && familyServings > 1 && !individualPlanStyle && !recipe.portionPinned
+  const standardServingFactor = hasFamilyYield ? 1 / familyServings : portionFactor
   const selectionsSnapshot = useSyncExternalStore(
     (listener) => storageKey ? subscribeMealPrepSelections(storageKey, listener) : () => {},
     () => storageKey ? mealPrepSelectionsSnapshot(storageKey) : '',
@@ -143,15 +144,14 @@ export default function MealPrepPlanner({
   const savedSelection = occurrenceKey ? selections[occurrenceKey] : undefined
   const peopleEating = savedSelection?.peopleEating ?? 1
   const prepPortions = savedSelection?.prepPortions ?? 0
-  const mealFactor = hasFamilyYield
-    ? portionFactor + (Math.max(peopleEating, 1) - 1) / familyServings
-    : peopleEating * portionFactor
+  const extraPeople = Math.max(peopleEating, 1) - 1
+  const mealFactor = portionFactor + extraPeople * standardServingFactor
   const prepFactor = prepPortions * portionFactor
   const totalFactor = mealFactor + prepFactor
   const lines = useMemo(() => scaledIngredientLines(recipe, totalFactor), [recipe, totalFactor])
   const totalLabel = totalFactor >= 0.995 && totalFactor <= 1.005
-    ? '1x the written recipe'
-    : `${Number(totalFactor.toFixed(2))}x the written recipe`
+    ? '1x the base recipe'
+    : `${Number(totalFactor.toFixed(2))}x the base recipe`
 
   const buttonStyle = (active = false): React.CSSProperties => ({
     fontFamily: 'var(--font-sans)',
@@ -168,9 +168,8 @@ export default function MealPrepPlanner({
 
   const persistSelection = (nextPeopleEating: number, nextPrepPortions: number) => {
     if (!storageKey || !occurrenceKey) return
-    const nextMealFactor = hasFamilyYield
-      ? portionFactor + (Math.max(nextPeopleEating, 1) - 1) / familyServings
-      : nextPeopleEating * portionFactor
+    const nextExtraPeople = Math.max(nextPeopleEating, 1) - 1
+    const nextMealFactor = portionFactor + nextExtraPeople * standardServingFactor
     const nextTotalFactor = nextMealFactor + nextPrepPortions * portionFactor
     const defaultFactor = portionFactor
     const isDefault = nextPeopleEating === 1
@@ -205,7 +204,7 @@ export default function MealPrepPlanner({
         <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           <MealPrepStepper
             label="How many people are eating?"
-            hint={hasFamilyYield ? `The written recipe serves ${familyServings}.` : 'Use 1 if it is just her.'}
+            hint="Include her in this count. Each extra person adds one standard recipe portion."
             value={peopleEating}
             min={1}
             max={12}
@@ -213,7 +212,7 @@ export default function MealPrepPlanner({
           />
           <MealPrepStepper
             label="How many days do you want to meal prep this for?"
-            hint="Each day adds one extra container using her planned portion."
+            hint="Each day adds one extra container using her prescribed serving."
             value={prepPortions}
             min={0}
             max={7}
@@ -222,8 +221,9 @@ export default function MealPrepPlanner({
 
           <div style={{ background: 'rgba(255,255,255,0.38)', border: '1px solid rgba(63,105,54,0.14)', borderRadius: '0.5rem', padding: '0.75rem' }}>
             <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
-              Cook <strong style={{ color: 'var(--text-primary)' }}>{totalLabel}</strong>. This covers {plural(peopleEating, 'person', 'people')} eating now
-              {prepPortions > 0 ? ` plus ${plural(prepPortions, 'portion')} saved for her.` : '.'}
+              Cook <strong style={{ color: 'var(--text-primary)' }}>{totalLabel}</strong>. This covers her prescribed serving
+              {extraPeople > 0 ? ` plus ${plural(extraPeople, 'standard portion')} for others` : ''}
+              {prepPortions > 0 ? ` plus ${plural(prepPortions, 'saved portion')} for her.` : '.'}
             </p>
             {prepPortions > 0 && (
               <p style={{ ...helpText, marginTop: '0.35rem' }}>

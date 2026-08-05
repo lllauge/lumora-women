@@ -27,7 +27,7 @@ import { buildGroceryList, cleanIngredientLine, mergeGroceryList } from '@/lib/g
 import { blockWeeksLabel, mealPlanBlocks, startDateWeekdayWarning, BLOCK_MENU_DAYS } from '@/lib/meal-plan-schedule'
 import { resolvedServingMultiplier } from '@/lib/nutrition-math'
 import { fitRecipeServingMultipliers } from '@/lib/meal-portion-fitting'
-import { findLibraryRecipe, syncRecipesWithLibrary } from '@/lib/plan-library-sync'
+import { findLibraryRecipe } from '@/lib/plan-library-sync'
 import {
   buildMealCalorieBreakdown,
   type MealCalorieBreakdown,
@@ -1195,183 +1195,28 @@ export default function CoachingPlanEditor({
   }
 
   async function savePlan(nextPlan = plan) {
+    if (liveNutritionPending) {
+      setError('USDA portions are still updating in the editor. Save once the meal calories finish calculating.')
+      return
+    }
     setPending(true)
     setError('')
     setMessage('')
 
     nextPlan = removeOrphanSlotRecipes(nextPlan)
-
-    // Plan recipes are snapshots taken when a recipe was dropped into a meal
-    // slot; they go stale when the Recipe Library is edited afterwards.
-    // Re-sync them on every save so the client always sees the library
-    // version. Custom per-slot recipes have no library counterpart.
-    if (libraryRecipesLoaded && libraryRecipes.length > 0) {
-      nextPlan = {
-        ...nextPlan,
-        recipes: syncRecipesWithLibrary(nextPlan.recipes, libraryRecipes),
-      }
-    }
-
-    // Auto-calculate USDA macros for any recipe that has ingredients
-    const individualPlanStyle = false
-    const referencedRecipeNames = new Set(
-      nextPlan.mealPlan.flatMap((day) => [
-        ...mealRecipeNames(day.breakfast),
-        ...mealRecipeNames(day.lunch),
-        ...mealRecipeNames(day.dinner),
-        ...day.snacks.flatMap(mealRecipeNames),
-      ]).filter(Boolean),
-    )
-    const recipesToCalc = nextPlan.recipes
-      .map((recipe, index) => ({ recipe, index }))
-      .filter(({ recipe }) => referencedRecipeNames.has(recipe.name) && recipe.ingredients.length > 0)
-    const skippedRecipes: string[] = []
-
-    if (recipesToCalc.length > 0) {
-      // Derives the client-portion card fields for one recipe at the given
-      // portion multiplier (defaults to the stored/declared portion). Recipe
-      // library macros can come from publishers, so plan prescriptions always
-      // rebuild calories from the reviewed USDA ingredient list.
-      const deriveCard = async (
-        recipe: CoachingPlanDraft['recipes'][number],
-        explicitMultiplier?: number,
-      ) => {
-        const familyCount = firstNumber(recipe.familyServings || recipe.servings)
-        const isFamily = !individualPlanStyle && familyCount > 1 && !recipe.portionPinned
-        const multiplier = recipe.portionPinned
-          ? 1
-          : explicitMultiplier
-            ?? resolvedServingMultiplier(recipe.clientServingMultiplier, familyCount, isFamily)
-
-        const res = await fetch('/api/admin/coaching/nutrition', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ingredients: recipe.ingredients,
-            clientServingMultiplier: `${multiplier}`,
-            familyServings: recipe.familyServings || recipe.servings,
-          }),
-        })
-        const data = await res.json().catch(() => ({} as UsdaNutritionResponse)) as UsdaNutritionResponse
-        return {
-          nutrition: res.ok ? data.nutrition ?? null : null,
-        }
-      }
-
-      // Applies a derived card onto the recipe; null means the calculation
-      // failed and the existing card must be kept. Never overwrite macros
-      // with zeros when USDA matched nothing (e.g. cup/tbsp units).
-      const applyDerived = (
-        recipe: CoachingPlanDraft['recipes'][number],
-        derived: Awaited<ReturnType<typeof deriveCard>>,
-      ): CoachingPlanDraft['recipes'][number] | null => {
-        const nutrition = derived.nutrition
-        if (!nutrition || nutrition.ingredients.length === 0 || !nutrition.totalRecipe.calories) {
-          return null
-        }
-        return {
-          ...recipe,
-          clientServingMultiplier: `${nutrition.clientServingMultiplier}`,
-          clientServingGrams: `${nutrition.clientServingGrams}g`,
-          clientServingMeasure: nutrition.clientServingMeasure,
-          clientServingBreakdown: nutrition.clientServingBreakdown,
-          clientServing: nutrition.clientServingBreakdown || `${nutrition.clientServingGrams}g`,
-          calories: `${nutrition.clientServing.calories}`,
-          protein: `${nutrition.clientServing.protein}g`,
-          carbs: `${nutrition.clientServing.carbs}g`,
-          fats: `${nutrition.clientServing.fats}g`,
-          fiber: `${nutrition.clientServing.fiber}g`,
-        }
-      }
-
-      // First pass: price every referenced recipe at its stored portion
-      // (recipes the library sync reset start back at one declared serving).
-      const results = await Promise.all(recipesToCalc.map(async ({ recipe, index }) => ({
-        index,
-        derived: await deriveCard(recipe),
-      })))
-
-      const updatedRecipes = [...nextPlan.recipes]
-      for (const { index, derived } of results) {
-        const applied = applyDerived(updatedRecipes[index], derived)
-        if (!applied) {
-          skippedRecipes.push(updatedRecipes[index].name)
-          continue
-        }
-        updatedRecipes[index] = applied
-      }
-
-      // Second pass: library edits synced into the plan change recipe
-      // nutrition out from under portions that were carved against the old
-      // version, so re-fit the portions to the client's daily targets on
-      // every save. Custom slot foods are exact coach-entered quantities and
-      // are never resized by the fitter.
-      const fittedMultipliers = fitRecipeServingMultipliers(
-        { ...nextPlan, recipes: updatedRecipes },
-        planningInputs,
-      )
-      const refits = [...fittedMultipliers].flatMap(([name, fitted]) => {
-        const index = updatedRecipes.findIndex((recipe) => recipe.name === name)
-        if (index < 0) return []
-        const recipe = updatedRecipes[index]
-        if (recipe.ingredients.length === 0 || skippedRecipes.includes(recipe.name)) return []
-        // Within 0.5% of the fitted portion already — leave the card alone so
-        // repeat saves settle instead of churning USDA recalculations.
-        const current = parseFloat(recipe.clientServingMultiplier)
-        if (Number.isFinite(current) && current > 0 && Math.abs(fitted - current) / current < 0.005) {
-          return []
-        }
-        return [{ index, recipe, fitted }]
-      })
-      const refitResults = await Promise.all(refits.map(async ({ index, recipe, fitted }) => ({
-        index,
-        derived: await deriveCard(recipe, fitted),
-      })))
-      for (const { index, derived } of refitResults) {
-        const applied = applyDerived(updatedRecipes[index], derived)
-        // A failed refit keeps the first-pass card: macros are still accurate
-        // for the stored portion, just not yet re-carved to target.
-        if (applied) updatedRecipes[index] = applied
-      }
-
-      // Also update meal plan descriptions with fresh macros
-      const updateMealMacros = (meal: CoachingPlanDraft['mealPlan'][number]['breakfast']) => {
-        const selectedRecipes = mealRecipeNames(meal)
-          .map((name) => updatedRecipes.find((recipe) => recipe.name === name))
-          .filter((recipe): recipe is CoachingPlanDraft['recipes'][number] => Boolean(recipe))
-        if (selectedRecipes.length === 0) return meal
-        return {
-          ...meal,
-          description: selectedRecipes.map((recipe) => [
-            `${stripSlotRecipeSuffixes(recipe.name)}:`,
-            recipe.clientServingMeasure ? `${recipe.clientServingMeasure}.` : '',
-            recipe.familyServings ? `Serves ${recipe.familyServings}.` : '',
-          ].filter(Boolean).join(' ')).join(' '),
-          macros: summedMealMacroLabel(meal, updatedRecipes),
-        }
-      }
-
-      nextPlan = {
-        ...nextPlan,
-        recipes: updatedRecipes,
-        mealPlan: nextPlan.mealPlan.map((day) => ({
-          ...day,
-          breakfast: updateMealMacros(day.breakfast),
-          lunch: updateMealMacros(day.lunch),
-          dinner: updateMealMacros(day.dinner),
-          snacks: day.snacks.map(updateMealMacros),
-        })),
-      }
-    }
-
-    if (nextPlan.status === 'published' && skippedRecipes.length > 0) {
-      setPlan(nextPlan)
-      setError(
-        `Cannot publish because nutrition could not be verified for: ${skippedRecipes.join(', ')}. ` +
-        'Review every ingredient and make sure each consumed item has a gram weight and a valid USDA match.',
-      )
-      setPending(false)
-      return
+    const updateMealMacros = (meal: CoachingPlanDraft['mealPlan'][number]['breakfast']) => ({
+      ...meal,
+      macros: summedMealMacroLabel(meal, nextPlan.recipes),
+    })
+    nextPlan = {
+      ...nextPlan,
+      mealPlan: nextPlan.mealPlan.map((day) => ({
+        ...day,
+        breakfast: updateMealMacros(day.breakfast),
+        lunch: updateMealMacros(day.lunch),
+        dinner: updateMealMacros(day.dinner),
+        snacks: day.snacks.map(updateMealMacros),
+      })),
     }
 
     // Rebuild the grocery list from the meal plan on every save so recipe
@@ -1400,9 +1245,7 @@ export default function CoachingPlanEditor({
     } else {
       if (result.plan) setPlan(result.plan)
       if (result.planningInputs) setPlanningInputs(result.planningInputs)
-      const savedMessage = skippedRecipes.length
-        ? `Plan saved, but USDA macros were skipped for: ${skippedRecipes.join(', ')}. Use gram-based ingredient lines (e.g. "150g cooked chicken breast") so macros calculate.`
-        : 'Plan saved.'
+      const savedMessage = 'Plan saved.'
       // e.g. "Jane was emailed that her plan is ready." on first publish.
       setMessage(result.notice ? `${savedMessage} ${result.notice}` : savedMessage)
       router.refresh()
@@ -1483,7 +1326,9 @@ export default function CoachingPlanEditor({
     padding: '8px 18px', borderRadius: 8,
     fontFamily: 'var(--font-hanken)', fontSize: '0.84rem', fontWeight: 700,
     background: '#C9A84C', color: '#162814',
-    border: 'none', cursor: pending ? 'not-allowed' : 'pointer', opacity: pending ? 0.7 : 1,
+    border: 'none',
+    cursor: (pending || liveNutritionPending) ? 'not-allowed' : 'pointer',
+    opacity: (pending || liveNutritionPending) ? 0.7 : 1,
   }
 
   return (
@@ -1510,8 +1355,8 @@ export default function CoachingPlanEditor({
             <Sparkles size={14} />
             {generating ? 'Generating...' : 'Generate AI Draft'}
           </button>
-          <button type="button" style={saveBtn} disabled={pending} onClick={() => savePlan()}>
-            {pending ? 'Calculating & Saving...' : 'Save Plan →'}
+          <button type="button" style={saveBtn} disabled={pending || liveNutritionPending} onClick={() => savePlan()}>
+            {pending ? 'Saving...' : liveNutritionPending ? 'Updating Portions...' : 'Save Plan →'}
           </button>
         </div>
       </div>
@@ -2401,11 +2246,11 @@ export default function CoachingPlanEditor({
         <div>
           <div style={{ fontFamily: 'var(--font-hanken)', fontWeight: 700, fontSize: '0.95rem', color: '#C9A84C' }}>Ready to save?</div>
           <div style={{ fontFamily: 'var(--font-hanken)', fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', marginTop: 2 }}>
-            Client portions calculate automatically. Status stays Draft until you publish.
+            USDA portions update in the editor. Save stores the current client-ready values.
           </div>
         </div>
-        <button type="button" style={{ ...saveBtn, flexShrink: 0 }} disabled={pending} onClick={() => savePlan()}>
-          {pending ? 'Calculating & Saving...' : 'Save Plan →'}
+        <button type="button" style={{ ...saveBtn, flexShrink: 0 }} disabled={pending || liveNutritionPending} onClick={() => savePlan()}>
+          {pending ? 'Saving...' : liveNutritionPending ? 'Updating Portions...' : 'Save Plan →'}
         </button>
       </div>
 

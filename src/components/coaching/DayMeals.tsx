@@ -1,6 +1,6 @@
 import { ChevronDown } from 'lucide-react'
 import {
-  cleanIngredientText, clientPortionFactor, clientPortionLines, isClientReadable, portionFraction,
+  cleanIngredientText, clientPortionFactor, clientPortionLines, isClientReadable,
   clientRecipeNotes, shoppingPrepLines, displayRecipeName, withGrams,
 } from '@/lib/coaching-engagement'
 import { seasoningSpoonAmount } from '@/lib/household-measure'
@@ -90,15 +90,11 @@ export default function DayMeals({
               const recipeIndex = recipes.findIndex((item) => item.name === name)
               const recipeLabel = displayRecipeName(name)
               const isAutoCustom = /^Custom\s+/i.test(recipeLabel)
-              const factor = clientPortionFactor(recipe, individualPlanStyle)
-              const fraction = portionFraction(factor)
               const isFamilyRecipe = !individualPlanStyle && parseFloat(recipe.familyServings) > 1 && !recipe.portionPinned
-              const portion = fraction && fraction.label !== 'the whole recipe'
-                ? `${fraction.label} of recipe`
-                : isFamilyRecipe
+              const portion = isFamilyRecipe
                   ? recipe.clientServingGrams.trim()
-                    ? `${withGrams(recipe.clientServingGrams)} portion`
-                    : 'Family recipe portion'
+                    ? `Prescribed serving: ${withGrams(recipe.clientServingGrams)}`
+                    : 'Prescribed serving'
                   : 'The whole recipe is your portion'
               const badge = prepBadges?.get(`${dayIndex}:${name}`)
               const customIngredients = isAutoCustom
@@ -218,19 +214,12 @@ function RecipeDetail({
   // carve): no gram target and no weigh-out list — the whole recipe is hers,
   // and the amounts to make it already live under Cooking & prep.
   const wholeRecipePortion = !isFamily && clientPortionFactor(recipe, individualPlanStyle) === 1
-  // Solo meal-prep recipe: the written recipe is a batch covering several
+  // Solo meal-prep recipe: the base recipe is a batch covering several
   // meals, while the portion block holds the single-meal amounts — the same
   // amounts she'd cook if making it fresh that day instead of batching.
   const soloBatch = !isFamily && !wholeRecipePortion && !freshCook
   const portionLines = clientPortionLines(recipe, individualPlanStyle).filter((line) => line.grams !== null)
-  const detailFraction = portionFraction(clientPortionFactor(recipe, individualPlanStyle))
-  // For family recipes the headline is "¼ of the recipe" (human-friendly),
-  // with the gram total kept as small subtext. For individual recipes the
-  // gram weight IS the meaningful headline, so we show it as before.
-  const fractionHeadline = isFamily && detailFraction && detailFraction.label !== 'the whole recipe'
-    ? `${detailFraction.qualifier ? `A ${detailFraction.qualifier} ${detailFraction.label}` : detailFraction.label} of the recipe`
-    : ''
-  const headline = fractionHeadline || wholeRecipePortion
+  const headline = wholeRecipePortion
     ? [] // fraction/whole-recipe headline replaces the gram-based headline
     : ([
         recipe.clientServingGrams.trim() && withGrams(recipe.clientServingGrams),
@@ -240,16 +229,11 @@ function RecipeDetail({
 
   return (
     <div>
-      {(headline.length > 0 || portionLines.length > 0 || fractionHeadline || isFamily || wholeRecipePortion) && (
+      {(headline.length > 0 || portionLines.length > 0 || isFamily || wholeRecipePortion) && (
         <div style={{ background: 'var(--section-tint)', borderRadius: '0.75rem', padding: '0.75rem 0.875rem', marginTop: '0.5rem' }}>
           <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 700, color: '#3F6936', marginBottom: '0.125rem' }}>
-            {isFamily ? 'YOUR PORTION (family recipe)' : soloBatch ? 'YOUR PORTION (if cooking fresh daily)' : 'YOUR PORTION'}
+            {soloBatch ? 'YOUR PRESCRIBED SERVING (if cooking fresh daily)' : 'YOUR PRESCRIBED SERVING'}
           </p>
-          {fractionHeadline && (
-            <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)', margin: '0.125rem 0 0.25rem' }}>
-              {fractionHeadline}
-            </p>
-          )}
           {wholeRecipePortion && (
             <>
               <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)', margin: '0.125rem 0 0.25rem' }}>
@@ -265,10 +249,10 @@ function RecipeDetail({
               {headline.join(' · ')}
             </p>
           )}
-          {!isFamily && !wholeRecipePortion && portionLines.length > 0 && (
+          {!wholeRecipePortion && portionLines.length > 0 && (
             <div style={{ marginTop: '0.5rem' }}>
               <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
-                {freshCook ? 'Cook with just these amounts — they make one portion, yours:' : 'Cook with these exact amounts — they make one serving:'}
+                {freshCook ? 'Cook with just these amounts:' : 'These are the exact amounts for your planned serving:'}
               </p>
               <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
                 {portionLines.map((line, i) => {
@@ -300,42 +284,18 @@ function RecipeDetail({
               </p>
             </div>
           )}
-          {isClientReadable(recipe.clientServingBreakdown) && (
+          {portionLines.length === 0 && isClientReadable(recipe.clientServingBreakdown) && (
             <p style={{ ...bodyText, fontSize: '0.8125rem', marginTop: '0.375rem' }}>{cleanIngredientText(recipe.clientServingBreakdown)}</p>
           )}
-          {(() => {
-            const fraction = portionFraction(clientPortionFactor(recipe, individualPlanStyle))
-            // The whole-recipe headline above already says it all.
-            if (!fraction || wholeRecipePortion) return null
-            if (freshCook) {
-              // Fresh cooks never make the full recipe, so the divide-the-pot
-              // tip would send her the wrong way.
-              return (
-                <p style={{
-                  fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-secondary)',
-                  marginTop: '0.625rem', paddingTop: '0.625rem', borderTop: '1px solid rgba(200,220,192,0.6)',
-                }}>
-                  <span style={{ fontWeight: 700, color: '#3F6936' }}>Cooking fresh: </span>
-                  {`Make just the amounts above (about ${fraction.label} of the written recipe) — it comes out to a single serving, so there's nothing to divide or store.`}
-                </p>
-              )
-            }
-            return (
-              <p style={{
-                fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-secondary)',
-                marginTop: '0.625rem', paddingTop: '0.625rem', borderTop: '1px solid rgba(200,220,192,0.6)',
-              }}>
-                <span style={{ fontWeight: 700, color: '#3F6936' }}>{isFamily ? 'How to portion it: ' : 'Meal prepping instead? '}</span>
-                {fraction.label === 'the whole recipe'
-                  ? 'This whole recipe is your portion, enjoy all of it.'
-                  : `Cook the full recipe and divide it into ${fraction.parts} equal portions — ${
-                      fraction.take === 1 ? `one is your serving (about ${fraction.label})` : `${fraction.take} of them are your serving (about ${fraction.label})`
-                    }${
-                      fraction.qualifier === 'generous' ? ', a little over is right' : fraction.qualifier === 'scant' ? ', a little under is right' : ''
-                    }. That split keeps the listed calories and macros on track.`}
-              </p>
-            )
-          })()}
+          {!wholeRecipePortion && (
+            <p style={{
+              fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-secondary)',
+              marginTop: '0.625rem', paddingTop: '0.625rem', borderTop: '1px solid rgba(200,220,192,0.6)',
+            }}>
+              <span style={{ fontWeight: 700, color: '#3F6936' }}>How to use this: </span>
+              Cook or prep the amounts above for this meal. If you are cooking extra food for other people or future days, use Meal prep so the ingredient list scales from the same USDA-calculated recipe.
+            </p>
+          )}
         </div>
       )}
 
@@ -350,7 +310,6 @@ function RecipeDetail({
         {[
           recipe.prepTime.trim() && `Prep ${recipe.prepTime.trim()}`,
           recipe.cookTime.trim() && `Cook ${recipe.cookTime.trim()}`,
-          recipe.familyServings.trim() && isFamily && `Serves ${recipe.familyServings.trim()}`,
           [recipe.calories, recipe.protein, recipe.carbs, recipe.fats, recipe.fiber].some((v) => v.trim()) &&
             `Per portion: ${[
               recipe.calories.trim() && `${recipe.calories.trim().replace(/\s*k?cal$/i, '')} cal`,
@@ -362,18 +321,18 @@ function RecipeDetail({
         ].filter(Boolean).join(' · ')}
       </p>
 
-      {recipe.ingredients.length > 0 && (
+      {recipe.ingredients.length > 0 && (wholeRecipePortion || portionLines.length === 0) && (
         <>
           <h3 style={sectionTitle}>
             {isFamily
-              ? 'Cooking & prep (full family recipe)'
+              ? 'Cooking & prep'
               : soloBatch
                 ? 'Cooking & prep (to prep multiple meals for the week)'
                 : 'Cooking & prep'}
           </h3>
           <p style={{ ...bodyText, fontSize: '0.8125rem', fontStyle: 'italic', marginBottom: '0.5rem' }}>
             {freshCook && !wholeRecipePortion
-              ? 'The full written recipe, for reference — cook with your single-portion amounts above instead. Your grocery list is already scaled to them.'
+              ? 'The base recipe is here for reference — cook with your single-portion amounts above instead. Your grocery list is already scaled to them.'
               : 'Amounts to buy and prep are raw ingredients, before cooking, unless a line says cooked weight.'}
             {freshCook && !wholeRecipePortion
               ? ''

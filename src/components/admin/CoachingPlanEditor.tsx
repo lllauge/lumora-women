@@ -339,21 +339,26 @@ function slotLinkLibraryRecipeAssignments(
   plan: CoachingPlanDraft,
   libraryRecipes: LibraryRecipe[],
 ): CoachingPlanDraft {
-  if (libraryRecipes.length === 0) return plan
   let changed = false
   let recipes = [...plan.recipes]
 
   const linkedName = (name: string, slotKey: string) => {
     if (isCustomSlotRecipe(name)) return name
+    if (isSlotRecipeName(name, slotKey)) return name
+    const baseName = stripSlotRecipeSuffixes(name)
     const library = findLibraryRecipe(libraryRecipes, name)
-    if (!library) return name
-    const slotRecipeName = normalizedSlotRecipeName(library.name, library.name, slotKey)
+    const existing = recipes.find((recipe) => recipe.name === name)
+      ?? recipes.find((recipe) => stripSlotRecipeSuffixes(recipe.name) === baseName)
+    if (!library && !existing) return name
+    const label = library?.name ?? existing?.name ?? baseName
+    const slotRecipeName = normalizedSlotRecipeName(label, baseName || 'Recipe', slotKey)
     if (name === slotRecipeName) return name
     changed = true
     if (!recipes.some((recipe) => recipe.name === slotRecipeName)) {
-      const existing = recipes.find((recipe) => recipe.name === name)
+      const source = existing ?? (library ? libraryRecipeToPlanRecipe(library) : null)
+      if (!source) return slotRecipeName
       recipes.push({
-        ...(existing ?? libraryRecipeToPlanRecipe(library)),
+        ...source,
         name: slotRecipeName,
         clientServing: '',
         clientServingMultiplier: '',
@@ -365,9 +370,9 @@ function slotLinkLibraryRecipeAssignments(
         carbs: '',
         fats: '',
         fiber: '',
-        ingredients: [...(existing?.ingredients ?? library.ingredients)],
-        instructions: [...(existing?.instructions ?? library.instructions)],
-        swaps: [...(existing?.swaps ?? [])],
+        ingredients: [...(existing?.ingredients ?? library?.ingredients ?? source.ingredients)],
+        instructions: [...(existing?.instructions ?? library?.instructions ?? source.instructions)],
+        swaps: [...(existing?.swaps ?? source.swaps ?? [])],
       })
     }
     return slotRecipeName
@@ -554,7 +559,7 @@ export default function CoachingPlanEditor({
   }, [])
 
   useEffect(() => {
-    if (!libraryRecipesLoaded || libraryRecipes.length === 0) return
+    if (!libraryRecipesLoaded) return
     setPlan((current) => slotLinkLibraryRecipeAssignments(current, libraryRecipes))
   }, [libraryRecipesLoaded, libraryRecipes])
 

@@ -27,6 +27,7 @@ import { buildGroceryList, cleanIngredientLine, mergeGroceryList } from '@/lib/g
 import { blockWeeksLabel, mealPlanBlocks, startDateWeekdayWarning, BLOCK_MENU_DAYS } from '@/lib/meal-plan-schedule'
 import { resolvedServingMultiplier } from '@/lib/nutrition-math'
 import { fitRecipeServingMultipliers } from '@/lib/meal-portion-fitting'
+import { allocateMealCalorieTargets } from '@/lib/meal-calorie-targets'
 import { findLibraryRecipe } from '@/lib/plan-library-sync'
 import {
   buildMealCalorieBreakdown,
@@ -306,6 +307,32 @@ function activeMealPercentageTotal(
     mealRecipeNames(day.dinner).length > 0 ? firstNumber(planningInputs.dinnerPct) || 25 : 0,
     activeSnackCount > 0 ? firstNumber(planningInputs.snackPct) || 10 : 0,
   ].reduce((sum, value) => sum + value, 0) || 100
+}
+
+function daySlotCalorieTargets(
+  day: CoachingPlanDraft['mealPlan'][number],
+  dailyCalories: number,
+  planningInputs: Pick<MacroCalculationInputs, 'breakfastPct' | 'lunchPct' | 'dinnerPct' | 'snackPct'>,
+) {
+  const activeSnackCount = day.snacks.filter((snack) => mealRecipeNames(snack).length > 0).length
+  const snackPct = firstNumber(planningInputs.snackPct) || 10
+  const slots = [
+    ...(mealRecipeNames(day.breakfast).length > 0
+      ? [{ key: 'breakfast', percentage: firstNumber(planningInputs.breakfastPct) || 35 }]
+      : []),
+    ...(mealRecipeNames(day.lunch).length > 0
+      ? [{ key: 'lunch', percentage: firstNumber(planningInputs.lunchPct) || 30 }]
+      : []),
+    ...(mealRecipeNames(day.dinner).length > 0
+      ? [{ key: 'dinner', percentage: firstNumber(planningInputs.dinnerPct) || 25 }]
+      : []),
+    ...day.snacks.flatMap((snack, snackIndex) => (
+      mealRecipeNames(snack).length > 0
+        ? [{ key: `snack${snackIndex}`, percentage: snackPct / Math.max(1, activeSnackCount) }]
+        : []
+    )),
+  ]
+  return allocateMealCalorieTargets(dailyCalories, slots)
 }
 
 function slotLinkLibraryRecipeAssignments(
@@ -1772,14 +1799,17 @@ export default function CoachingPlanEditor({
                     const customRecipe = plan.recipes.find((recipe) => recipe.name === customRecipeName)
                     const ingredients = customRecipe?.ingredients ?? []
                     const dayPercentageTotal = activeMealPercentageTotal(day, planningInputs)
+                    const dailyCalories = firstNumber(plan.macroTargets.calories)
+                    const slotCalorieTargets = daySlotCalorieTargets(day, dailyCalories, planningInputs)
                     const calorieBreakdown = buildMealCalorieBreakdown({
                       label: mealKey,
                       meal,
                       recipes: plan.recipes,
-                      dailyCalories: firstNumber(plan.macroTargets.calories),
+                      dailyCalories,
                       slot: mealKey,
                       planningInputs,
                       percentageTotal: dayPercentageTotal,
+                      targetCaloriesOverride: slotCalorieTargets.get(mealKey),
                     })
                     return (
                       <div key={mealKey} style={{ background: 'var(--admin-surface-low)', border: '1px solid var(--admin-outline-variant)', borderRadius: 9, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -1882,15 +1912,18 @@ export default function CoachingPlanEditor({
                       const snackIngredients = customRecipe?.ingredients ?? []
                       const activeSnackCount = Math.max(1, day.snacks.filter((candidate) => mealRecipeNames(candidate).length > 0).length)
                       const dayPercentageTotal = activeMealPercentageTotal(day, planningInputs)
+                      const dailyCalories = firstNumber(plan.macroTargets.calories)
+                      const slotCalorieTargets = daySlotCalorieTargets(day, dailyCalories, planningInputs)
                       const calorieBreakdown = buildMealCalorieBreakdown({
                         label: day.snacks.length > 1 ? `Snack ${snackIndex + 1}` : 'Snack',
                         meal: snack,
                         recipes: plan.recipes,
-                        dailyCalories: firstNumber(plan.macroTargets.calories),
+                        dailyCalories,
                         slot: 'snack',
                         snackCount: activeSnackCount,
                         planningInputs,
                         percentageTotal: dayPercentageTotal,
+                        targetCaloriesOverride: slotCalorieTargets.get(`snack${snackIndex}`),
                       })
                       return (
                         <div key={snackIndex} style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: snackIndex < day.snacks.length - 1 ? 8 : 0, borderBottom: snackIndex < day.snacks.length - 1 ? '1px solid var(--admin-outline-variant)' : 'none' }}>

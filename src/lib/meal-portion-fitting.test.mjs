@@ -235,10 +235,10 @@ test('meal percentages stay authoritative when a selected recipe is too light', 
   const fitted = fitRecipeServingMultipliers(plan, {
     breakfastPct: '30', lunchPct: '35', dinnerPct: '25', snackPct: '10',
   })
-  assert.ok(Math.abs(fitted.get('Frittata Egg Muffins') - 532.5 / 496) < 0.002)
-  assert.ok(Math.abs(fitted.get('Baked Chicken Breast') - 621.25 / 322) < 0.002)
-  assert.ok(Math.abs(fitted.get('Crispy Chicken Thighs') - 443.75 / 444) < 0.002)
-  assert.ok(Math.abs(fitted.get('Roasted Sweet Potato') - 177.5 / 248) < 0.002)
+  assert.ok(Math.abs(fitted.get('Frittata Egg Muffins') - 533 / 496) < 0.00001)
+  assert.ok(Math.abs(fitted.get('Baked Chicken Breast') - 621 / 322) < 0.00001)
+  assert.ok(Math.abs(fitted.get('Crispy Chicken Thighs') - 444 / 444) < 0.00001)
+  assert.ok(Math.abs(fitted.get('Roasted Sweet Potato') - 177 / 248) < 0.00001)
 })
 
 test('slot-linked copies of the same recipe fit to different meal targets', () => {
@@ -265,7 +265,7 @@ test('slot-linked copies of the same recipe fit to different meal targets', () =
   assert.ok(Math.abs(fitted.get('Crispy Chicken Thighs (d1-breakfast)') - 533 / 2300) < 0.002)
   assert.ok(Math.abs(fitted.get('Frittata Egg Muffins (d1-lunch)') - 621 / 496) < 0.002)
   assert.ok(Math.abs(fitted.get('Ground Turkey Protein Pasta (d1-dinner)') - 444 / (443 / 0.275)) < 0.002)
-  assert.ok(Math.abs(fitted.get('Frittata Egg Muffins (d1-snack0)') - 178 / 496) < 0.002)
+  assert.ok(Math.abs(fitted.get('Frittata Egg Muffins (d1-snack0)') - 177 / 496) < 0.002)
 })
 
 test('empty meal slots redistribute their calorie budget to active meals', () => {
@@ -288,9 +288,58 @@ test('empty meal slots redistribute their calorie budget to active meals', () =>
     breakfastPct: '30', lunchPct: '35', dinnerPct: '25', snackPct: '10',
   })
 
-  assert.ok(Math.abs(fitted.get('Breakfast Pot') - (1775 * 30 / 65) / 1600) < 0.002)
-  assert.ok(Math.abs(fitted.get('Dinner Pot') - (1775 * 25 / 65) / 1600) < 0.002)
-  assert.ok(Math.abs(fitted.get('Snack Pot') - (1775 * 10 / 65) / 1600) < 0.002)
+  assert.ok(Math.abs(fitted.get('Breakfast Pot') - 819 / 1600) < 0.00001)
+  assert.ok(Math.abs(fitted.get('Dinner Pot') - 683 / 1600) < 0.00001)
+  assert.ok(Math.abs(fitted.get('Snack Pot') - 273 / 1600) < 0.00001)
+})
+
+test('every day in every menu gets its own exact calorie-fit targets', () => {
+  const recipes = []
+  const mealPlan = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday', 'Next Monday'].map((day, dayIndex) => {
+    const suffix = `d${dayIndex + 1}`
+    const names = {
+      breakfast: `Breakfast Pot (${suffix}-breakfast)`,
+      lunch: `Lunch Pot (${suffix}-lunch)`,
+      dinner: `Dinner Pot (${suffix}-dinner)`,
+      snack: `Snack Pot (${suffix}-snack0)`,
+    }
+    recipes.push(
+      recipe({ name: names.breakfast, familyServings: '4', clientServingMultiplier: '0.25', calories: '400' }),
+      recipe({ name: names.lunch, familyServings: '4', clientServingMultiplier: '0.25', calories: '400' }),
+      recipe({ name: names.dinner, familyServings: '4', clientServingMultiplier: '0.25', calories: '400' }),
+      recipe({ name: names.snack, familyServings: '4', clientServingMultiplier: '0.25', calories: '400' }),
+    )
+    return {
+      day,
+      breakfast: meal([names.breakfast]),
+      lunch: meal([names.lunch]),
+      dinner: meal([names.dinner]),
+      snacks: [meal([names.snack])],
+    }
+  })
+  const plan = {
+    macroTargets: { calories: '1775', protein: '140g', carbs: '150g', fats: '70g' },
+    mealPlan,
+    recipes,
+  }
+  const fitted = fitRecipeServingMultipliers(plan, {
+    breakfastPct: '30', lunchPct: '35', dinnerPct: '25', snackPct: '10',
+  })
+
+  for (const day of mealPlan) {
+    const names = [
+      ...day.breakfast.recipeNames,
+      ...day.lunch.recipeNames,
+      ...day.dinner.recipeNames,
+      ...day.snacks.flatMap((snack) => snack.recipeNames),
+    ]
+    const total = names.reduce((sum, name) => {
+      const multiplier = fitted.get(name)
+      assert.ok(multiplier !== undefined, `${name} should be fitted`)
+      return sum + Math.round(1600 * multiplier)
+    }, 0)
+    assert.equal(total, 1775, `${day.day} should hit the daily calorie target exactly`)
+  }
 })
 
 test('custom slot foods are never resized', () => {

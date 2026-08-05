@@ -1,7 +1,7 @@
 import { ChevronDown } from 'lucide-react'
 import {
-  cleanIngredientText, clientPortionFactor, clientPortionLines, isClientReadable,
-  clientRecipeNotes, shoppingPrepLines, displayRecipeName, withGrams,
+  cleanIngredientText, clientPortionFactor, clientPortionLines, portionFraction,
+  clientRecipeNotes, shoppingPrepLines, displayRecipeName,
 } from '@/lib/coaching-engagement'
 import { seasoningSpoonAmount } from '@/lib/household-measure'
 import InstructionSteps from '@/components/coaching/InstructionSteps'
@@ -91,9 +91,10 @@ export default function DayMeals({
               const recipeLabel = displayRecipeName(name)
               const isAutoCustom = /^Custom\s+/i.test(recipeLabel)
               const isFamilyRecipe = !individualPlanStyle && parseFloat(recipe.familyServings) > 1 && !recipe.portionPinned
+              const calories = recipe.calories.trim().replace(/\s*k?cal$/i, '')
               const portion = isFamilyRecipe
-                  ? recipe.clientServingGrams.trim()
-                    ? `Prescribed serving: ${withGrams(recipe.clientServingGrams)}`
+                  ? calories
+                    ? `Prescribed serving: ${calories} cal`
                     : 'Prescribed serving'
                   : 'The whole recipe is your portion'
               const badge = prepBadges?.get(`${dayIndex}:${name}`)
@@ -185,6 +186,20 @@ export default function DayMeals({
   )
 }
 
+function percentLabel(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return ''
+  const percent = value * 100
+  return `${percent >= 10 ? Math.round(percent) : Math.round(percent * 10) / 10}%`
+}
+
+function noScalePortionText(factor: number) {
+  const fraction = portionFraction(factor)
+  if (!fraction || fraction.label === 'the whole recipe') return ''
+  const portionNoun = fraction.take === 1 ? 'portion' : 'portions'
+  const qualifier = fraction.qualifier ? `${fraction.qualifier} ` : ''
+  return `Divide the cooked recipe into ${fraction.parts} equal portions. Eat ${fraction.take} ${qualifier}${portionNoun}.`
+}
+
 function RecipeDetail({
   recipe,
   individualPlanStyle,
@@ -218,18 +233,15 @@ function RecipeDetail({
   // meals, while the portion block holds the single-meal amounts — the same
   // amounts she'd cook if making it fresh that day instead of batching.
   const soloBatch = !isFamily && !wholeRecipePortion && !freshCook
+  const portionFactor = clientPortionFactor(recipe, individualPlanStyle)
+  const cookedPercent = percentLabel(portionFactor)
+  const noScaleText = noScalePortionText(portionFactor)
   const portionLines = clientPortionLines(recipe, individualPlanStyle).filter((line) => line.grams !== null)
-  const headline = wholeRecipePortion
-    ? [] // fraction/whole-recipe headline replaces the gram-based headline
-    : ([
-        recipe.clientServingGrams.trim() && withGrams(recipe.clientServingGrams),
-        isClientReadable(recipe.clientServingMeasure) && recipe.clientServingMeasure.trim(),
-        isClientReadable(recipe.clientServing) && cleanIngredientText(recipe.clientServing),
-      ].filter(Boolean) as string[])
+  const servingCalories = recipe.calories.trim().replace(/\s*k?cal$/i, '')
 
   return (
     <div>
-      {(headline.length > 0 || portionLines.length > 0 || isFamily || wholeRecipePortion) && (
+      {(servingCalories || portionLines.length > 0 || isFamily || wholeRecipePortion) && (
         <div style={{ background: 'var(--section-tint)', borderRadius: '0.75rem', padding: '0.75rem 0.875rem', marginTop: '0.5rem' }}>
           <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 700, color: '#3F6936', marginBottom: '0.125rem' }}>
             {soloBatch ? 'YOUR PRESCRIBED SERVING (if cooking fresh daily)' : 'YOUR PRESCRIBED SERVING'}
@@ -244,48 +256,26 @@ function RecipeDetail({
               </p>
             </>
           )}
-          {headline.length > 0 && (
+          {servingCalories && (
             <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-              {headline.join(' · ')}
+              {servingCalories} cal
             </p>
           )}
-          {!wholeRecipePortion && portionLines.length > 0 && (
+          {!wholeRecipePortion && (
             <div style={{ marginTop: '0.5rem' }}>
-              <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
-                {freshCook ? 'Cook with just these amounts:' : 'These are the exact amounts for your planned serving:'}
+              <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 700, color: '#3F6936', marginBottom: '0.25rem' }}>
+                Most accurate
               </p>
-              <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-                {portionLines.map((line, i) => {
-                  const amount = line.count
-                    ? line.count
-                    : line.grams !== null
-                      ? seasoningSpoonAmount(line.name, line.grams) ?? `${line.grams}g`
-                      : ''
-                  return (
-                    <li key={i} style={{ display: 'flex', gap: '0.625rem', alignItems: 'baseline', padding: '0.1875rem 0' }}>
-                      <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-primary)', minWidth: '3.5rem', textAlign: 'right' }}>
-                        {amount}
-                      </span>
-                      <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                        {line.name}
-                        {!line.count && line.state === 'raw' && (
-                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}> · weigh raw</span>
-                        )}
-                        {!line.count && line.state === 'cooked' && (
-                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}> · weigh cooked</span>
-                        )}
-                      </span>
-                    </li>
-                  )
-                })}
-              </ul>
-              <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem', fontStyle: 'italic' }}>
-                Tip: weigh each ingredient in the state it&apos;s listed, that&apos;s how your macros were calculated.
+              <p style={{ ...bodyText, fontSize: '0.8125rem' }}>
+                After cooking, weigh the finished recipe. Your serving is {cookedPercent || 'your prescribed share'} of the cooked finished food.
+              </p>
+              <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 700, color: '#3F6936', margin: '0.625rem 0 0.25rem' }}>
+                No scale
+              </p>
+              <p style={{ ...bodyText, fontSize: '0.8125rem' }}>
+                {noScaleText || 'Use the cooked-weight method for this one; the calorie-fitted portion does not line up cleanly with an equal-container split.'}
               </p>
             </div>
-          )}
-          {portionLines.length === 0 && isClientReadable(recipe.clientServingBreakdown) && (
-            <p style={{ ...bodyText, fontSize: '0.8125rem', marginTop: '0.375rem' }}>{cleanIngredientText(recipe.clientServingBreakdown)}</p>
           )}
           {!wholeRecipePortion && (
             <p style={{
@@ -293,7 +283,7 @@ function RecipeDetail({
               marginTop: '0.625rem', paddingTop: '0.625rem', borderTop: '1px solid rgba(200,220,192,0.6)',
             }}>
               <span style={{ fontWeight: 700, color: '#3F6936' }}>How to use this: </span>
-              Cook or prep the amounts above for this meal. If you are cooking extra food for other people or future days, use Meal prep so the ingredient list scales from the same USDA-calculated recipe.
+              Cook the recipe below, then portion the finished food using either the cooked-weight method or the no-scale split. If you are cooking extra food for other people or future days, use Meal prep so the ingredient list scales from the same USDA-calculated recipe.
             </p>
           )}
         </div>
@@ -321,7 +311,7 @@ function RecipeDetail({
         ].filter(Boolean).join(' · ')}
       </p>
 
-      {recipe.ingredients.length > 0 && (wholeRecipePortion || portionLines.length === 0) && (
+      {recipe.ingredients.length > 0 && (
         <>
           <h3 style={sectionTitle}>
             {isFamily

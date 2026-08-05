@@ -4,6 +4,7 @@ import type {
 } from './coaching-plan-schema'
 import { declaredServingMultiplier } from './nutrition-math.ts'
 import { isIndividualPlanStyle } from './cooking-style.ts'
+import { allocateMealCalorieTargets } from './meal-calorie-targets.ts'
 
 type Nutrients = {
   calories: number
@@ -125,19 +126,25 @@ export function fitRecipeServingMultipliers(
     ]
     const activeSlots = rawSlots.filter(({ meal }) => mealRecipeNames(meal).length > 0)
     const activePercentageTotal = activeSlots.reduce((sum, slot) => sum + slot.percentage, 0) || percentageTotal
-    const slots = activeSlots.map(({ meal, percentage }) => ({
+    const slots = activeSlots.map(({ meal, percentage }, index) => ({
+      key: `slot-${index}`,
       meal,
       share: percentage / activePercentageTotal,
+      percentage,
     }))
+    const calorieTargets = allocateMealCalorieTargets(
+      dailyTarget.calories,
+      slots.map((slot) => ({ key: slot.key, percentage: slot.percentage })),
+    )
 
-    const fitted = slots.map(({ meal, share }) => {
+    const fitted = slots.map(({ key, meal, share }) => {
       const names = mealRecipeNames(meal)
       const adjustableNames = names.filter((name) => isAdjustableRecipe(name, plan.recipes))
       const fixedNames = names.filter((name) => !isAdjustableRecipe(name, plan.recipes))
       const adjustable = nutrientsForNames(adjustableNames, plan.recipes)
       const fixed = nutrientsForNames(fixedNames, plan.recipes)
       const slotTarget = {
-        calories: dailyTarget.calories * share,
+        calories: calorieTargets.get(key) ?? dailyTarget.calories * share,
         protein: dailyTarget.protein * share,
         carbs: dailyTarget.carbs * share,
         fats: dailyTarget.fats * share,
@@ -182,7 +189,7 @@ export function fitRecipeServingMultipliers(
         // on the target-driven share regardless of where the carve started.
         const maxMultiplier = isFamily ? MAX_FAMILY_MULTIPLIER : MAX_INDIVIDUAL_MULTIPLIER
         const unbounded = baseline * scale
-        const desired = Math.round(Math.min(maxMultiplier, Math.max(MIN_MULTIPLIER, unbounded)) * 1000) / 1000
+        const desired = Math.round(Math.min(maxMultiplier, Math.max(MIN_MULTIPLIER, unbounded)) * 1000000) / 1000000
         const values = candidates.get(name) ?? []
         values.push(desired)
         candidates.set(name, values)

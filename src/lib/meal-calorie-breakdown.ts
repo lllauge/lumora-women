@@ -122,6 +122,7 @@ export function buildMealCalorieBreakdown({
   snackCount = 1,
   planningInputs,
   percentageTotal,
+  targetCaloriesOverride,
 }: {
   label: string
   meal: PlanMeal
@@ -131,6 +132,7 @@ export function buildMealCalorieBreakdown({
   snackCount?: number
   planningInputs: Record<string, unknown>
   percentageTotal?: number
+  targetCaloriesOverride?: number
 }): MealCalorieBreakdown {
   const names = mealRecipeNames(meal)
   const { percentage, total } = mealPercentage(slot, planningInputs)
@@ -138,9 +140,9 @@ export function buildMealCalorieBreakdown({
     ? percentage / Math.max(1, snackCount)
     : percentage
   const resolvedPercentageTotal = percentageTotal && percentageTotal > 0 ? percentageTotal : total
-  const targetCalories = dailyCalories > 0
+  const targetCalories = targetCaloriesOverride ?? (dailyCalories > 0
     ? dailyCalories * slotPercentage / resolvedPercentageTotal
-    : 0
+    : 0)
   const recipeRows = names
     .map((name) => recipes.find((recipe) => recipe.name === name))
     .filter((recipe): recipe is Recipe => Boolean(recipe))

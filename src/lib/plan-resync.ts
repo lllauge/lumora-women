@@ -13,6 +13,7 @@ import {
   normalizeRecipeName,
   syncRecipesWithLibrary,
 } from './plan-library-sync'
+import { slotLinkRecipeAssignments } from './plan-slot-recipes'
 import { fitRecipeServingMultipliers } from './meal-portion-fitting'
 import {
   normalizeReferencedPlanNutrition,
@@ -65,14 +66,16 @@ export async function resyncPlansForRecipes({
   supabase,
   apiKey,
   recipeNames,
+  allPlans = false,
 }: {
   supabase: AdminClient
   apiKey: string
-  recipeNames: string[]
+  recipeNames?: string[]
+  allPlans?: boolean
 }): Promise<PlanResyncSummary> {
   const summary: PlanResyncSummary = { affected: 0, updated: 0, failed: [] }
-  const wanted = new Set(recipeNames.map(normalizeRecipeName).filter(Boolean))
-  if (wanted.size === 0) return summary
+  const wanted = new Set((recipeNames ?? []).map(normalizeRecipeName).filter(Boolean))
+  if (!allPlans && wanted.size === 0) return summary
 
   const { data: libraryRows, error: libraryError } = await supabase
     .from('recipe_library')
@@ -104,29 +107,31 @@ export async function resyncPlansForRecipes({
       generatedByAi: row.generated_by_ai,
     })
     const referenced = referencedRecipeNames(plan)
-    const touchesChangedRecipe = [...referenced]
+    const touchesChangedRecipe = allPlans || [...referenced]
       .some((name) => wanted.has(normalizeRecipeName(name)))
     if (!touchesChangedRecipe) continue
 
     summary.affected += 1
     const planningInputs = (row.planning_inputs ?? {}) as Record<string, string>
+    const mealPlanStyle = planningInputs.mealPlanStyle || 'family_dinners'
     try {
-      let next: CoachingPlanDraft = {
-        ...plan,
-        recipes: syncRecipesWithLibrary(plan.recipes, library),
+      let next: CoachingPlanDraft = slotLinkRecipeAssignments(plan, library)
+      next = {
+        ...next,
+        recipes: syncRecipesWithLibrary(next.recipes, library),
       }
       // First pass prices every card at its stored portion (cards whose
       // declared servings changed were reset to one declared serving).
       next = await normalizeReferencedPlanNutrition({
         plan: next,
-        mealPlanStyle: 'family_dinners',
+        mealPlanStyle,
         libraryRecipes: library,
         apiKey,
       })
       // Re-carve portions to the client's macro targets, then re-price the
       // cards whose portion actually moved (>0.5%, same threshold the
       // editor uses so repeat syncs settle instead of churning).
-      const fitted = fitRecipeServingMultipliers(next, { ...planningInputs, mealPlanStyle: 'family_dinners' })
+      const fitted = fitRecipeServingMultipliers(next, { ...planningInputs, mealPlanStyle })
       let refit = false
       const recipes = next.recipes.map((recipe) => {
         const target = fitted.get(recipe.name)
@@ -141,7 +146,7 @@ export async function resyncPlansForRecipes({
       if (refit) {
         next = await normalizeReferencedPlanNutrition({
           plan: { ...next, recipes },
-          mealPlanStyle: 'family_dinners',
+          mealPlanStyle,
           libraryRecipes: library,
           apiKey,
         })

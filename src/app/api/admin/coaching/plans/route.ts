@@ -9,6 +9,7 @@ import {
   normalizeReferencedPlanNutrition,
   NutritionNormalizationError,
 } from '@/lib/normalize-plan-nutrition'
+import { slotLinkRecipeAssignments } from '@/lib/plan-slot-recipes'
 import { getUsdaApiKey } from '@/lib/usda/api-key'
 import { sendPlanPublishedEmail } from '@/lib/coaching-email'
 
@@ -46,7 +47,7 @@ export async function POST(req: NextRequest) {
 
   const { data: libraryRecipes, error: libraryError } = await supabase
     .from('recipe_library')
-    .select('name, ingredients, calories, protein, carbs, fats, fiber')
+    .select('name, meal_type, family_servings, ingredients, instructions, notes, calories, protein, carbs, fats, fiber')
 
   if (libraryError) {
     return NextResponse.json({ error: 'Could not verify recipe nutrition before saving.' }, { status: 500 })
@@ -60,6 +61,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    plan = slotLinkRecipeAssignments(plan, libraryRecipes ?? [])
     plan = await normalizeReferencedPlanNutrition({
       plan,
       mealPlanStyle: planningInputs?.mealPlanStyle,

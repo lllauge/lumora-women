@@ -28,6 +28,7 @@ import { blockWeeksLabel, mealPlanBlocks, startDateWeekdayWarning, BLOCK_MENU_DA
 import { resolvedServingMultiplier } from '@/lib/nutrition-math'
 import { fitRecipeServingMultipliers } from '@/lib/meal-portion-fitting'
 import { allocateMealCalorieTargets } from '@/lib/meal-calorie-targets'
+import { slotLinkRecipeAssignments } from '@/lib/plan-slot-recipes'
 import { findLibraryRecipe } from '@/lib/plan-library-sync'
 import {
   buildMealCalorieBreakdown,
@@ -335,70 +336,6 @@ function daySlotCalorieTargets(
   return allocateMealCalorieTargets(dailyCalories, slots)
 }
 
-function slotLinkLibraryRecipeAssignments(
-  plan: CoachingPlanDraft,
-  libraryRecipes: LibraryRecipe[],
-): CoachingPlanDraft {
-  let changed = false
-  let recipes = [...plan.recipes]
-
-  const linkedName = (name: string, slotKey: string) => {
-    if (isCustomSlotRecipe(name)) return name
-    if (isSlotRecipeName(name, slotKey)) return name
-    const baseName = stripSlotRecipeSuffixes(name)
-    const library = findLibraryRecipe(libraryRecipes, name)
-    const existing = recipes.find((recipe) => recipe.name === name)
-      ?? recipes.find((recipe) => stripSlotRecipeSuffixes(recipe.name) === baseName)
-    if (!library && !existing) return name
-    const label = library?.name ?? existing?.name ?? baseName
-    const slotRecipeName = normalizedSlotRecipeName(label, baseName || 'Recipe', slotKey)
-    if (name === slotRecipeName) return name
-    changed = true
-    if (!recipes.some((recipe) => recipe.name === slotRecipeName)) {
-      const source = existing ?? (library ? libraryRecipeToPlanRecipe(library) : null)
-      if (!source) return slotRecipeName
-      recipes.push({
-        ...source,
-        name: slotRecipeName,
-        clientServing: '',
-        clientServingMultiplier: '',
-        clientServingGrams: '',
-        clientServingMeasure: '',
-        clientServingBreakdown: '',
-        calories: '',
-        protein: '',
-        carbs: '',
-        fats: '',
-        fiber: '',
-        ingredients: [...(existing?.ingredients ?? library?.ingredients ?? source.ingredients)],
-        instructions: [...(existing?.instructions ?? library?.instructions ?? source.instructions)],
-        swaps: [...(existing?.swaps ?? source.swaps ?? [])],
-      })
-    }
-    return slotRecipeName
-  }
-
-  const mealPlan = plan.mealPlan.map((day, dayIndex) => {
-    const linkMeal = (meal: PlanMeal, slotKey: string) => {
-      const names = mealRecipeNames(meal)
-      if (names.length === 0) return meal
-      const nextNames = names.map((name) => linkedName(name, slotKey))
-      return nextNames.some((name, index) => name !== names[index])
-        ? withMealRecipeNames(meal, nextNames)
-        : meal
-    }
-    return {
-      ...day,
-      breakfast: linkMeal(day.breakfast, `d${dayIndex + 1}-breakfast`),
-      lunch: linkMeal(day.lunch, `d${dayIndex + 1}-lunch`),
-      dinner: linkMeal(day.dinner, `d${dayIndex + 1}-dinner`),
-      snacks: day.snacks.map((snack, snackIndex) => linkMeal(snack, `d${dayIndex + 1}-snack${snackIndex}`)),
-    }
-  })
-
-  return changed ? { ...plan, recipes, mealPlan } : plan
-}
-
 // Auto-created per-slot recipe copies look like "Name (d2-lunch)" — drop them once no slot uses them.
 function removeOrphanSlotRecipes(plan: CoachingPlanDraft): CoachingPlanDraft {
   const referenced = new Set<string>()
@@ -560,7 +497,7 @@ export default function CoachingPlanEditor({
 
   useEffect(() => {
     if (!libraryRecipesLoaded) return
-    setPlan((current) => slotLinkLibraryRecipeAssignments(current, libraryRecipes))
+    setPlan((current) => slotLinkRecipeAssignments(current, libraryRecipes))
   }, [libraryRecipesLoaded, libraryRecipes])
 
   useEffect(() => {

@@ -2,7 +2,6 @@ import { ChevronDown } from 'lucide-react'
 import {
   cleanIngredientText, clientPortionFactor,
   clientRecipeNotes, shoppingPrepLines, displayRecipeName,
-  originalBatchSplitInstruction,
 } from '@/lib/coaching-engagement'
 import { seasoningSpoonAmount } from '@/lib/household-measure'
 import InstructionSteps from '@/components/coaching/InstructionSteps'
@@ -199,7 +198,6 @@ function RecipeDetail({
   // amounts she'd cook if making it fresh that day instead of batching.
   const soloBatch = !isFamily && !wholeRecipePortion && !freshCook
   const portionFactor = clientPortionFactor(recipe, individualPlanStyle)
-  const originalBatchSplit = originalBatchSplitInstruction(portionFactor)
   const servingCalories = recipe.calories.trim().replace(/\s*k?cal$/i, '')
   const servingWeight = recipe.clientServingGrams.trim()
 
@@ -242,28 +240,9 @@ function RecipeDetail({
                 No scale
               </p>
               <p style={{ ...bodyText, fontSize: '0.8125rem' }}>
-                Cook the prescribed ingredient amounts below and eat all of the prepared food. Do not divide it again.
+                The ingredients below make one complete serving. Cook them and eat the full prepared serving.
               </p>
-              {originalBatchSplit && (
-                <div style={{ marginTop: '0.625rem', padding: '0.625rem 0.75rem', background: 'rgba(255,255,255,0.38)', border: '1px solid rgba(63,105,54,0.14)', borderRadius: '0.5rem' }}>
-                  <p style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 700, color: '#3F6936', margin: 0 }}>
-                    If cooking the original full recipe instead
-                  </p>
-                  <p style={{ ...bodyText, fontSize: '0.8125rem', marginTop: '0.2rem' }}>
-                    Use the original Recipe Library ingredient amounts. {originalBatchSplit}
-                  </p>
-                </div>
-              )}
             </div>
-          )}
-          {!wholeRecipePortion && (
-            <p style={{
-              fontFamily: 'var(--font-sans)', fontSize: '0.8125rem', color: 'var(--text-secondary)',
-              marginTop: '0.625rem', paddingTop: '0.625rem', borderTop: '1px solid rgba(200,220,192,0.6)',
-            }}>
-              <span style={{ fontWeight: 700, color: '#3F6936' }}>How to use this: </span>
-              The ingredients below already make your complete prescribed serving. Cook them and eat the full prepared serving. Use Meal prep only when adding food for other people or future days.
-            </p>
           )}
         </div>
       )}

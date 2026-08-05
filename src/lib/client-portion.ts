@@ -206,17 +206,3 @@ export function portionFraction(factor: number): PortionFraction | null {
     qualifier: Math.abs(best.deviation) <= 0.03 ? null : best.deviation > 0 ? 'generous' : 'scant',
   }
 }
-
-/**
- * Optional no-scale instruction for someone intentionally cooking the
- * original, unscaled Recipe Library batch. This must never be presented as an
- * instruction for the already-scaled prescribed ingredients shown in the
- * client card.
- */
-export function originalBatchSplitInstruction(factor: number): string {
-  const fraction = portionFraction(factor)
-  if (!fraction || fraction.label === 'the whole recipe') return ''
-  const portionNoun = fraction.take === 1 ? 'portion' : 'portions'
-  const qualifier = fraction.qualifier ? `${fraction.qualifier} ` : ''
-  return `Divide the cooked original batch into ${fraction.parts} equal portions and eat ${fraction.take} ${qualifier}${portionNoun}.`
-}

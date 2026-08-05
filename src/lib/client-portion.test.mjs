@@ -5,7 +5,6 @@ import {
   cleanIngredientText,
   clientPortionFactor,
   clientPortionLines,
-  originalBatchSplitInstruction,
   portionFraction,
   portionSummaryLine,
 } from './client-portion.ts'
@@ -164,15 +163,6 @@ test('no-scale fraction carries the division for multi-part shares', () => {
   // Non-unit fractions tell her how many of the equal portions are hers.
   assert.deepEqual(portionFraction(2 / 3), { label: '⅔', qualifier: null, parts: 3, take: 2 })
   assert.deepEqual(portionFraction(0.38), { label: '⅜', qualifier: null, parts: 8, take: 3 })
-})
-
-test('original-batch split instructions explicitly name the unscaled batch', () => {
-  assert.equal(
-    originalBatchSplitInstruction(0.6),
-    'Divide the cooked original batch into 5 equal portions and eat 3 portions.',
-  )
-  assert.equal(originalBatchSplitInstruction(1), '')
-  assert.equal(originalBatchSplitInstruction(1.25), '')
 })
 
 test('a pinned recipe is always the whole recipe, whatever the stored carve says', () => {
